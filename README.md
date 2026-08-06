@@ -1,3 +1,20 @@
+# PMO Tracker
+
+The Claude Design mockups in `project/` are implemented as a React + Vite app in `src/`.
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # production bundle in dist/
+```
+
+Seven screens: Portfolio, Resourcing, Financials, Timeline, Project detail, Alerts, and Data
+(add/edit/remove projects and people, import/export the portfolio as JSON). The portfolio lives in
+`localStorage` and starts from the sample data in `src/data/seed.ts`; "Reset to sample data" on the
+Data screen puts it back.
+
+---
+
 # CODING AGENTS: READ THIS FIRST
 
 This is a **handoff bundle** from Claude Design (claude.ai/design).

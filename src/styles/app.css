@@ -1,0 +1,55 @@
+/* App-level styling. Everything visual comes from broadsheet.css tokens; this
+   file only covers chrome the design system has no component for. */
+
+body { margin: 0; }
+a { color: var(--color-accent); }
+a:hover { color: var(--color-accent-600); }
+
+.shell { display: flex; align-items: stretch; min-height: 100vh; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+.sidebar { flex: none; width: 252px; padding: var(--space-8) var(--space-6); display: flex; flex-direction: column; gap: var(--space-8); }
+.main { flex: 1; min-width: 0; padding: var(--space-8); max-width: 1560px; }
+
+.nav-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 0; cursor: pointer; font-family: var(--font-heading); font-size: 16px; padding: 8px 10px; border-radius: var(--radius-md); background: transparent; color: var(--color-text); }
+.nav-item:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.nav-item[aria-current='page'] { color: var(--color-accent-700); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.nav-item .count { font-size: 11px; font-family: var(--font-body); color: var(--color-neutral-600); }
+
+.kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
+.eyebrow { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
+.stat-value { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -0.025em; }
+.stat-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-top: 10px; }
+.stat-sub { font-size: 12px; color: var(--color-neutral-700); margin-top: 3px; }
+.stat-row { display: flex; flex-wrap: wrap; gap: var(--space-8) 72px; margin-bottom: var(--space-8); }
+
+.lede { font-size: 13px; color: var(--color-neutral-700); max-width: 64ch; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); font-size: 12px; color: var(--color-neutral-700); }
+.legend > span { display: flex; align-items: center; gap: 8px; }
+
+.chip { cursor: pointer; font-family: var(--font-body); font-size: 13px; padding: 5px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-divider); background: transparent; color: var(--color-text); }
+.chip:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.chip[aria-pressed='true'] { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-bg); }
+
+.card-link { display: block; width: 100%; text-align: left; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.card-link:hover .project-name { color: var(--color-accent-700); }
+
+/* — forms — */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); }
+.field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+.field-hint { font-size: 11px; color: var(--color-neutral-600); margin-top: 4px; }
+.field-error { font-size: 11px; color: var(--color-accent-2-700); margin-top: 4px; }
+.input[aria-invalid='true'] { border-color: var(--color-accent-2-600); }
+.fieldset { border: 0; padding: 0; margin: 0 0 var(--space-6); }
+.fieldset > legend { padding: 0; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: var(--space-3); }
+
+.drawer-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-neutral-900) 40%, transparent); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer { width: min(720px, 100%); height: 100%; overflow-y: auto; background: var(--color-bg); box-shadow: var(--shadow-lg); padding: var(--space-8); }
+.drawer-actions { display: flex; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--color-divider); position: sticky; bottom: 0; background: var(--color-bg); }
+
+.alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.alloc-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
+.alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+.alloc-table .num { width: 58px; text-align: right; padding: 4px 4px; min-height: 30px; }
+.alloc-table input[type='number']::-webkit-inner-spin-button { margin-left: 2px; }
+
+.row-actions { display: flex; gap: var(--space-2); }
+.empty { padding: var(--space-8); text-align: center; color: var(--color-neutral-700); border: 1px dashed var(--color-divider); border-radius: var(--radius-md); }
