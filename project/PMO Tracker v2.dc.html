@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="_ds/broadsheet-7373757c-edd4-4b76-a705-e4cf67121059/styles.css"><script src="_ds/broadsheet-7373757c-edd4-4b76-a705-e4cf67121059/_ds_bundle.js"></script><style>body{margin:0}a{color:var(--color-accent)}a:hover{color:var(--color-accent-600)}</style></helmet>
+<div style="display:flex;align-items:stretch;min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+  <aside style="flex:none;width:252px;padding:var(--space-8) var(--space-6);display:flex;flex-direction:column;gap:var(--space-8)">
+    <div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.1">Delivery Office</div>
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:6px">Portfolio tracker</div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:4px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="6">
+        <button type="button" onClick="{{ n.go }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;text-align:left;background:transparent;border:0;cursor:pointer;font-family:var(--font-heading);font-size:16px;padding:8px 10px;border-radius:var(--radius-md);color:{{ n.color }};background:{{ n.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+          <span>{{ n.label }}</span>
+          <span style="font-size:11px;font-family:var(--font-body);color:var(--color-neutral-600)">{{ n.count }}</span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;font-size:11px;line-height:1.6;color:var(--color-neutral-600)">
+      Week 32 · FY26<br>7 people · 28 projects<br>Over-allocation flagged above {{ thresholdLabel }}
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:var(--space-8);max-width:1560px">
+
+    <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-8);margin-bottom:var(--space-8)">
+      <div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ screenKicker }}</div>
+        <h1 style="margin:8px 0 0;font-size:52px">{{ screenTitle }}</h1>
+        <p style="margin:var(--space-3) 0 0;font-size:16px;max-width:60ch;color:var(--color-neutral-700);text-wrap:pretty">{{ screenBlurb }}</p>
+      </div>
+      <div style="display:flex;gap:var(--space-2);flex:none">
+        <button type="button" class="btn btn-secondary">Export</button>
+        <button type="button" class="btn btn-primary">New project</button>
+      </div>
+    </header>
+
+    <sc-if value="{{ isPortfolio }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-8) 72px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex;align-items:flex-end;gap:var(--space-3)">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em;color:{{ k.color }}">{{ k.value }}</div>
+                <div style="display:flex;align-items:flex-end;gap:{{ k.gap }};width:78px;height:22px;flex:none;padding-bottom:5px">
+                  <sc-for list="{{ k.cells }}" as="c" hint-placeholder-count="6">
+                    <span style="display:block;flex:{{ c.f }};width:{{ c.w }};height:{{ c.h }};align-self:{{ c.al }};background:{{ c.bg }}"></span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">{{ k.label }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-bottom:var(--space-8)">
+          <h3 style="margin-bottom:4px">Every project on one chart</h3>
+          <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">Read left to right for how far a project has got, bottom to top for how big its budget is. Big and top-right means expensive work that is nearly done; magenta means the project manager has flagged a problem.</p>
+          <div style="display:flex;gap:var(--space-2);align-items:stretch">
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;width:18px">
+              <span style="writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:14px;color:var(--color-text)">Approved budget  →</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="position:relative">
+                <svg viewBox="0 0 1040 340" style="width:100%;height:auto;display:block;overflow:visible" role="img" aria-label="Chart of every project by how much of its plan is finished against its approved budget">
+                  <g>
+                    <sc-for list="{{ scatter.xTicks }}" as="t" hint-placeholder-count="5">
+                      <line x1="{{ t.x }}" y1="34" x2="{{ t.x }}" y2="300" stroke="var(--color-neutral-300)" stroke-width="1"></line>
+                    </sc-for>
+                    <sc-for list="{{ scatter.yTicks }}" as="t" hint-placeholder-count="4">
+                      <line x1="70" y1="{{ t.y }}" x2="1020" y2="{{ t.y }}" stroke="var(--color-neutral-200)" stroke-width="1"></line>
+                    </sc-for>
+                    <sc-for list="{{ scatter.dots }}" as="d" hint-placeholder-count="28">
+                      <circle cx="{{ d.cx }}" cy="{{ d.cy }}" r="{{ d.rHover }}" fill="{{ d.fill }}" stroke="{{ d.stroke }}" stroke-width="1.5" opacity="{{ d.opacity }}"></circle>
+                    </sc-for>
+                    <sc-for list="{{ scatter.dots }}" as="d" hint-placeholder-count="28">
+                      <circle cx="{{ d.cx }}" cy="{{ d.cy }}" r="{{ d.rHit }}" fill="transparent" onMouseEnter="{{ d.enter }}" onMouseLeave="{{ d.leave }}" style="cursor:pointer;pointer-events:all"></circle>
+                    </sc-for>
+                  </g>
+                </svg>
+                <sc-for list="{{ scatter.xTicks }}" as="t" hint-placeholder-count="5">
+                  <span style="position:absolute;left:{{ t.leftPct }};top:{{ t.topPct }};transform:translateX(-50%);font-size:13px;color:var(--color-neutral-700)">{{ t.label }}</span>
+                </sc-for>
+                <sc-for list="{{ scatter.yTicks }}" as="t" hint-placeholder-count="4">
+                  <span style="position:absolute;left:{{ t.leftPct }};top:{{ t.topPct }};transform:translate(-100%,-50%);font-size:13px;color:var(--color-neutral-700)">{{ t.label }}</span>
+                </sc-for>
+                <sc-if value="{{ tip.show }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:{{ tip.leftPct }};top:{{ tip.topPct }};transform:translate(-50%,-100%);min-width:236px;padding:var(--space-3);background:var(--color-surface);box-shadow:var(--shadow-md);border-radius:var(--radius-md);pointer-events:none;z-index:2">
+                    <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-700)">{{ tip.client }}</div>
+                    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.15;margin-top:3px">{{ tip.name }}</div>
+                    <div style="font-size:14px;margin-top:8px">{{ tip.moneyLine }}</div>
+                    <div style="font-size:12px;color:var(--color-neutral-700);margin-top:4px">{{ tip.phaseLine }}</div>
+                    <div style="font-size:12px;color:var(--color-neutral-700)">{{ tip.loadLine }}</div>
+                    <div style="font-size:11px;color:var(--color-neutral-600);margin-top:6px">{{ tip.metaLine }}</div>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="text-align:center;font-size:14px;color:var(--color-text);margin-top:var(--space-2)">How much of the plan is finished  →</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);font-size:12px;color:var(--color-neutral-700);margin-top:var(--space-3)">
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:var(--color-neutral-500);display:block"></span>Customer project</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;border:1.5px solid var(--color-neutral-500);display:block"></span>Internal project</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:var(--color-accent-2);display:block"></span>At risk</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:var(--color-process-yellow);display:block"></span>Watch</span>
+            <span>Bigger circle = takes more of the team's time</span>
+            <span>Hover a circle for the project's details</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4) var(--space-8);margin-bottom:var(--space-6)">
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Type</span>
+            <sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="3">
+              <button type="button" onClick="{{ c.go }}" style="cursor:pointer;font-family:var(--font-body);font-size:13px;padding:5px 12px;border-radius:var(--radius-md);border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.color }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Status</span>
+            <sc-for list="{{ ragChips }}" as="c" hint-placeholder-count="4">
+              <button type="button" onClick="{{ c.go }}" style="cursor:pointer;font-family:var(--font-body);font-size:13px;padding:5px 12px;border-radius:var(--radius-md);border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.color }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+          <label style="display:flex;align-items:center;gap:var(--space-2)">
+            <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Owner</span>
+            <select class="input" style="width:auto;min-width:160px" value="{{ pmValue }}" onChange="{{ setPm }}">
+              <sc-for list="{{ pmOptions }}" as="o" hint-placeholder-count="5">
+                <option value="{{ o }}">{{ o }}</option>
+              </sc-for>
+            </select>
+          </label>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:18px;font-size:12px;color:var(--color-neutral-700)">
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:3px;height:14px;background:var(--color-accent);display:block"></span>Customer-facing</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:3px;height:14px;background:var(--color-neutral-400);display:block"></span>Internal</span>
+            <span>{{ resultCount }}</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(376px,1fr));gap:var(--space-8) 64px">
+          <sc-for list="{{ shown }}" as="p" hint-placeholder-count="6">
+            <article style="position:relative;padding:2px 0 2px var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)">
+              <span style="position:absolute;left:0;top:0;bottom:0;width:3px;display:block;background:{{ p.stripe }}"></span>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <span style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-700)">{{ p.client }}</span>
+                <span style="flex:none;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-neutral-600)">{{ p.typeShort }}</span>
+              </div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1.1;letter-spacing:-.015em">{{ p.name }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;gap:4px;height:6px">
+                  <sc-for list="{{ p.pips }}" as="q" hint-placeholder-count="4">
+                    <span style="display:block;flex:1;background:{{ q.bg }}"></span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--color-neutral-700)">
+                  <span>{{ p.phaseName }}</span><span style="flex:none">{{ p.phaseStep }}</span>
+                </div>
+              </div>
+              <div style="font-size:14px;line-height:1.5">
+                <span style="color:var(--color-neutral-600)">Next</span> {{ p.milestone }}
+                <span style="color:var(--color-neutral-600)">· {{ p.msDate }}</span>
+              </div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-1)">
+                <div>
+                  <div style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)">{{ p.moneyLabel }}</div>
+                  <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;margin-top:3px">{{ p.moneyMain }}</div>
+                  <div style="font-size:11px;color:var(--color-neutral-600)">{{ p.moneySub }}</div>
+                </div>
+                <div style="text-align:right;flex:none">
+                  <div style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)">Team load</div>
+                  <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:3px">
+                    <span style="width:8px;height:8px;border-radius:50%;display:block;background:{{ p.loadColor }}"></span>
+                    <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;color:{{ p.loadInk }}">{{ p.loadLabel }}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--color-neutral-600)">{{ p.pm }}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--color-neutral-700)">
+                <span style="width:8px;height:8px;border-radius:50%;display:block;background:{{ p.ragColor }}"></span>{{ p.ragLabel }}
+                <span style="margin-left:auto;color:var(--color-neutral-600)">{{ p.facingLabel }}</span>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isResources }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-8) 72px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ resKpis }}" as="k" hint-placeholder-count="4">
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">{{ k.label }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+
+        <h3 style="margin:0 0 4px">Person by person</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-6)">One bar per month, showing how much of that person's time is already promised. The dotted line is a full week — bars above it are impossible, not merely busy.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(408px,1fr));gap:var(--space-8) 64px">
+          <sc-for list="{{ people }}" as="r" hint-placeholder-count="7">
+            <div style="display:flex;align-items:flex-start;gap:var(--space-6)">
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.15">{{ r.name }}</div>
+                <div style="font-size:12px;color:var(--color-accent-700);letter-spacing:.06em;text-transform:uppercase;margin-top:4px">{{ r.role }}</div>
+                <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px">{{ r.note }}</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;margin-top:10px;color:{{ r.peakInk }}">{{ r.peakLabel }}</div>
+                <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)">peak load · {{ r.peakMonth }}</div>
+              </div>
+              <div style="flex:none;width:200px;position:relative">
+                <svg viewBox="0 0 200 60" style="width:200px;height:60px;display:block" role="img" aria-label="How much of this person's time is promised each month">
+                  <g>
+                    <line x1="0" y1="{{ r.capY }}" x2="200" y2="{{ r.capY }}" stroke="var(--color-text)" stroke-width="1" stroke-dasharray="3 3"></line>
+                    <line x1="0" y1="58" x2="200" y2="58" stroke="var(--color-neutral-400)" stroke-width="1"></line>
+                    <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="6">
+                      <rect x="{{ b.x }}" y="{{ b.y }}" width="24" height="{{ b.h }}" fill="{{ b.fill }}"></rect>
+                    </sc-for>
+                    <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="6">
+                      <rect x="{{ b.x }}" y="0" width="24" height="58" fill="transparent" onMouseEnter="{{ b.enter }}" onMouseLeave="{{ b.leave }}" style="cursor:pointer;pointer-events:all"></rect>
+                    </sc-for>
+                  </g>
+                </svg>
+                <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="6">
+                  <sc-if value="{{ b.hovered }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;left:{{ b.midPx }};top:{{ b.tipTop }};transform:translateX(-50%);font-family:var(--font-heading);font-weight:600;font-size:13px;background:var(--color-bg);box-shadow:var(--shadow-sm);padding:1px 5px;border-radius:var(--radius-md);white-space:nowrap;pointer-events:none;z-index:2">{{ b.pctLabel }}</span>
+                  </sc-if>
+                </sc-for>
+                <div style="display:flex;gap:9px;padding-left:4px;margin-top:5px">
+                  <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="6">
+                    <span style="width:24px;text-align:center;font-size:12px;color:var(--color-neutral-700)">{{ b.month }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin:var(--space-8) 0">
+          <h3 style="margin-bottom:4px">How many people the work needs</h3>
+          <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">The pale column is the seven people we have. The dark column is how many the promised work needs. Magenta is the shortfall — work with nobody free to do it.</p>
+          <div style="display:flex;gap:var(--space-2);align-items:stretch">
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;width:18px">
+              <span style="writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:14px;color:var(--color-text)">Number of people  →</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="position:relative">
+                <svg viewBox="0 0 1040 280" style="width:100%;height:auto;display:block" role="img" aria-label="How many people the promised work needs each month against the seven available">
+                  <g>
+                    <line x1="70" y1="{{ agg.capY }}" x2="1020" y2="{{ agg.capY }}" stroke="var(--color-text)" stroke-width="1" stroke-dasharray="4 4"></line>
+                    <line x1="70" y1="230" x2="1020" y2="230" stroke="var(--color-neutral-400)" stroke-width="1"></line>
+                    <sc-for list="{{ agg.cols }}" as="c" hint-placeholder-count="6">
+                      <g>
+                        <rect x="{{ c.x }}" y="{{ c.capYr }}" width="{{ c.w }}" height="{{ c.capH }}" fill="var(--color-neutral-200)"></rect>
+                        <rect x="{{ c.dx }}" y="{{ c.dy }}" width="{{ c.dw }}" height="{{ c.dh }}" fill="var(--color-text)"></rect>
+                        <rect x="{{ c.dx }}" y="{{ c.oy }}" width="{{ c.dw }}" height="{{ c.oh }}" fill="var(--color-accent-2)"></rect>
+                      </g>
+                    </sc-for>
+                  </g>
+                </svg>
+                <span style="position:absolute;left:{{ agg.gutterPct }};top:{{ agg.zeroTopPct }};transform:translate(-100%,-50%);font-size:13px;color:var(--color-neutral-700)">0</span>
+                <sc-for list="{{ agg.cols }}" as="c" hint-placeholder-count="6">
+                  <span style="position:absolute;left:{{ c.midPct }};top:{{ c.valTopPct }};transform:translateX(-50%);font-family:var(--font-heading);font-weight:600;font-size:15px;white-space:nowrap">{{ c.label }}</span>
+                </sc-for>
+                <sc-for list="{{ agg.cols }}" as="c" hint-placeholder-count="6">
+                  <span style="position:absolute;left:{{ c.midPct }};top:{{ c.monthTopPct }};transform:translateX(-50%);font-size:14px;color:var(--color-neutral-700)">{{ c.month }}</span>
+                </sc-for>
+              </div>
+              <div style="text-align:center;font-size:14px;color:var(--color-text);margin-top:var(--space-2)">Month, 2026–27</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);font-size:12px;color:var(--color-neutral-700);margin-top:var(--space-2)">
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:12px;background:var(--color-neutral-200);display:block"></span>People we have</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:12px;background:var(--color-text);display:block"></span>People the work needs</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:12px;background:var(--color-accent-2);display:block"></span>Shortfall</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:0;border-top:1px dashed var(--color-text);display:block"></span>All seven people, fully booked</span>
+          </div>
+        </div>
+
+        <h3 style="margin:var(--space-8) 0 4px">Where the overspill comes from</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch">The oversold months, and the projects driving them.</p>
+        <table class="table" style="margin-top:var(--space-4);max-width:1040px">
+          <thead>
+            <tr>
+              <th style="width:200px">Person</th><th style="width:96px">Month</th>
+              <th style="text-align:right;width:130px">Over capacity</th><th>Driven by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ pressure }}" as="x" hint-placeholder-count="6">
+              <tr>
+                <td><span style="font-family:var(--font-heading);font-weight:600">{{ x.who }}</span></td>
+                <td>{{ x.month }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums;color:{{ x.color }}">{{ x.over }}</td>
+                <td style="color:var(--color-neutral-700)">{{ x.drivers }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isFinancials }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-8) 72px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ finKpis }}" as="k" hint-placeholder-count="4">
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">{{ k.label }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <h3 style="margin:0 0 4px">How much we have invoiced</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">The full bar is what the client agreed to pay. The dark part is what we have invoiced. The projects with the most left to bill come first.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);font-size:12px;color:var(--color-neutral-700);margin-bottom:var(--space-6)">
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:12px;background:var(--color-text);display:block"></span>Invoiced</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:12px;background:var(--color-neutral-300);display:block"></span>Agreed but not yet invoiced</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:1040px">
+          <sc-for list="{{ finBars }}" as="p" hint-placeholder-count="12">
+            <div style="display:grid;grid-template-columns:236px 1fr 108px 100px;align-items:center;gap:var(--space-4)">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.2">{{ p.name }}</div>
+                <div style="font-size:11px;color:var(--color-neutral-600)">{{ p.client }} · {{ p.typeShort }}</div>
+              </div>
+              <div style="height:14px;background:var(--color-neutral-200);position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ p.barW }};background:var(--color-neutral-300)"></div>
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ p.billedW }};background:{{ p.billedInk }}"></div>
+              </div>
+              <div style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px">{{ p.billedLabel }} <span style="color:var(--color-neutral-600)">/ {{ p.valueLabel }}</span></div>
+              <div style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--color-neutral-700)">{{ p.toBillLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <h3 style="margin:var(--space-8) 0 4px">Customer-facing detail</h3>
+        <table class="table" style="margin-top:var(--space-4)">
+          <thead>
+            <tr>
+              <th>Project</th><th style="width:64px">Type</th>
+              <th style="text-align:right;width:96px">Budget</th>
+              <th style="text-align:right;width:110px">Spent so far</th>
+              <th style="text-align:right;width:96px">Budget used</th>
+              <th style="text-align:right;width:110px">Client agreed</th>
+              <th style="text-align:right;width:96px">Invoiced</th>
+              <th style="text-align:right;width:110px">Still to invoice</th>
+              <th style="width:100px">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ finCustomer }}" as="p" hint-placeholder-count="10">
+              <tr>
+                <td><span style="font-family:var(--font-heading);font-weight:600">{{ p.name }}</span><span style="color:var(--color-neutral-600);font-size:12px"> · {{ p.client }}</span></td>
+                <td style="color:var(--color-neutral-700);font-size:12px">{{ p.typeShort }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ p.budgetLabel }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ p.actualLabel }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums;color:{{ p.burnInk }}">{{ p.burnLabel }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ p.valueLabel }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ p.billedLabel }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--color-neutral-700)">{{ p.toBillLabel }}</td>
+                <td><span style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;display:block;background:{{ p.ragColor }}"></span>{{ p.ragLabel }}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+
+        <h3 style="margin:var(--space-8) 0 4px">Internal draw-down</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-6)">Cost-tracked only. Each calls against an approved pool; there is no invoice side.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:1040px">
+          <sc-for list="{{ intBars }}" as="p" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:236px 1fr 108px 100px;align-items:center;gap:var(--space-4)">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.2">{{ p.name }}</div>
+                <div style="font-size:11px;color:var(--color-neutral-600)">{{ p.client }} · {{ p.typeShort }}</div>
+              </div>
+              <div style="height:14px;background:var(--color-neutral-200);position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ p.barW }};background:var(--color-neutral-300)"></div>
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ p.drawnW }};background:{{ p.burnInk2 }}"></div>
+              </div>
+              <div style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px">{{ p.actualLabel }} <span style="color:var(--color-neutral-600)">/ {{ p.budgetLabel }}</span></div>
+              <div style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--color-neutral-700)">{{ p.burnLabel }} drawn</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTimeline }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1240px">
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);font-size:12px;color:var(--color-neutral-700);margin-bottom:var(--space-6)">
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:8px;background:var(--color-neutral-500);display:block"></span>How long the project runs</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;background:var(--color-text);display:block;transform:rotate(45deg)"></span>Next thing due</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:1px;height:14px;background:var(--color-text);display:block"></span>Today</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:8px;background:var(--color-accent-2);display:block"></span>At risk</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:8px;background:var(--color-process-yellow);display:block"></span>Watch</span>
+          <span>Hover a bar for its dates and team</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:250px 1fr;gap:var(--space-4);align-items:end;margin-bottom:var(--space-2)">
+          <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-neutral-600)">Project</div>
+          <div style="position:relative;height:22px">
+            <sc-for list="{{ tl.months }}" as="m" hint-placeholder-count="9">
+              <span style="position:absolute;left:{{ m.left }};bottom:0;transform:translateX(-50%);font-size:13px;color:var(--color-neutral-700);white-space:nowrap">{{ m.label }}</span>
+            </sc-for>
+            <span style="position:absolute;left:25%;top:-19px;transform:translateX(-50%);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-accent-700)">Today</span>
+          </div>
+        </div>
+
+        <div style="font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-700);margin:var(--space-6) 0 var(--space-2)">CDMO · named after watch brands</div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ tl.cdmo }}" as="r" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:250px 1fr;gap:var(--space-4);align-items:center;padding:7px 0" onMouseEnter="{{ r.enter }}" onMouseLeave="{{ r.leave }}">
+              <div style="display:flex;align-items:baseline;gap:9px;min-width:0">
+                <span style="width:3px;height:15px;background:{{ r.edge }};display:block;flex:none"></span>
+                <span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ r.name }}</span>
+                <span style="font-size:11px;color:var(--color-neutral-600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.client }}</span>
+              </div>
+              <div style="position:relative;height:18px;cursor:pointer">
+                <span style="position:absolute;left:0;right:0;top:8px;height:1px;background:var(--color-neutral-200);display:block"></span>
+                <sc-for list="{{ tl.months }}" as="q" hint-placeholder-count="9">
+                  <span style="position:absolute;left:{{ q.left }};top:-4px;bottom:-4px;width:1px;background:var(--color-neutral-200);display:block"></span>
+                </sc-for>
+                <span style="position:absolute;left:25%;top:-3px;bottom:-3px;width:1px;background:var(--color-text);display:block"></span>
+                <span style="position:absolute;left:{{ r.left }};width:{{ r.width }};top:5px;height:8px;background:{{ r.fill }};display:block"></span>
+                <span style="position:absolute;left:{{ r.msLeft }};top:4px;width:9px;height:9px;background:var(--color-text);transform:rotate(45deg);display:block"></span>
+                <sc-if value="{{ r.hovered }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:{{ r.endLeft }};top:20px;transform:{{ r.tipShift }};min-width:300px;max-width:380px;padding:var(--space-3);background:var(--color-bg);box-shadow:var(--shadow-lg);border-radius:var(--radius-md);z-index:4;pointer-events:none">
+                    <div style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{ r.name }}</div>
+                    <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-accent-700);margin-top:3px">{{ r.durLabel }}</div>
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px var(--space-3);font-size:13px;margin-top:10px">
+                      <span style="color:var(--color-neutral-600)">Started</span><span>{{ r.startLabel }}</span>
+                      <span style="color:var(--color-neutral-600)">Next due</span><span>{{ r.milestone }} · {{ r.msDate }}</span>
+                      <span style="color:var(--color-neutral-600)">Finishes</span><span>{{ r.endLabel }}</span>
+                      <span style="color:var(--color-neutral-600)">Team</span><span>{{ r.teamLabel }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-700);margin:var(--space-8) 0 var(--space-2)">Client Solutions · named after F1 teams</div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ tl.cs }}" as="r" hint-placeholder-count="22">
+            <div style="display:grid;grid-template-columns:250px 1fr;gap:var(--space-4);align-items:center;padding:7px 0" onMouseEnter="{{ r.enter }}" onMouseLeave="{{ r.leave }}">
+              <div style="display:flex;align-items:baseline;gap:9px;min-width:0">
+                <span style="width:3px;height:15px;background:{{ r.edge }};display:block;flex:none"></span>
+                <span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ r.name }}</span>
+                <span style="font-size:11px;color:var(--color-neutral-600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.client }}</span>
+              </div>
+              <div style="position:relative;height:18px;cursor:pointer">
+                <span style="position:absolute;left:0;right:0;top:8px;height:1px;background:var(--color-neutral-200);display:block"></span>
+                <sc-for list="{{ tl.months }}" as="q" hint-placeholder-count="9">
+                  <span style="position:absolute;left:{{ q.left }};top:-4px;bottom:-4px;width:1px;background:var(--color-neutral-200);display:block"></span>
+                </sc-for>
+                <span style="position:absolute;left:25%;top:-3px;bottom:-3px;width:1px;background:var(--color-text);display:block"></span>
+                <span style="position:absolute;left:{{ r.left }};width:{{ r.width }};top:5px;height:8px;background:{{ r.fill }};display:block"></span>
+                <span style="position:absolute;left:{{ r.msLeft }};top:4px;width:9px;height:9px;background:var(--color-text);transform:rotate(45deg);display:block"></span>
+                <sc-if value="{{ r.hovered }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:{{ r.endLeft }};top:20px;transform:{{ r.tipShift }};min-width:300px;max-width:380px;padding:var(--space-3);background:var(--color-bg);box-shadow:var(--shadow-lg);border-radius:var(--radius-md);z-index:4;pointer-events:none">
+                    <div style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{ r.name }}</div>
+                    <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-accent-700);margin-top:3px">{{ r.durLabel }}</div>
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px var(--space-3);font-size:13px;margin-top:10px">
+                      <span style="color:var(--color-neutral-600)">Started</span><span>{{ r.startLabel }}</span>
+                      <span style="color:var(--color-neutral-600)">Next due</span><span>{{ r.milestone }} · {{ r.msDate }}</span>
+                      <span style="color:var(--color-neutral-600)">Finishes</span><span>{{ r.endLabel }}</span>
+                      <span style="color:var(--color-neutral-600)">Team</span><span>{{ r.teamLabel }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1100px">
+        <label style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-8)">
+          <span style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-neutral-600)">Project</span>
+          <select class="input" style="width:auto;min-width:320px" value="{{ detail.value }}" onChange="{{ setDetail }}">
+            <optgroup label="CDMO">
+              <sc-for list="{{ detail.cdmoOptions }}" as="o" hint-placeholder-count="6">
+                <option value="{{ o.value }}">{{ o.label }}</option>
+              </sc-for>
+            </optgroup>
+            <optgroup label="Client Solutions">
+              <sc-for list="{{ detail.csOptions }}" as="o" hint-placeholder-count="22">
+                <option value="{{ o.value }}">{{ o.label }}</option>
+              </sc-for>
+            </optgroup>
+          </select>
+        </label>
+
+        <div style="position:relative;padding-left:var(--space-4);margin-bottom:var(--space-8)">
+          <span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:{{ detail.stripe }};display:block"></span>
+          <div style="font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--color-accent-700)">{{ detail.client }}</div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1.05;letter-spacing:-.025em;margin-top:6px">{{ detail.name }}</div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4);font-size:14px;color:var(--color-neutral-700);margin-top:var(--space-3)">
+            <span>{{ detail.typeLabel }}</span>
+            <span>{{ detail.facingLabel }}</span>
+            <span>Run by {{ detail.pm }}</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:{{ detail.ragColor }};display:block"></span>{{ detail.ragLabel }}</span>
+          </div>
+        </div>
+
+        <h3 style="margin:0 0 4px">Where it has got to</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">Currently in {{ detail.phaseName }} — phase {{ detail.phaseStep }}. Next due: {{ detail.milestone }} on {{ detail.msDate }}.</p>
+        <div style="display:flex;gap:var(--space-2);align-items:stretch;margin-bottom:var(--space-8)">
+          <sc-for list="{{ detail.steps }}" as="st" hint-placeholder-count="7">
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+              <span style="height:6px;background:{{ st.bg }};display:block"></span>
+              <span style="font-family:var(--font-heading);font-weight:600;font-size:14px;line-height:1.2;text-wrap:pretty">{{ st.name }}</span>
+              <span style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:{{ st.ink }}">{{ st.state }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-8) 72px;margin-bottom:var(--space-8)">
+          <div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em">{{ detail.moneyHeadline }}</div>
+            <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">{{ detail.moneyHeadlineLabel }}</div>
+            <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ detail.moneyHeadlineSub }}</div>
+          </div>
+          <div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em">{{ detail.actualLabel }}</div>
+            <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">Spent so far</div>
+            <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ detail.burnLabel }} of the {{ detail.budgetLabel }} budget · {{ detail.remainLabel }} left</div>
+          </div>
+          <div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em;color:{{ detail.loadInk }}">{{ detail.loadLabel }}</div>
+            <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">Of the team's time</div>
+            <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">Across the four people below</div>
+          </div>
+        </div>
+
+        <div style="max-width:640px;margin-bottom:var(--space-8)">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-neutral-700);margin-bottom:6px">
+            <span>Budget spent</span><span>{{ detail.actualLabel }} of {{ detail.budgetLabel }}</span>
+          </div>
+          <div style="height:14px;background:var(--color-neutral-200);position:relative">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:{{ detail.spentW }};background:var(--color-text)"></div>
+          </div>
+        </div>
+
+        <sc-if value="{{ detail.hasInvoices }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-bottom:var(--space-8)">
+            <h3 style="margin:0 0 4px">When the client pays</h3>
+            <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">The agreed {{ detail.valueLabel }} is invoiced in four stages. {{ detail.billedLabel }} has gone out; {{ detail.toBillLabel }} is still to come.</p>
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:640px">
+              <sc-for list="{{ detail.invoices }}" as="iv" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:var(--space-3)">
+                  <span style="width:9px;height:9px;border-radius:50%;background:{{ iv.dot }};display:block;flex:none"></span>
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:{{ iv.ink }}">{{ iv.label }}</span>
+                  <span style="margin-left:auto;font-size:15px;font-variant-numeric:tabular-nums;color:{{ iv.ink }}">{{ iv.amount }}</span>
+                  <span style="width:110px;text-align:right;font-size:12px;color:var(--color-neutral-600)">{{ iv.status }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <h3 style="margin:0 0 4px">Who is working on it</h3>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin-bottom:var(--space-4)">Share of each person's working week committed to this project.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:640px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ detail.team }}" as="m" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:180px 1fr 150px;align-items:center;gap:var(--space-4)">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ m.name }}</div>
+                <div style="font-size:11px;color:var(--color-neutral-600)">{{ m.role }}</div>
+              </div>
+              <div style="height:12px;background:var(--color-neutral-200);position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ m.w }};background:var(--color-text)"></div>
+              </div>
+              <div style="font-size:13px;color:var(--color-neutral-700);text-align:right">{{ m.pctLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <h3 style="margin:0 0 var(--space-3)">What to watch</h3>
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);max-width:64ch">
+          <sc-for list="{{ detail.notes }}" as="n" hint-placeholder-count="2">
+            <p style="margin:0;font-size:16px;text-wrap:pretty">{{ n }}</p>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAlerts }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1180px">
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-8) 72px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ alertStats }}" as="k" hint-placeholder-count="4">
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.025em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:10px">{{ k.label }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-700);margin-top:3px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:baseline;gap:var(--space-3)">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--color-accent-2);display:block;flex:none"></span>
+          <h3 style="margin:0">Projects at risk</h3>
+        </div>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin:4px 0 var(--space-6) 22px">Filled squares are phases finished, the cyan square is where the project is now.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--space-6) 64px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ alertRisk }}" as="it" hint-placeholder-count="5">
+            <div style="position:relative;padding-left:var(--space-4)">
+              <span style="position:absolute;left:0;top:2px;bottom:2px;width:3px;background:var(--color-accent-2);display:block"></span>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.15">{{ it.name }}</div>
+              <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-accent-700);margin-top:3px">{{ it.client }}</div>
+              <div style="display:flex;gap:4px;height:8px;margin-top:var(--space-3)">
+                <sc-for list="{{ it.pips }}" as="q" hint-placeholder-count="4">
+                  <span style="display:block;flex:1;background:{{ q.bg }}"></span>
+                </sc-for>
+              </div>
+              <div style="font-size:12px;color:var(--color-neutral-700);margin-top:6px">{{ it.phaseName }} · {{ it.phaseStep }}</div>
+              <div style="display:flex;gap:var(--space-6);margin-top:var(--space-3)">
+                <div>
+                  <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:{{ it.loadInk }}">{{ it.loadLabel }}</div>
+                  <div style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)">of team time</div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-heading);font-weight:600;font-size:20px">{{ it.burnLabel }}</div>
+                  <div style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)">budget used</div>
+                </div>
+              </div>
+              <div style="font-size:13px;color:var(--color-neutral-700);margin-top:var(--space-3)">Next: {{ it.milestone }} · {{ it.msDate }} · {{ it.pm }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:baseline;gap:var(--space-3)">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--color-accent-2);display:block;flex:none"></span>
+          <h3 style="margin:0">People booked past a full week</h3>
+        </div>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin:4px 0 var(--space-6) 22px">Magenta bars are months where more work is promised than there are hours to do it.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:var(--space-6) 64px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ alertPeople }}" as="it" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;gap:var(--space-6);position:relative;padding-left:var(--space-4)">
+              <span style="position:absolute;left:0;top:2px;bottom:2px;width:3px;background:var(--color-accent-2);display:block"></span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.15">{{ it.name }}</div>
+                <div style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-accent-700);margin-top:3px">{{ it.role }}</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;color:var(--color-accent-2-700);margin-top:var(--space-3)">{{ it.peakLabel }}</div>
+                <div style="font-size:12px;color:var(--color-neutral-700)">{{ it.overLabel }}</div>
+              </div>
+              <div style="flex:none;width:200px">
+                <svg viewBox="0 0 200 60" style="width:200px;height:60px;display:block" role="img" aria-label="Monthly load">
+                  <g>
+                    <line x1="0" y1="{{ it.capY }}" x2="200" y2="{{ it.capY }}" stroke="var(--color-text)" stroke-width="1" stroke-dasharray="3 3"></line>
+                    <line x1="0" y1="58" x2="200" y2="58" stroke="var(--color-neutral-400)" stroke-width="1"></line>
+                    <sc-for list="{{ it.bars }}" as="b" hint-placeholder-count="6">
+                      <rect x="{{ b.x }}" y="{{ b.y }}" width="24" height="{{ b.h }}" fill="{{ b.fill }}"></rect>
+                    </sc-for>
+                  </g>
+                </svg>
+                <div style="display:flex;gap:9px;padding-left:4px;margin-top:5px">
+                  <sc-for list="{{ it.bars }}" as="b" hint-placeholder-count="6">
+                    <span style="width:24px;text-align:center;font-size:12px;color:var(--color-neutral-700)">{{ b.month }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:baseline;gap:var(--space-3)">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--color-accent);display:block;flex:none"></span>
+          <h3 style="margin:0">Budgets nearly gone</h3>
+        </div>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin:4px 0 var(--space-6) 22px">The bar is the approved budget; the dark part has been spent.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:1040px;margin-bottom:var(--space-8)">
+          <sc-for list="{{ alertBudget }}" as="it" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:250px 1fr 150px 110px;align-items:center;gap:var(--space-4)">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.2">{{ it.name }}</div>
+                <div style="font-size:11px;color:var(--color-neutral-600)">{{ it.client }} · {{ it.phaseName }}</div>
+              </div>
+              <div style="height:14px;background:var(--color-neutral-200);position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ it.usedW }};background:var(--color-accent-2)"></div>
+              </div>
+              <div style="font-size:14px;font-variant-numeric:tabular-nums">{{ it.actualLabel }} <span style="color:var(--color-neutral-600)">/ {{ it.budgetLabel }}</span></div>
+              <div style="text-align:right;font-size:14px;color:var(--color-neutral-700)">{{ it.leftLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:baseline;gap:var(--space-3)">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--color-accent);display:block;flex:none"></span>
+          <h3 style="margin:0">Money waiting to be invoiced</h3>
+        </div>
+        <p style="font-size:13px;color:var(--color-neutral-700);max-width:64ch;margin:4px 0 var(--space-6) 22px">The bar is what the client agreed; the dark part has been invoiced. The pale remainder is money still to ask for.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:1040px">
+          <sc-for list="{{ alertInvoice }}" as="it" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:250px 1fr 150px 130px;align-items:center;gap:var(--space-4)">
+              <div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.2">{{ it.name }}</div>
+                <div style="font-size:11px;color:var(--color-neutral-600)">{{ it.client }} · {{ it.pctLabel }}</div>
+              </div>
+              <div style="height:14px;background:var(--color-neutral-300);position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:{{ it.billedW }};background:var(--color-text)"></div>
+              </div>
+              <div style="font-size:14px;font-variant-numeric:tabular-nums">{{ it.billedLabel }} <span style="color:var(--color-neutral-600)">/ {{ it.valueLabel }}</span></div>
+              <div style="text-align:right;font-family:var(--font-heading);font-weight:600;font-size:17px">{{ it.toBillLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;threshold&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:85,&quot;min&quot;:70,&quot;max&quot;:110,&quot;step&quot;:1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Resourcing&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'portfolio', type: 'All', rag: 'All', pm: 'All', detailId: 2, hoverId: null, hoverRow: null, hoverBar: null };
+
+  ph = {
+    CS: ['Production Trial', 'V&V', 'Sterilisation', 'Handover'],
+    CDMO: ['Pre-Project', 'Planning & Feasibility', 'Design Inputs', 'Design Outputs', 'Product & Process V&V', 'Production & Market Readiness', 'Product Launch & Post-Launch']
+  };
+  ms = {
+    CS: ['Trial batch released', 'V&V protocol sign-off', 'Sterilisation validation', 'Handover pack accepted'],
+    CDMO: ['Kick-off approved', 'Feasibility report issued', 'Design inputs frozen', 'Design outputs released', 'V&V report complete', 'PPQ lots released', 'Post-launch review']
+  };
+  pms = ['Saranan', 'Andy', 'Neil', 'Toby'];
+  dates = ['14 Aug', '28 Aug', '04 Sep', '12 Sep', '25 Sep', '09 Oct', '16 Oct', '30 Oct', '13 Nov', '27 Nov', '11 Dec', '08 Jan'];
+  months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
+
+  seed = [
+    ['Rolex', 'Aveltis Bio', 'CDMO', 'C', 4, 62, 'A', 0, 4200, 2780, 6100, 3400, 92],
+    ['Omega', 'Norhaven Therapeutics', 'CDMO', 'C', 2, 45, 'G', 1, 3100, 1180, 4400, 1500, 74],
+    ['Patek', 'Kestrel Medical', 'CDMO', 'C', 5, 80, 'G', 2, 5600, 4390, 7900, 6100, 81],
+    ['Cartier', 'Pallas Pharma', 'CDMO', 'C', 1, 30, 'R', 3, 2400, 980, 3200, 600, 97],
+    ['Seiko', 'Operations', 'CDMO', 'I', 3, 52, 'A', 0, 1200, 760, 0, 0, 84],
+    ['Breitling', 'Quality', 'CDMO', 'I', 4, 66, 'R', 1, 1450, 1120, 0, 0, 99],
+    ['Ferrari', 'Brightpath Surgical', 'CS', 'C', 1, 46, 'G', 2, 680, 300, 940, 350, 72],
+    ['McLaren', 'Lumen Ortho', 'CS', 'C', 2, 72, 'A', 3, 410, 320, 560, 380, 89],
+    ['Williams', 'Ashcroft Devices', 'CS', 'C', 0, 28, 'G', 0, 890, 240, 1250, 200, 66],
+    ['Mercedes', 'Ferrowick', 'CS', 'C', 3, 90, 'G', 1, 320, 290, 470, 430, 41],
+    ['Red Bull', 'Cordelia Health', 'CS', 'C', 1, 54, 'R', 2, 1100, 760, 1500, 600, 101],
+    ['Alpine', 'Tanner & Voss', 'CS', 'C', 2, 68, 'G', 3, 540, 370, 720, 480, 77],
+    ['Aston Martin', 'Maple Ridge Med', 'CS', 'C', 0, 18, 'G', 0, 260, 60, 380, 0, 49],
+    ['Haas', 'Otterline', 'CS', 'C', 3, 84, 'A', 1, 470, 420, 640, 560, 87],
+    ['Sauber', 'Brightpath Surgical', 'CS', 'C', 2, 60, 'G', 2, 730, 470, 990, 610, 69],
+    ['Racing Bulls', 'Lumen Ortho', 'CS', 'C', 1, 42, 'G', 3, 620, 290, 850, 300, 64],
+    ['Lotus', 'Ashcroft Devices', 'CS', 'C', 3, 95, 'G', 0, 340, 330, 450, 440, 29],
+    ['Brabham', 'Cordelia Health', 'CS', 'C', 0, 22, 'A', 1, 510, 120, 700, 0, 83],
+    ['Tyrrell', 'Ferrowick', 'CS', 'C', 2, 74, 'G', 2, 180, 130, 240, 160, 46],
+    ['Benetton', 'Otterline', 'CS', 'C', 1, 50, 'R', 3, 960, 690, 1300, 520, 95],
+    ['Jordan', 'Maple Ridge Med', 'CS', 'C', 2, 66, 'G', 0, 290, 190, 400, 240, 58],
+    ['Renault', 'Tanner & Voss', 'CS', 'C', 3, 88, 'G', 1, 420, 380, 570, 510, 36],
+    ['Toro Rosso', 'Manufacturing', 'CS', 'I', 2, 58, 'A', 2, 760, 470, 0, 0, 86],
+    ['Force India', 'Regulatory', 'CS', 'I', 1, 34, 'G', 3, 240, 90, 0, 0, 68],
+    ['Minardi', 'Quality', 'CS', 'I', 3, 92, 'G', 0, 120, 110, 0, 0, 24],
+    ['Arrows', 'Engineering', 'CS', 'I', 0, 16, 'G', 1, 480, 80, 0, 0, 55],
+    ['March', 'Engineering', 'CS', 'I', 2, 62, 'G', 2, 190, 120, 0, 0, 61],
+    ['Ligier', 'Procurement', 'CS', 'I', 1, 38, 'A', 3, 150, 70, 0, 0, 81]
+  ];
+
+  team = [
+    ['Saranan', 'Project manager · CDMO', [72, 78, 82, 80, 76, 70], 'Rolex, Omega, Patek, Cartier, Seiko, Breitling'],
+    ['Andy', 'Project manager · CS', [84, 90, 96, 93, 88, 82], 'Ferrari, Mercedes, Aston Martin, Racing Bulls, Tyrrell, Renault, Minardi, Ligier'],
+    ['Neil', 'Project manager · CS', [104, 120, 150, 138, 118, 98], 'McLaren, Red Bull, Haas, Lotus, Benetton, Toro Rosso, Arrows'],
+    ['Toby', 'Project manager · CS', [66, 72, 78, 75, 71, 64], 'Williams, Alpine, Sauber, Brabham, Jordan, Force India, March'],
+    ['Josh', 'Process engineer', [98, 114, 142, 132, 112, 96], 'Patek, Rolex, Seiko, Toro Rosso, Red Bull'],
+    ['Anna', 'Design engineer', [88, 94, 99, 96, 92, 86], 'Red Bull, Benetton, Ferrari, March, Cartier'],
+    ['Carrie', 'Regulatory support', [102, 118, 148, 136, 116, 100], 'Breitling, Cartier, Force India, Rolex, Patek']
+  ];
+
+  mLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  monthLabel(off) {
+    const m = 7 + off, y = 2026 + Math.floor(m / 12), mm = ((m % 12) + 12) % 12;
+    return this.mLabels[mm] + " '" + String(y).slice(2);
+  }
+
+  get threshold() { return this.props.threshold ?? 85; }
+
+  money(k) {
+    if (!k) return '—';
+    return k >= 1000 ? '£' + (k / 1000).toFixed(k % 1000 === 0 ? 0 : 1) + 'm' : '£' + k + 'k';
+  }
+  ragColor(r) {
+    return r === 'R' ? 'var(--color-accent-2)' : r === 'A' ? 'var(--color-process-yellow)' : 'var(--color-neutral-500)';
+  }
+
+  get all() {
+    if (!this._all) {
+      this._all = this.seed.map((r, i) => {
+        const [name, client, type, facing, phase, pct, rag, pmi, budget, actual, value, billed, load] = r;
+        const phases = this.ph[type];
+        const cust = facing === 'C';
+        const burn = Math.round((actual / budget) * 100);
+        const pips = phases.map((_, k) => ({
+          bg: k < phase ? 'var(--color-text)' : k === phase ? 'var(--color-accent)' : 'var(--color-neutral-300)'
+        }));
+        return {
+          id: i, name, client, type, facing, cust, rag, load, budget, actual, value, billed, burn, pct, phase, pips,
+          typeShort: type === 'CS' ? 'CS' : 'CDMO',
+          typeLabel: type === 'CS' ? 'Client Solutions' : 'CDMO',
+          facingLabel: cust ? 'Customer-facing' : 'Internal',
+          stripe: cust ? 'var(--color-accent)' : 'var(--color-neutral-400)',
+          phaseName: phases[phase], phaseStep: (phase + 1) + ' of ' + phases.length,
+          milestone: this.ms[type][phase], msDate: this.dates[i % 12],
+          ragLabel: { G: 'On track', A: 'Watch', R: 'At risk' }[rag],
+          ragColor: this.ragColor(rag),
+          pm: type === 'CDMO' ? this.pms[0] : this.pms[1 + (i % 3)],
+          moneyLabel: cust ? 'Invoiced' : 'Budget drawn',
+          moneyMain: cust ? this.money(billed) : this.money(actual),
+          moneySub: cust ? 'of ' + this.money(value) + ' value' : 'of ' + this.money(budget) + ' pool',
+          budgetLabel: this.money(budget), actualLabel: this.money(actual),
+          valueLabel: this.money(value), billedLabel: this.money(billed),
+          toBillLabel: this.money(value - billed), remainLabel: this.money(budget - actual),
+          burnLabel: burn + '%', loadLabel: load + '%'
+        };
+      });
+    }
+    return this._all;
+  }
+
+  hydrate(p) {
+    const t = this.threshold;
+    return Object.assign({}, p, {
+      loadColor: p.load > 100 ? 'var(--color-accent-2)' : p.load > t ? 'var(--color-process-yellow)' : 'var(--color-neutral-500)',
+      loadInk: p.load > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
+      burnInk: p.burn > 95 ? 'var(--color-accent-2-700)' : p.burn > t ? 'var(--color-accent-700)' : 'var(--color-text)',
+      burnInk2: p.burn > 95 ? 'var(--color-accent-2)' : 'var(--color-text)',
+      billedLabel: p.billed ? p.billedLabel : '£0'
+    });
+  }
+
+  chip(label, active, go) {
+    return {
+      label, go,
+      bg: active ? 'var(--color-accent)' : 'transparent',
+      color: active ? 'var(--color-bg)' : 'var(--color-text)',
+      border: active ? 'var(--color-accent)' : 'var(--color-divider)'
+    };
+  }
+
+  renderVals() {
+    const s = this.state, t = this.threshold;
+    const all = this.all;
+    const filtered = all.filter(p =>
+      (s.type === 'All' || p.typeLabel === s.type) &&
+      (s.rag === 'All' || p.ragLabel === s.rag) &&
+      (s.pm === 'All' || p.pm === s.pm));
+    const order = { R: 0, A: 1, G: 2 };
+    const sorted = filtered.slice().sort((a, b) => order[a.rag] - order[b.rag] || b.load - a.load);
+
+    const cust = all.filter(p => p.cust);
+    const internal = all.filter(p => !p.cust);
+    const value = cust.reduce((n, p) => n + p.value, 0);
+    const billed = cust.reduce((n, p) => n + p.billed, 0);
+    const intBudget = internal.reduce((n, p) => n + p.budget, 0);
+    const intDrawn = internal.reduce((n, p) => n + p.actual, 0);
+    const risk = all.filter(p => p.rag === 'R').length;
+    const hot = all.filter(p => p.load > t).length;
+
+    const nav = [
+      ['portfolio', 'Portfolio', all.length],
+      ['resources', 'Resourcing', '7 people'],
+      ['financials', 'Financials', this.money(value)],
+      ['timeline', 'Timeline', '24 months'],
+      ['detail', 'Project detail', all[s.detailId].name],
+      ['alerts', 'Alerts', risk]
+    ].map(([id, label, count]) => ({
+      label, count,
+      color: s.screen === id ? 'var(--color-accent-700)' : 'var(--color-text)',
+      bg: s.screen === id ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+      go: () => this.setState({ screen: id })
+    }));
+
+    const heads = {
+      portfolio: ['28 active · both delivery types', 'Portfolio', 'Six CDMO programmes code-named after watch brands, twenty-two Client Solutions projects after F1 teams. Internal work carries the quiet stripe.'],
+      resources: ['Seven people', 'Resourcing', 'Four project managers and one each of process engineering, design engineering and regulatory. Three disciplines have no second pair of hands.'],
+      financials: ['Budget · cost · invoice', 'Financials', 'Customer-facing work carries contract value and invoicing. Internal programmes draw against an approved pool.'],
+      timeline: ['Two years at a glance', 'Timeline', 'Where every project sits in time. The upright line is today; the diamond is the next thing due.'],
+      detail: ['One project, end to end', 'Project detail', 'The phases it passes through, the money it earns or spends, and who is working on it.'],
+      alerts: ['Things needing attention', 'Alerts', 'Four kinds of problem, in the order a delivery lead usually wants them.']
+    };
+    const head = heads[s.screen];
+
+    // portfolio scatter
+    const maxB = Math.max.apply(null, all.map(p => p.budget));
+    const dots = sorted.map(p => {
+      const cx = 70 + (p.pct / 100) * 950;
+      const cy = 300 - Math.sqrt(p.budget / maxB) * 266;
+      const c = this.ragColor(p.rag);
+      return {
+        cx: cx.toFixed(1), cy: cy.toFixed(1), r: (5 + (p.load / 100) * 7).toFixed(1),
+        fill: p.cust ? c : 'none', stroke: c, opacity: p.cust ? 0.82 : 1,
+        lxPct: (((cx + 15) / 1040) * 100).toFixed(2) + '%', lyPct: ((cy / 340) * 100).toFixed(2) + '%',
+        label: '', _b: p.budget, _n: p.name, _x: cx, _y: cy,
+        rHover: (p.id === s.hoverId ? (5 + (p.load / 100) * 7) + 4 : 5 + (p.load / 100) * 7).toFixed(1),
+        rHit: (5 + (p.load / 100) * 7 + 9).toFixed(1),
+        enter: () => this.setState({ hoverId: p.id }),
+        leave: () => this.setState({ hoverId: null })
+      };
+    });
+    // de-clutter: biggest budgets get a label first, and only if nothing is already sitting there
+    const placed = [];
+    dots.slice().sort((a, b) => b._b - a._b).forEach(d => {
+      const w = d._n.length * 6.8 + 20;
+      if (d._b <= 900) return;
+      const clash = placed.some(k => Math.abs(k.y - d._y) < 14 && d._x < k.x + k.w && k.x < d._x + w);
+      if (!clash) { d.label = d._n; placed.push({ x: d._x, y: d._y, w }); }
+    });
+    const hp = s.hoverId === null || !sorted.some(p => p.id === s.hoverId) ? null : this.hydrate(all[s.hoverId]);
+    const tip = hp ? {
+      show: true,
+      leftPct: (((70 + (hp.pct / 100) * 950) / 1040) * 100).toFixed(2) + '%',
+      topPct: (((300 - Math.sqrt(hp.budget / maxB) * 266 - 18) / 340) * 100).toFixed(2) + '%',
+      name: hp.name, client: hp.client,
+      moneyLine: hp.cust ? hp.valueLabel + ' agreed · ' + hp.billedLabel + ' invoiced' : hp.budgetLabel + ' budget · ' + hp.actualLabel + ' spent',
+      phaseLine: hp.phaseName + ' · ' + hp.phaseStep,
+      metaLine: hp.typeLabel + ' · ' + hp.facingLabel + ' · ' + hp.pm,
+      loadLine: hp.loadLabel + ' of the team\u2019s time · ' + hp.ragLabel
+    } : { show: false, leftPct: '0%', topPct: '0%', name: '', client: '', moneyLine: '', phaseLine: '', metaLine: '', loadLine: '' };
+    const xTicks = [0, 25, 50, 75, 100].map(v => {
+      const x = 70 + (v / 100) * 950;
+      return { x: x.toFixed(1), leftPct: ((x / 1040) * 100).toFixed(2) + '%', topPct: ((310 / 340) * 100).toFixed(2) + '%', label: v + '%' };
+    });
+    const yTicks = [0, 1500, 3000, 5600].map(v => {
+      const y = 300 - Math.sqrt(v / maxB) * 266;
+      return {
+        y: y.toFixed(1), leftPct: ((62 / 1040) * 100).toFixed(2) + '%',
+        topPct: ((y / 340) * 100).toFixed(2) + '%',
+        label: v ? this.money(v) : ''
+      };
+    });
+
+    // aggregate demand vs capacity
+    const cap = this.team.length;
+    const demand = this.months.map((m, i) => this.team.reduce((n, r) => n + r[2][i], 0) / 100);
+    const maxD = 9;
+    const scale = (v) => (v / maxD) * 200;
+    const cols = this.months.map((m, i) => {
+      const x = 92 + i * 152;
+      const d = demand[i];
+      const dh = scale(Math.min(d, cap));
+      const oh = scale(Math.max(0, d - cap));
+      return {
+        month: m, x: x, w: 108, dx: x + 26, dw: 56, mid: x + 54,
+        capH: scale(cap).toFixed(1), capYr: (230 - scale(cap)).toFixed(1),
+        dh: dh.toFixed(1), dy: (230 - dh).toFixed(1),
+        oh: oh.toFixed(1), oy: (230 - dh - oh).toFixed(1),
+        label: d.toFixed(1) + ' people', valY: (230 - dh - oh - 10).toFixed(1),
+        midPct: (((x + 54) / 1040) * 100).toFixed(2) + '%',
+        valTopPct: (((230 - dh - oh - 22) / 280) * 100).toFixed(2) + '%',
+        monthTopPct: ((240 / 280) * 100).toFixed(2) + '%'
+      };
+    });
+
+    const people = this.team.map(([name, role, loads, drivers], personIdx) => {
+      const peak = Math.max.apply(null, loads);
+      const pi = loads.indexOf(peak);
+      return {
+        name, role, note: drivers,
+        peakLabel: peak + '%', peakMonth: this.months[pi],
+        peakInk: peak > 100 ? 'var(--color-accent-2-700)' : peak > t ? 'var(--color-accent-700)' : 'var(--color-text)',
+        capY: (58 - (100 / 150) * 46).toFixed(1),
+        capTextY: (58 - (100 / 150) * 46 + 3).toFixed(1),
+        bars: loads.map((v, i) => {
+          const h = (Math.min(v, 150) / 150) * 46;
+          const key = personIdx + '-' + i;
+          return {
+            month: this.months[i], x: 4 + i * 33, mid: 16 + i * 33,
+            h: h.toFixed(1), y: (58 - h).toFixed(1),
+            fill: v > 100 ? 'var(--color-accent-2)' : v > t ? 'var(--color-process-yellow)' : 'var(--color-neutral-400)',
+            pctLabel: v + '%', midPx: (16 + i * 33) + 'px', tipTop: (58 - h - 21) + 'px',
+            hovered: s.hoverBar === key,
+            enter: () => this.setState({ hoverBar: key }),
+            leave: () => this.setState({ hoverBar: null })
+          };
+        })
+      };
+    });
+
+    const worst = (() => {
+      let best = { pct: 0, who: '', role: '', month: '' };
+      this.team.forEach(([name, role, loads]) => loads.forEach((v, i) => {
+        if (v > best.pct) best = {
+          pct: v, who: name, month: this.months[i],
+          role: role.split(' · ')[0].toLowerCase() + (role.indexOf(' · ') > -1 ? ' (' + role.split(' · ')[1] + ')' : '')
+        };
+      }));
+      return best;
+    })();
+
+    const pressure = [];
+    this.team.forEach(([name, role, loads, drivers]) => {
+      loads.forEach((v, i) => {
+        if (v > 100) pressure.push({
+          who: name, month: this.months[i],
+          over: '+' + (v - 100) + '% · ' + ((v - 100) / 100).toFixed(2) + ' FTE',
+          color: 'var(--color-accent-2-700)', drivers
+        });
+      });
+    });
+
+    const maxV = Math.max.apply(null, cust.map(p => p.value));
+    const finBars = cust.slice().sort((a, b) => (b.value - b.billed) - (a.value - a.billed)).map(p => {
+      const h = this.hydrate(p);
+      return Object.assign({}, h, {
+        barW: ((p.value / maxV) * 100).toFixed(1) + '%',
+        billedW: ((p.billed / maxV) * 100).toFixed(1) + '%',
+        billedLabel: p.billed ? h.billedLabel : '£0',
+        billedInk: p.rag === 'R' ? 'var(--color-accent-2)' : 'var(--color-text)'
+      });
+    });
+    const maxI = Math.max.apply(null, internal.map(p => p.budget));
+    const intBars = internal.slice().sort((a, b) => b.budget - a.budget).map(p => {
+      const h = this.hydrate(p);
+      return Object.assign({}, h, {
+        barW: ((p.budget / maxI) * 100).toFixed(1) + '%',
+        drawnW: ((p.actual / maxI) * 100).toFixed(1) + '%'
+      });
+    });
+
+    // timeline — a 24-month window, today at month 0
+    const tlMonths = [];
+    for (let m = -6; m <= 18; m++) {
+      const abs = 7 + m;
+      if (((abs % 3) + 3) % 3 !== 0) continue;
+      const q = Math.floor((((abs % 12) + 12) % 12) / 3) + 1;
+      const y = 2026 + Math.floor(abs / 12);
+      tlMonths.push({ label: 'Q' + q + " '" + String(y).slice(2), left: (((m + 6) / 24) * 100).toFixed(2) + '%' });
+    }
+    const tlRow = (p) => {
+      const dur = p.type === 'CDMO' ? 18 + (p.id % 4) * 6 : 6 + (p.id % 3) * 3;
+      const el = (p.pct / 100) * dur;
+      const L = Math.max(0, (-el + 6) / 24), R = Math.min(1, (dur - el + 6) / 24);
+      return {
+        name: p.name, client: p.client, durLabel: dur + ' months long', ragLabel: p.ragLabel,
+        endLeft: (R * 100).toFixed(2) + '%',
+        tipShift: R > 0.6 ? 'translateX(-100%)' : 'translateX(-6px)',
+        startLabel: this.monthLabel(-Math.round(el)), endLabel: this.monthLabel(Math.round(dur - el)),
+        teamLabel: p.pm + ' (project manager), Josh, Anna, Carrie',
+        hovered: s.hoverRow === p.id,
+        enter: () => this.setState({ hoverRow: p.id }),
+        leave: () => this.setState({ hoverRow: null }),
+        edge: p.cust ? 'var(--color-accent)' : 'var(--color-neutral-400)',
+        left: (L * 100).toFixed(2) + '%', width: (Math.max(0.008, R - L) * 100).toFixed(2) + '%',
+        fill: this.ragColor(p.rag),
+        msLeft: ((((this.mLabels.indexOf(p.msDate.slice(3, 6)) - 7 + (p.msDate.slice(3, 6) === 'Jan' ? 12 : 0)) + 6.5) / 24) * 100).toFixed(2) + '%',
+        msDate: p.msDate, milestone: p.milestone
+      };
+    };
+    const tl = {
+      months: tlMonths,
+      sparse: tlMonths.filter((q, i) => i % 2 === 0),
+      years: tlMonths.filter(q => q.label.indexOf('Q1') === 0),
+      cdmo: all.filter(p => p.type === 'CDMO').map(tlRow),
+      cs: all.filter(p => p.type === 'CS').map(tlRow)
+    };
+
+    // one project, in full
+    const d = this.hydrate(all[s.detailId]);
+    const dPhases = this.ph[d.type];
+    const stages = [['On kick-off', 0.3], ['At design freeze', 0.3], ['At validation', 0.25], ['On handover', 0.15]];
+    let run = 0;
+    const invoices = d.cust ? stages.map(([label, share]) => {
+      const amt = Math.round(d.value * share);
+      run += amt;
+      const paid = run <= d.billed + 1;
+      return {
+        label, amount: this.money(amt),
+        status: paid ? 'Invoiced' : 'Not yet due',
+        ink: paid ? 'var(--color-text)' : 'var(--color-neutral-600)',
+        dot: paid ? 'var(--color-accent)' : 'var(--color-neutral-300)'
+      };
+    }) : [];
+    const detail = {
+      name: d.name, client: d.client, typeLabel: d.typeLabel, facingLabel: d.facingLabel,
+      pm: d.pm, ragLabel: d.ragLabel, ragColor: d.ragColor, stripe: d.stripe,
+      phaseName: d.phaseName, phaseStep: d.phaseStep,
+      milestone: d.milestone, msDate: d.msDate,
+      isCustomer: d.cust, hasInvoices: d.cust,
+      budgetLabel: d.budgetLabel, actualLabel: d.actualLabel, burnLabel: d.burnLabel,
+      remainLabel: d.remainLabel, valueLabel: d.valueLabel, billedLabel: d.billedLabel,
+      toBillLabel: d.toBillLabel, loadLabel: d.loadLabel, loadInk: d.loadInk,
+      spentW: Math.min(100, d.burn) + '%',
+      moneyHeadline: d.cust ? d.billedLabel : d.actualLabel,
+      moneyHeadlineLabel: d.cust ? 'Invoiced so far' : 'Drawn from the pool',
+      moneyHeadlineSub: d.cust ? 'of ' + d.valueLabel + ' agreed with the client' : 'of ' + d.budgetLabel + ' approved',
+      steps: dPhases.map((n, i) => ({
+        name: n,
+        bg: i < d.phase ? 'var(--color-text)' : i === d.phase ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+        state: i < d.phase ? 'Done' : i === d.phase ? 'In progress' : 'To come',
+        ink: i === d.phase ? 'var(--color-accent-700)' : 'var(--color-neutral-600)'
+      })),
+      invoices,
+      team: [[d.pm, 'Project manager', 0.45], ['Josh', 'Process engineer', 0.3], ['Anna', 'Design engineer', 0.2], ['Carrie', 'Regulatory support', 0.15]]
+        .map(([name, role, share]) => {
+          const pc = Math.round(d.load * share);
+          return { name, role, pctLabel: pc + '% of their week', w: Math.min(100, pc * 2) + '%' };
+        }),
+      notes: (() => {
+        const out = [];
+        if (d.rag === 'R') out.push('The project manager has flagged this at risk. It needs a decision this week.');
+        if (d.burn > 95) out.push('Nearly all of the budget is spent — ' + d.burnLabel + ' of it. More work means a new approval.');
+        if (d.load > t) out.push('The people on this project are booked at ' + d.loadLabel + ' of their time. Something has to give.');
+        if (!out.length) out.push('Nothing outstanding. On plan, inside budget, and fully staffed.');
+        return out;
+      })(),
+      cdmoOptions: all.filter(p => p.type === 'CDMO').map(p => ({ value: String(p.id), label: p.name + ' · CDMO ' + (p.cust ? 'customer-facing' : 'internal') + ' · ' + p.client })),
+      csOptions: all.filter(p => p.type === 'CS').map(p => ({ value: String(p.id), label: p.name + ' · CS ' + (p.cust ? 'customer-facing' : 'internal') + ' · ' + p.client })),
+      value: String(s.detailId)
+    };
+
+    // alerts — each group carries its own small graphic
+    const unbilled = cust.slice().sort((a, b) => (b.value - b.billed) - (a.value - a.billed)).slice(0, 6);
+    const alertRisk = all.filter(p => p.rag === 'R').map(p => {
+      const h = this.hydrate(p);
+      return {
+        name: p.name, client: p.client, pm: p.pm, pips: p.pips,
+        phaseName: p.phaseName, phaseStep: p.phaseStep,
+        milestone: p.milestone, msDate: p.msDate,
+        loadLabel: h.loadLabel, loadInk: h.loadInk, burnLabel: p.burnLabel
+      };
+    });
+    const alertPeople = this.team.map(([name, role, loads]) => {
+      const over = loads.map((v, i) => (v > 100 ? this.months[i] : null)).filter(Boolean);
+      if (!over.length) return null;
+      return {
+        name, role, peakLabel: Math.max.apply(null, loads) + '%',
+        overLabel: 'Past a full week in ' + over.join(', '),
+        capY: (58 - (100 / 150) * 46).toFixed(1),
+        bars: loads.map((v, i) => {
+          const hh = (Math.min(v, 150) / 150) * 46;
+          return {
+            month: this.months[i], x: 4 + i * 33, h: hh.toFixed(1), y: (58 - hh).toFixed(1),
+            fill: v > 100 ? 'var(--color-accent-2)' : v > t ? 'var(--color-process-yellow)' : 'var(--color-neutral-400)'
+          };
+        })
+      };
+    }).filter(Boolean);
+    const alertBudget = all.filter(p => p.burn > 95).map(p => ({
+      name: p.name, client: p.client, burnLabel: p.burnLabel, phaseName: p.phaseName,
+      usedW: Math.min(100, p.burn) + '%', actualLabel: p.actualLabel, budgetLabel: p.budgetLabel,
+      leftLabel: p.budget - p.actual > 0 ? this.money(p.budget - p.actual) + ' left' : 'nothing left'
+    }));
+    const alertInvoice = unbilled.map(p => ({
+      name: p.name, client: p.client, valueLabel: p.valueLabel,
+      billedLabel: p.billed ? p.billedLabel : '£0', toBillLabel: this.money(p.value - p.billed),
+      billedW: ((p.billed / p.value) * 100).toFixed(1) + '%',
+      pctLabel: Math.round((p.billed / p.value) * 100) + '% invoiced'
+    }));
+    const alertStats = [
+      { value: alertRisk.length, label: 'Projects at risk', sub: 'Flagged by their project manager', color: 'var(--color-accent-2-700)' },
+      { value: alertPeople.length, label: 'People overbooked', sub: 'Committed past a full week', color: 'var(--color-accent-2-700)' },
+      { value: alertBudget.length, label: 'Budgets nearly gone', sub: 'More than 95% already spent', color: 'var(--color-accent-700)' },
+      { value: this.money(value - billed), label: 'Waiting to be invoiced', sub: 'Agreed work not yet billed', color: 'var(--color-text)' }
+    ];
+
+    return {
+      nav,
+      screenKicker: head[0], screenTitle: head[1], screenBlurb: head[2],
+      isPortfolio: s.screen === 'portfolio',
+      isResources: s.screen === 'resources',
+      isFinancials: s.screen === 'financials',
+      isTimeline: s.screen === 'timeline',
+      isDetail: s.screen === 'detail',
+      isAlerts: s.screen === 'alerts',
+      tl, detail, alertRisk, alertPeople, alertBudget, alertInvoice, alertStats,
+      setDetail: (e) => this.setState({ detailId: Number(e.target.value) }),
+      thresholdLabel: t + '%',
+      typeChips: ['All', 'Client Solutions', 'CDMO'].map(v => this.chip(v, s.type === v, () => this.setState({ type: v }))),
+      ragChips: ['All', 'On track', 'Watch', 'At risk'].map(v => this.chip(v, s.rag === v, () => this.setState({ rag: v }))),
+      pmOptions: ['All'].concat(this.pms), pmValue: s.pm,
+      setPm: (e) => this.setState({ pm: e.target.value }),
+      resultCount: sorted.length + ' of ' + all.length + ' shown',
+      shown: sorted.map(p => this.hydrate(p)),
+      scatter: { dots, xTicks, yTicks }, tip,
+      agg: {
+        cols, capY: (230 - scale(cap)).toFixed(1), capLabelY: (230 - scale(cap) - 8).toFixed(1),
+        capTopPct: (((230 - scale(cap)) / 280) * 100).toFixed(2) + '%',
+        zeroTopPct: ((230 / 280) * 100).toFixed(2) + '%',
+        gutterPct: ((62 / 1040) * 100).toFixed(2) + '%'
+      },
+      people, pressure,
+      months: this.months,
+      kpis: [
+        {
+          value: all.length, label: 'Active projects', sub: cust.length + ' customer-facing · ' + internal.length + ' internal', color: 'var(--color-text)',
+          gap: '3px', cells: [
+            { f: cust.length, w: 'auto', h: '9px', al: 'center', bg: 'var(--color-text)' },
+            { f: internal.length, w: 'auto', h: '9px', al: 'center', bg: 'var(--color-neutral-400)' }
+          ]
+        },
+        {
+          value: this.money(value - billed), label: 'Left to invoice', sub: this.money(billed) + ' of ' + this.money(value) + ' billed', color: 'var(--color-text)',
+          gap: '3px', cells: [
+            { f: billed, w: 'auto', h: '9px', al: 'center', bg: 'var(--color-text)' },
+            { f: value - billed, w: 'auto', h: '9px', al: 'center', bg: 'var(--color-neutral-300)' }
+          ]
+        },
+        {
+          value: risk, label: 'At risk', sub: 'Flagged by the project manager', color: 'var(--color-accent-2-700)',
+          gap: '1px', cells: all.map(p => ({
+            f: 1, w: 'auto', h: p.rag === 'R' ? '18px' : '9px', al: 'flex-end',
+            bg: p.rag === 'R' ? 'var(--color-accent-2)' : 'var(--color-neutral-300)'
+          }))
+        },
+        {
+          value: hot, label: 'Short of people', sub: 'Need someone already booked past ' + t + '%', color: 'var(--color-accent-700)',
+          gap: '3px', cells: (() => {
+            // the shortfall itself, not the load — so the bars start near zero and the worst month reads
+            const gaps = this.months.map((m, i) => Math.max(0, Math.max.apply(null, this.team.map(r => r[2][i])) - 100));
+            const worst = Math.max.apply(null, gaps);
+            return gaps.map(g => ({
+              f: 1, w: 'auto', h: Math.max(2, Math.round((g / 50) * 22)) + 'px', al: 'flex-end',
+              bg: g === worst ? 'var(--color-accent)' : 'var(--color-neutral-400)'
+            }));
+          })()
+        }
+      ],
+      resKpis: [
+        { value: '7', label: 'People', sub: '4 project managers, 3 specialists', color: 'var(--color-text)' },
+        { value: Math.max.apply(null, demand).toFixed(1), label: 'People needed at the peak', sub: this.months[demand.indexOf(Math.max.apply(null, demand))] + ' — ' + (Math.max.apply(null, demand) - cap).toFixed(1) + ' more than we have', color: 'var(--color-accent-2-700)' },
+        { value: worst.pct + '%', label: 'Busiest person', sub: worst.who + ', ' + worst.role + ', in ' + worst.month, color: 'var(--color-accent-2-700)' },
+        { value: pressure.length, label: 'Months booked past full', sub: 'Counting each person separately', color: 'var(--color-accent-700)' }
+      ],
+      finKpis: [
+        { value: this.money(value), label: 'Agreed with clients', sub: 'Across ' + cust.length + ' customer projects', color: 'var(--color-text)' },
+        { value: this.money(billed), label: 'Invoiced so far', sub: Math.round((billed / value) * 100) + '% of what was agreed', color: 'var(--color-text)' },
+        { value: this.money(intBudget - intDrawn), label: 'Internal budget left', sub: this.money(intDrawn) + ' of ' + this.money(intBudget) + ' spent', color: 'var(--color-text)' },
+        {
+          value: all.filter(p => p.burn > 95).length, label: 'Budgets nearly gone',
+          sub: all.filter(p => p.burn > 95).map(p => p.name + ' at ' + p.burnLabel + ' spent').join(' · ') || 'Nothing above 95% spent',
+          color: 'var(--color-accent-2-700)'
+        }
+      ],
+      finBars, intBars,
+      finCustomer: cust.map(p => this.hydrate(p))
+    };
+  }
+}
+</script>
+</body>
+</html>
