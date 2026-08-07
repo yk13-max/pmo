@@ -73,7 +73,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       <SectionHeading
         dot="var(--color-accent-2)"
         title="People booked past a full week"
-        note={`Red bars are months where work plus annual leave exceeds the hours available. The dashed line is a full week, the dotted line the ${view.threshold}% threshold.`}
+        note={`Red bars are months where work plus days off exceeds the hours available. Days off sit in dark blue at the base of each bar. The dashed line is a full week, the dotted line the ${view.threshold}% threshold.`}
       />
       {overbooked.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nobody is booked past a full week.</p>

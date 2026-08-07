@@ -210,8 +210,9 @@ export function PersonForm({
             ))}
           </div>
           <p className="field-hint">
-            Leave is counted against capacity: {WORKING_DAYS_PER_MONTH} working days is a full month, so it shows in the
-            resource graphs stacked on top of project work.
+            Their own leave only — public holidays are set once for everybody on the Annual leave tab. It counts against
+            capacity: {WORKING_DAYS_PER_MONTH} working days is a full month, and it sits at the base of their bars in the
+            resource graphs.
           </p>
         </fieldset>
       ) : (

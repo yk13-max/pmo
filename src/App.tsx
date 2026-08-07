@@ -31,7 +31,7 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   financials: [
     'Budget · cost · invoice',
     'Financials',
-    'Customer-facing work carries contract value and invoicing. Internal programmes draw against an approved pool.',
+    'Customer work carries contract value and invoicing. Internal programmes draw against an approved pool.',
   ],
   timeline: [
     'Two years at a glance',
@@ -174,6 +174,7 @@ export function App() {
             onSetThreshold={store.setThreshold}
             onSetWindow={store.setWindow}
             onSetLeave={store.setLeave}
+            onSetPublicHoliday={store.setPublicHoliday}
           />
         )}
         {screen === 'financials' && <Financials view={view} onOpenProject={openProject} />}
@@ -246,7 +247,10 @@ export function App() {
             months={view.months}
             monthLabels={view.monthLabels}
             leaveDays={
-              view.peopleViews.find((p) => p.person.id === editing.person?.id)?.leaveDays ?? view.months.map(() => 0)
+              /* The form edits what this person books themselves — public holidays are set once
+                 for everybody on the Annual leave tab. */
+              view.peopleViews.find((p) => p.person.id === editing.person?.id)?.ownLeaveDays ??
+              view.months.map(() => 0)
             }
             onSave={(person) => {
               store.savePerson(person);

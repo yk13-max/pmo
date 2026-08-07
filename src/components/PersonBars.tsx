@@ -74,27 +74,31 @@ export function PersonBars({
         />
         <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
-        {person.loads.map((work, i) => {
+        {/* Leave sits at the base — the month starts with the days already gone, and project
+            work stacks on what is left. */}
+        {person.loads.map((_, i) => {
           const total = person.committed[i];
           const hTotal = h(total);
-          const hWork = h(work);
+          const hLeave = Math.min(h(person.leaveLoads[i]), hTotal);
           return (
             <g key={i}>
-              <rect
-                x={x(i)}
-                y={BASELINE - hWork}
-                width={width}
-                height={hWork}
-                fill={
-                  total > full
-                    ? 'var(--color-accent-2)'
-                    : total > (full * threshold) / 100
-                      ? 'var(--color-warning)'
-                      : 'var(--color-neutral-400)'
-                }
-              />
-              {hTotal > hWork && (
-                <rect x={x(i)} y={BASELINE - hTotal} width={width} height={hTotal - hWork} fill="var(--color-accent-300)" />
+              {hLeave > 0 && (
+                <rect x={x(i)} y={BASELINE - hLeave} width={width} height={hLeave} fill="var(--color-accent-700)" />
+              )}
+              {hTotal > hLeave && (
+                <rect
+                  x={x(i)}
+                  y={BASELINE - hTotal}
+                  width={width}
+                  height={hTotal - hLeave}
+                  fill={
+                    total > full
+                      ? 'var(--color-accent-2)'
+                      : total > (full * threshold) / 100
+                        ? 'var(--color-warning)'
+                        : 'var(--color-neutral-400)'
+                  }
+                />
               )}
             </g>
           );

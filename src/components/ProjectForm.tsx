@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
-import type { Facing, Person, Project, ProjectTypeDef, Rag } from '../types';
-import { INVOICE_STAGES, MAX_DATE, PRIORITY_LABEL, PRIORITY_LEVELS } from '../types';
+import type { CurrencyCode, Facing, Person, Project, ProjectTypeDef, Rag } from '../types';
+import {
+  BASE_CURRENCY,
+  CURRENCIES,
+  INVOICE_STAGES,
+  MAX_DATE,
+  PRIORITY_LABEL,
+  PRIORITY_LEVELS,
+  WORKING_DAYS_PER_MONTH,
+} from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { addMonths, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
@@ -37,6 +45,7 @@ function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
     milestone: type?.milestones[0] ?? '',
     milestoneDate: toISO(addMonths(today, 1)),
     priority: 3,
+    currency: 'GBP',
     phaseDates: [],
     invoiceDates: [],
   };
@@ -216,7 +225,7 @@ export function ProjectForm({
               value={draft.facing}
               onChange={(e) => set('facing', e.target.value as Facing)}
             >
-              <option value="C">Customer-facing</option>
+              <option value="C">Customer</option>
               <option value="I">Internal</option>
             </select>
             <div className="field-hint">Internal work draws on a budget pool and carries no invoice side.</div>
@@ -291,7 +300,7 @@ export function ProjectForm({
             </select>
           </div>
           <div className="field">
-            <label htmlFor="pf-pct">Plan finished (%)</label>
+            <label htmlFor="pf-pct">% through current phase</label>
             <input
               id="pf-pct"
               className="input"
@@ -301,6 +310,7 @@ export function ProjectForm({
               value={draft.pct}
               onChange={(e) => set('pct', e.target.value)}
             />
+            <div className="field-hint">How far through the phase above the work is.</div>
           </div>
           <div className="field">
             <label htmlFor="pf-start">Started</label>
@@ -356,10 +366,31 @@ export function ProjectForm({
       </fieldset>
 
       <fieldset className="fieldset">
-        <legend>Money, in £ thousands</legend>
+        <legend>Money, in thousands</legend>
         <div className="form-grid">
+          {!internal && (
+            <div className="field">
+              <label htmlFor="pf-currency">Invoice the client in</label>
+              <select
+                id="pf-currency"
+                className="input"
+                value={draft.currency}
+                onChange={(e) => set('currency', e.target.value as CurrencyCode)}
+              >
+                {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+                  <option key={code} value={code}>
+                    {CURRENCIES[code].symbol} {code} — {CURRENCIES[code].label}
+                  </option>
+                ))}
+              </select>
+              <div className="field-hint">
+                Applies to the agreed value and invoices. Budget and spend stay in {CURRENCIES[BASE_CURRENCY].symbol}
+                {BASE_CURRENCY}.
+              </div>
+            </div>
+          )}
           <div className="field">
-            <label htmlFor="pf-budget">Approved budget</label>
+            <label htmlFor="pf-budget">Approved budget ({CURRENCIES[BASE_CURRENCY].symbol})</label>
             <input
               id="pf-budget"
               className="input"
@@ -372,17 +403,17 @@ export function ProjectForm({
             {err('budget')}
           </div>
           <div className="field">
-            <label htmlFor="pf-actual">Spent so far</label>
+            <label htmlFor="pf-actual">Spent so far ({CURRENCIES[BASE_CURRENCY].symbol})</label>
             <input id="pf-actual" className="input" type="number" min={0} value={draft.actual} onChange={(e) => set('actual', e.target.value)} />
           </div>
           {!internal && (
             <>
               <div className="field">
-                <label htmlFor="pf-value">Agreed with the client</label>
+                <label htmlFor="pf-value">Agreed with the client ({CURRENCIES[draft.currency].symbol})</label>
                 <input id="pf-value" className="input" type="number" min={0} value={draft.value} onChange={(e) => set('value', e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="pf-billed">Invoiced so far</label>
+                <label htmlFor="pf-billed">Invoiced so far ({CURRENCIES[draft.currency].symbol})</label>
                 <input
                   id="pf-billed"
                   className="input"
@@ -408,7 +439,7 @@ export function ProjectForm({
                 fontSize: 16,
               }}
             >
-              {derivedLoad}% · {(derivedLoad / 100).toFixed(2)} people
+              {((derivedLoad / 100) * WORKING_DAYS_PER_MONTH).toFixed(1)} days
             </div>
             <div className="field-hint">
               Calculated from the bookings below — the total resource this project draws across the whole team in its

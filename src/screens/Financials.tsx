@@ -1,5 +1,6 @@
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money } from '../lib/derive';
+import { BASE_CURRENCY, CURRENCIES } from '../types';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 
@@ -8,14 +9,18 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
   const internal = view.projects.filter((p) => !p.cust);
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
 
-  const maxValue = Math.max(1, ...customer.map((p) => Math.max(p.value, Math.round(p.budget * 1.35))));
+  /* Clients are billed in their own currency, so every bar and total is measured in the base
+     currency — the figures beside them stay in what the client actually pays. */
+  const maxValue = Math.max(1, ...customer.map((p) => Math.max(p.valueBase, Math.round(p.budget * 1.35))));
   const maxInternal = Math.max(1, ...internal.map((p) => p.budget));
 
-  const invoiceBars = [...customer].sort((a, b) => b.value - b.billed - (a.value - a.billed));
+  const invoiceBars = [...customer].sort((a, b) => b.valueBase - b.billedBase - (a.valueBase - a.billedBase));
   /* An indicative view of what a project could still grow to: the share of its budget not
      yet covered by agreed value. Shown in a third colour so it never reads as committed. */
-  const prospect = (p: ProjectView) => Math.max(0, Math.round(p.budget * 1.35) - p.value);
+  const prospect = (p: ProjectView) => Math.max(0, Math.round(p.budget * 1.35) - p.valueBase);
   const drawBars = [...internal].sort((a, b) => b.budget - a.budget);
+  const mixed = new Set(customer.map((p) => p.currency)).size > 1;
+  const inBase = `In ${CURRENCIES[BASE_CURRENCY].symbol}${BASE_CURRENCY}${mixed ? ', converted from mixed currencies' : ''}`;
 
   return (
     <div>
@@ -23,7 +28,7 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         <Stat
           value={money(view.totals.value)}
           label="Agreed with clients"
-          sub={`Across ${view.totals.customerCount} customer projects`}
+          sub={`Across ${view.totals.customerCount} customer projects · ${inBase}`}
         />
         <Stat
           value={money(view.totals.billed)}
@@ -56,7 +61,8 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         The full bar is what the client agreed to pay, the dark part what we have invoiced, and the pale teal beyond it an
         indicative view of further scope this work could still grow into. The projects with the most left to bill come
-        first.
+        first. Bars are drawn in {CURRENCIES[BASE_CURRENCY].symbol}
+        {BASE_CURRENCY} so they compare; the figures are what each client is billed.
       </p>
       <div className="legend" style={{ marginBottom: 'var(--space-6)' }}>
         <span>
@@ -73,7 +79,7 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         </span>
       </div>
       {invoiceBars.length === 0 ? (
-        <p className="empty" style={{ maxWidth: 1040 }}>No customer-facing projects yet.</p>
+        <p className="empty" style={{ maxWidth: 1040 }}>No customer projects yet.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 1040 }}>
           {invoiceBars.map((p) => (
@@ -81,9 +87,9 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
               key={p.id}
               project={p}
               onOpen={() => onOpenProject(p.id)}
-              trackWidth={(p.value / maxValue) * 100}
-              prospectWidth={((p.value + prospect(p)) / maxValue) * 100}
-              fillWidth={(p.billed / maxValue) * 100}
+              trackWidth={(p.valueBase / maxValue) * 100}
+              prospectWidth={((p.valueBase + prospect(p)) / maxValue) * 100}
+              fillWidth={(p.billedBase / maxValue) * 100}
               fillColor="var(--color-text)"
               main={
                 <>
@@ -101,11 +107,11 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
           },
           {
             id: 'detail',
-            label: 'Customer-facing detail',
+            label: 'Customer detail',
             count: customer.length,
             render: () => (
               <>
-      <h3 style={{ margin: '0 0 4px' }}>Customer-facing detail</h3>
+      <h3 style={{ margin: '0 0 4px' }}>Customer detail</h3>
       <div style={{ overflowX: 'auto' }}>
         <table className="table" style={{ marginTop: 'var(--space-4)' }}>
           <thead>
@@ -115,6 +121,7 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
               <th style={{ textAlign: 'right', width: 96 }}>Budget</th>
               <th style={{ textAlign: 'right', width: 110 }}>Spent so far</th>
               <th style={{ textAlign: 'right', width: 96 }}>Budget used</th>
+              <th style={{ width: 82 }}>Billed in</th>
               <th style={{ textAlign: 'right', width: 110 }}>Client agreed</th>
               <th style={{ textAlign: 'right', width: 96 }}>Invoiced</th>
               <th style={{ textAlign: 'right', width: 110 }}>Still to invoice</th>
@@ -136,6 +143,7 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.budgetLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.actualLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.burnInk }}>{p.burnLabel}</td>
+                <td style={{ color: 'var(--color-neutral-700)', fontSize: 12 }}>{p.currencyLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.valueLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.billedLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>{p.toBillLabel}</td>

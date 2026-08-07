@@ -36,15 +36,15 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
   return (
     <div>
-      <div className="stat-row">
+      <div className="stat-row one-line">
         <Stat
           value={view.projects.length}
           label="Active projects"
-          sub={`${view.totals.customerCount} customer-facing · ${view.totals.internalCount} internal`}
+          sub={`${view.totals.customerCount} customer · ${view.totals.internalCount} internal`}
           spark={
             <Spark
               cells={[
-                { flex: Math.max(1, view.totals.customerCount), height: 9, bg: 'var(--color-text)', title: 'Customer-facing' },
+                { flex: Math.max(1, view.totals.customerCount), height: 9, bg: 'var(--color-text)', title: 'Customer' },
                 { flex: Math.max(1, view.totals.internalCount), height: 9, bg: 'var(--color-neutral-400)', title: 'Internal' },
               ]}
             />
@@ -166,7 +166,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, color: 'var(--color-neutral-700)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ width: 3, height: 14, background: 'var(--color-accent)', display: 'block' }} />
-            Customer-facing
+            Customer
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ width: 3, height: 14, background: 'var(--color-neutral-400)', display: 'block' }} />
@@ -399,7 +399,7 @@ function Scatter({
               viewBox={`0 0 ${CHART_W} ${CHART_H}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
               role="img"
-              aria-label="Every project by how much of its plan is finished against its approved budget"
+              aria-label="Every project by how far through its current phase it is against its approved budget"
             >
               <rect x={70} y={34} width={950} height={266} fill="none" stroke="var(--color-neutral-200)" strokeWidth={1} />
               {xMinor.map((t) => (
@@ -531,7 +531,7 @@ function Scatter({
               </div>
             )}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>How much of the plan is finished →</div>
+          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>How far through the current phase →</div>
         </div>
       </div>
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>

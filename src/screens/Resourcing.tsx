@@ -18,6 +18,7 @@ export function Resourcing({
   onSetThreshold,
   onSetWindow,
   onSetLeave,
+  onSetPublicHoliday,
 }: {
   view: PortfolioView;
   onAddPerson: () => void;
@@ -25,6 +26,7 @@ export function Resourcing({
   onSetThreshold: (pct: number) => void;
   onSetWindow: (startMonth: string, months: number) => void;
   onSetLeave: (personId: string, month: string, days: number) => void;
+  onSetPublicHoliday: (month: string, days: number) => void;
 }) {
   const [showPct, setShowPct] = useState(false);
   const [hoverDriver, setHoverDriver] = useState<string | null>(null);
@@ -118,8 +120,8 @@ export function Resourcing({
               Project work
             </span>
             <span>
-              <span style={{ width: 14, height: 12, background: 'var(--color-accent-300)', display: 'block' }} />
-              Annual leave
+              <span style={{ width: 14, height: 12, background: 'var(--color-accent-700)', display: 'block' }} />
+              Days off, at the base of each bar
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -155,40 +157,7 @@ export function Resourcing({
             />
             Show %
           </label>
-          <label className="field" style={{ margin: 0 }}>
-            <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
-              Plan from
-            </span>
-            <select
-              className="input"
-              style={{ width: 'auto', minWidth: 110 }}
-              value={view.months[0]}
-              onChange={(e) => onSetWindow(e.target.value, view.months.length)}
-            >
-              {monthOptions(new Date().getFullYear() - 1, MAX_YEAR).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field" style={{ margin: 0 }}>
-            <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
-              For
-            </span>
-            <select
-              className="input"
-              style={{ width: 'auto', minWidth: 96 }}
-              value={view.months.length}
-              onChange={(e) => onSetWindow(view.months[0], Number(e.target.value))}
-            >
-              {[3, 6, 12, 18, 24].map((n) => (
-                <option key={n} value={n}>
-                  {n} months
-                </option>
-              ))}
-            </select>
-          </label>
+          <WindowControls view={view} onSetWindow={onSetWindow} />
           <button type="button" className="btn btn-secondary" onClick={onAddPerson}>
             Add person
           </button>
@@ -253,62 +222,9 @@ export function Resourcing({
           { id: 'demand', label: 'People the work needs', count: `${Math.max(0, ...view.demand).toFixed(1)} peak`, render: () => (
             <DemandChart view={view} />
           ) },
-          { id: 'leave', label: 'Annual leave', count: `${view.peopleViews.reduce((n, p) => n + p.leaveDays.reduce((a, b) => a + b, 0), 0)}d`, render: () => (<>
-      <h3 style={{ margin: '0 0 4px' }}>Annual leave</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Days booked per person per month. Editable here — it feeds straight into the graphs and capacity.
-      </p>
-      <div style={{ overflowX: 'auto' }}>
-        <table className="alloc-table" style={{ maxWidth: 1040 }}>
-          <thead>
-            <tr>
-              <th style={{ minWidth: 160 }}>Person</th>
-              {view.monthLabels.map((m) => (
-                <th key={m} style={{ textAlign: 'right' }}>{m}</th>
-              ))}
-              <th style={{ textAlign: 'right' }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.peopleViews.map((p) => (
-              <tr key={p.person.id}>
-                <td>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{p.person.role}</div>
-                </td>
-                {view.months.map((month, i) => (
-                  <td key={month}>
-                    <input
-                      className="input num"
-                      type="number"
-                      min={0}
-                      max={WORKING_DAYS_PER_MONTH}
-                      aria-label={`${p.person.name} leave in ${view.monthLabels[i]}`}
-                      value={p.leaveDays[i] || ''}
-                      placeholder="0"
-                      onChange={(e) =>
-                        onSetLeave(
-                          p.person.id,
-                          month,
-                          Math.max(0, Math.min(WORKING_DAYS_PER_MONTH, Math.round(Number(e.target.value) || 0))),
-                        )
-                      }
-                    />
-                  </td>
-                ))}
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {p.leaveDays.reduce((a, b) => a + b, 0)}d
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="field-hint" style={{ marginTop: 'var(--space-2)' }}>
-        {WORKING_DAYS_PER_MONTH} working days is a full month. Leave is stacked on top of project work in the graphs and
-        taken off available capacity.
-      </p>
-      </>) },
+          { id: 'leave', label: 'Annual leave', count: `${view.peopleViews.reduce((n, p) => n + p.leaveDays.reduce((a, b) => a + b, 0), 0)}d`, render: () => (
+            <LeaveTable view={view} onSetLeave={onSetLeave} onSetPublicHoliday={onSetPublicHoliday} onSetWindow={onSetWindow} />
+          ) },
           { id: 'roles', label: 'Job titles with no cover', count: view.roleShortages.length, render: () => (<>
 
       <h3 style={{ margin: '0 0 4px' }}>Job titles with no cover</h3>
@@ -501,6 +417,169 @@ export function Resourcing({
   );
 }
 
+/** The planning window, shared by every tab that lets you type into a month. */
+function WindowControls({
+  view,
+  onSetWindow,
+}: {
+  view: PortfolioView;
+  onSetWindow: (startMonth: string, months: number) => void;
+}) {
+  const labelStyle = {
+    display: 'block',
+    fontSize: 12,
+    marginBottom: 5,
+    color: 'color-mix(in srgb, var(--color-text) 70%, transparent)',
+  } as const;
+  return (
+    <>
+      <label className="field" style={{ margin: 0 }}>
+        <span style={labelStyle}>Plan from</span>
+        <select
+          className="input"
+          style={{ width: 'auto', minWidth: 110 }}
+          value={view.months[0]}
+          onChange={(e) => onSetWindow(e.target.value, view.months.length)}
+        >
+          {monthOptions(new Date().getFullYear() - 1, MAX_YEAR).map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field" style={{ margin: 0 }}>
+        <span style={labelStyle}>For</span>
+        <select
+          className="input"
+          style={{ width: 'auto', minWidth: 96 }}
+          value={view.months.length}
+          onChange={(e) => onSetWindow(view.months[0], Number(e.target.value))}
+        >
+          {[3, 6, 12, 18, 24].map((n) => (
+            <option key={n} value={n}>
+              {n} months
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
+/** Days off, month by month. The top row is the public holidays everybody takes, entered
+    once here rather than seven times below. */
+function LeaveTable({
+  view,
+  onSetLeave,
+  onSetPublicHoliday,
+  onSetWindow,
+}: {
+  view: PortfolioView;
+  onSetLeave: (personId: string, month: string, days: number) => void;
+  onSetPublicHoliday: (month: string, days: number) => void;
+  onSetWindow: (startMonth: string, months: number) => void;
+}) {
+  const clamp = (v: string) => Math.max(0, Math.min(WORKING_DAYS_PER_MONTH, Math.round(Number(v) || 0)));
+  const holidayTotal = view.publicHolidays.reduce((a, b) => a + b, 0);
+  // Wide enough that the columns keep their width and the wrapper scrolls instead of squashing.
+  const minWidth = 180 + view.months.length * 76 + 90;
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <div>
+          <h3 style={{ margin: '0 0 4px' }}>Annual leave</h3>
+          <p className="lede" style={{ margin: 0 }}>
+            Days off per month. Public holidays are entered once and apply to everyone; the rows below are what each
+            person books themselves. Both feed straight into the graphs and available capacity.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
+          <WindowControls view={view} onSetWindow={onSetWindow} />
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table className="alloc-table" style={{ minWidth }}>
+          <thead>
+            <tr>
+              <th style={{ width: 180 }}>Person</th>
+              {view.monthLabels.map((m, i) => (
+                <th key={view.months[i]} className="month-col">
+                  {m}
+                </th>
+              ))}
+              <th className="month-col" style={{ width: 90 }}>
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ background: 'var(--color-accent-100)' }}>
+              <td>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>Public holidays</div>
+                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>Everyone, shutdowns included</div>
+              </td>
+              {view.months.map((month, i) => (
+                <td key={month} className="month-col">
+                  <input
+                    className="input num"
+                    type="number"
+                    min={0}
+                    max={WORKING_DAYS_PER_MONTH}
+                    aria-label={`Public holidays in ${view.monthLabels[i]}`}
+                    value={view.publicHolidays[i] || ''}
+                    placeholder="0"
+                    onChange={(e) => onSetPublicHoliday(month, clamp(e.target.value))}
+                  />
+                </td>
+              ))}
+              <td className="month-col" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                {holidayTotal}d
+              </td>
+            </tr>
+            {view.peopleViews.map((p) => (
+              <tr key={p.person.id}>
+                <td>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{p.person.role}</div>
+                </td>
+                {view.months.map((month, i) => (
+                  <td key={month} className="month-col">
+                    <input
+                      className="input num"
+                      type="number"
+                      min={0}
+                      max={WORKING_DAYS_PER_MONTH}
+                      aria-label={`${p.person.name} leave in ${view.monthLabels[i]}`}
+                      title={
+                        view.publicHolidays[i]
+                          ? `Plus ${view.publicHolidays[i]}d of public holiday — ${p.leaveDays[i]}d off in total`
+                          : undefined
+                      }
+                      value={p.ownLeaveDays[i] || ''}
+                      placeholder="0"
+                      onChange={(e) => onSetLeave(p.person.id, month, clamp(e.target.value))}
+                    />
+                  </td>
+                ))}
+                <td className="month-col" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {p.leaveDays.reduce((a, b) => a + b, 0)}d
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="field-hint" style={{ marginTop: 'var(--space-2)' }}>
+        {WORKING_DAYS_PER_MONTH} working days is a full month. Totals include each person&rsquo;s share of the public
+        holidays. Change the window above to book leave further out — planning runs to {MAX_YEAR}.
+      </p>
+    </>
+  );
+}
+
 const DEMAND_W = 1040;
 const DEMAND_H = 280;
 const DEMAND_BASE = 230;
@@ -517,8 +596,8 @@ function DemandChart({ view }: { view: PortfolioView }) {
     <div style={{ margin: 'var(--space-8) 0' }}>
       <h3 style={{ marginBottom: 4 }}>How many people the work needs</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        The pale column is the {view.people.length} people we have, with the tinted part away on leave. The dark column is
-        how many the promised work needs. Red is the shortfall — work with nobody free to do it.
+        The pale column is the {view.people.length} people we have, with the navy band at its base the time away on leave.
+        The dark column is how many the promised work needs. Red is the shortfall — work with nobody free to do it.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
@@ -554,12 +633,13 @@ function DemandChart({ view }: { view: PortfolioView }) {
                 return (
                   <g key={m}>
                     <rect x={left + (slot - paleW) / 2} y={DEMAND_BASE - scale(cap)} width={paleW} height={scale(cap)} fill="var(--color-neutral-200)" />
+                    {/* Leave comes off the bottom of the month, as it does on the person charts. */}
                     <rect
                       x={left + (slot - paleW) / 2}
-                      y={DEMAND_BASE - scale(cap)}
+                      y={DEMAND_BASE - Math.max(0, scale(cap) - scale(avail))}
                       width={paleW}
                       height={Math.max(0, scale(cap) - scale(avail))}
-                      fill="var(--color-accent-300)"
+                      fill="var(--color-accent-700)"
                     />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh} width={darkW} height={dh} fill="var(--color-text)" />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh - oh} width={darkW} height={oh} fill="var(--color-accent-2)" />
@@ -632,7 +712,7 @@ function DemandChart({ view }: { view: PortfolioView }) {
           Shortfall
         </span>
         <span>
-          <span style={{ width: 14, height: 12, background: 'var(--color-accent-300)', display: 'block' }} />
+          <span style={{ width: 14, height: 12, background: 'var(--color-accent-700)', display: 'block' }} />
           Away on leave
         </span>
         <span>

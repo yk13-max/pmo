@@ -159,6 +159,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       endDate: toISO(addMonths(start, duration)),
       milestone: (DEFAULT_PROJECT_TYPES.find((t) => t.id === type)?.milestones ?? [])[phase] ?? '',
       milestoneDate: milestoneDate(anchor, i),
+      currency: 'GBP' as const,
       priority: rag === 'R' ? 1 : budget >= 1000 ? 2 : rag === 'A' ? 3 : facing === 'I' ? 4 : 3,
       // Phases spread evenly across the project's run; invoices at the quarter points.
       phaseDates: (DEFAULT_PROJECT_TYPES.find((t) => t.id === type)?.phases ?? []).map((_, k, all) =>
@@ -203,5 +204,8 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     projectTypes: DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
     threshold: 85,
     window: { startMonth: months[0], months: months.length },
+    // A shutdown over the winter and the usual spring cluster, so nobody enters them by hand.
+    publicHolidays: { [months[0]]: 1, [months[4]]: 2, [months[5]]: 2 },
+    fxToBase: { GBP: 1, USD: 0.79, EUR: 0.85 },
   };
 }

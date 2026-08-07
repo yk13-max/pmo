@@ -32,7 +32,7 @@ export function ProjectDetail({
     return {
       label,
       date: project.invoiceDates[i] ? shortDate(project.invoiceDates[i]) : 'No date set',
-      amount: money(amount),
+      amount: money(amount, project.currency),
       status: invoiced ? 'Invoiced' : 'Not yet due',
       ink: invoiced ? 'var(--color-text)' : 'var(--color-neutral-600)',
       dot: invoiced ? 'var(--color-accent)' : 'var(--color-neutral-300)',
@@ -191,8 +191,8 @@ export function ProjectDetail({
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <h3 style={{ margin: '0 0 4px' }}>When the client pays</h3>
           <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-            The agreed {project.valueLabel} is invoiced in four stages. {project.billedLabel} has gone out; {project.toBillLabel} is
-            still to come.
+            The agreed {project.valueLabel} is invoiced in four stages, billed in {project.currency}.{' '}
+            {project.billedLabel} has gone out; {project.toBillLabel} is still to come.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 640 }}>
             {invoices.map((iv) => (

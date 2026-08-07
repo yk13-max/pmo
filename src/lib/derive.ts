@@ -1,17 +1,19 @@
 import { useMemo } from 'react';
-import type { Person, Portfolio, Project, ProjectTypeDef, Rag } from '../types';
-import { WORKING_DAYS_PER_MONTH } from '../types';
+import type { CurrencyCode, Person, Portfolio, Project, ProjectTypeDef, Rag } from '../types';
+import { BASE_CURRENCY, CURRENCIES, WORKING_DAYS_PER_MONTH } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { PRIORITY_LABEL } from '../types';
 import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsFrom, shortDate, shortMonth } from './dates';
 
-export function money(k: number): string {
+/** Money in thousands, in whatever the client is billed in. Costs stay in the base currency. */
+export function money(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
   if (!k) return '—';
-  return k >= 1000 ? `£${(k / 1000).toFixed(k % 1000 === 0 ? 0 : 1)}m` : `£${k}k`;
+  const symbol = CURRENCIES[currency]?.symbol ?? CURRENCIES[BASE_CURRENCY].symbol;
+  return k >= 1000 ? `${symbol}${(k / 1000).toFixed(k % 1000 === 0 ? 0 : 1)}m` : `${symbol}${k}k`;
 }
 
-export function moneyOrZero(k: number): string {
-  return k ? money(k) : '£0';
+export function moneyOrZero(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
+  return k ? money(k, currency) : `${CURRENCIES[currency]?.symbol ?? '£'}0`;
 }
 
 export function ragColor(rag: Rag): string {
@@ -51,6 +53,10 @@ export interface ProjectView extends Project {
   moneyLabel: string;
   moneyMain: string;
   moneySub: string;
+  /** Contract value and billings converted to the base currency, for portfolio totals. */
+  valueBase: number;
+  billedBase: number;
+  currencyLabel: string;
   msDateLabel: string;
   priorityLabel: string;
   startLabel: string;
@@ -66,6 +72,8 @@ export function viewProject(
   threshold: number,
   types: ProjectTypeDef[],
   load = project.load,
+  /** What one unit of the project's currency is worth in the base currency. */
+  fx = 1,
 ): ProjectView {
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
   const phases = typeDef?.phases ?? [];
@@ -90,7 +98,7 @@ export function viewProject(
     cust,
     typeShort: typeDef?.id ?? project.type,
     typeLabel: typeDef?.label ?? project.type,
-    facingLabel: cust ? 'Customer-facing' : 'Internal',
+    facingLabel: cust ? 'Customer' : 'Internal',
     stripe: cust ? 'var(--color-accent)' : 'var(--color-neutral-400)',
     ragLabel: RAG_LABEL[project.rag],
     ragColor: ragColor(project.rag),
@@ -109,12 +117,17 @@ export function viewProject(
     budgetLabel: money(project.budget),
     actualLabel: money(project.actual),
     remainLabel: money(project.budget - project.actual),
-    valueLabel: money(project.value),
-    billedLabel: moneyOrZero(project.billed),
-    toBillLabel: money(project.value - project.billed),
+    valueLabel: money(project.value, project.currency),
+    billedLabel: moneyOrZero(project.billed, project.currency),
+    toBillLabel: money(project.value - project.billed, project.currency),
     moneyLabel: cust ? 'Invoiced' : 'Budget drawn',
-    moneyMain: cust ? moneyOrZero(project.billed) : money(project.actual),
-    moneySub: cust ? `of ${money(project.value)} value` : `of ${money(project.budget)} pool`,
+    moneyMain: cust ? moneyOrZero(project.billed, project.currency) : money(project.actual),
+    moneySub: cust
+      ? `of ${money(project.value, project.currency)} value`
+      : `of ${money(project.budget)} pool`,
+    valueBase: Math.round(project.value * fx),
+    billedBase: Math.round(project.billed * fx),
+    currencyLabel: `${CURRENCIES[project.currency]?.symbol ?? '£'} ${project.currency}`,
     msDateLabel: shortDate(project.milestoneDate),
     priorityLabel: PRIORITY_LABEL[project.priority] ?? 'Normal',
     startLabel: monthLabel(start),
@@ -133,8 +146,10 @@ export interface PersonView {
   person: Person;
   /** Project work booked, % of a working week. */
   loads: number[];
-  /** Annual leave booked, in days. */
+  /** Every day off — their own leave plus the public holidays everybody takes. */
   leaveDays: number[];
+  /** Just the days they booked themselves, which is what the leave table edits. */
+  ownLeaveDays: number[];
   /** That leave as a share of the month. */
   leaveLoads: number[];
   /** Work plus leave — what actually consumes the person's month. */
@@ -165,6 +180,8 @@ export interface PortfolioView {
   monthLabels: string[];
   threshold: number;
   demand: number[];
+  /** Days off everybody takes, per planning month. */
+  publicHolidays: number[];
   /** Headcount, ignoring leave. */
   capacity: number;
   /** Capacity actually available each month once leave is taken out. */
@@ -222,7 +239,14 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     });
 
     const allProjectViews = portfolio.projects.map((p) =>
-      viewProject(p, people, threshold, portfolio.projectTypes, loadByProject.get(p.id) ?? 0),
+      viewProject(
+        p,
+        people,
+        threshold,
+        portfolio.projectTypes,
+        loadByProject.get(p.id) ?? 0,
+        portfolio.fxToBase[p.currency] ?? 1,
+      ),
     );
     // Archived work keeps its data but is invisible to every screen except the archive.
     const projects = allProjectViews.filter((p) => !p.archived);
@@ -245,9 +269,16 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       bookedOn.get(personId)?.add(project.name);
     });
 
+    /* Public holidays are entered once and cost everybody the same days, so they are added
+       to each person's own leave rather than tracked separately downstream. */
+    const publicHolidays = months.map((m) => portfolio.publicHolidays[m] ?? 0);
+
     const peopleViews: PersonView[] = people.map((person) => {
       const loads = loadIndex.get(person.id) ?? months.map(() => 0);
-      const leaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
+      const ownLeaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
+      const leaveDays = ownLeaveDays.map((d, i) =>
+        Math.min(person.workingDays, d + publicHolidays[i]),
+      );
       const leaveLoads = leaveDays.map(leavePct);
       const committed = loads.map((v, i) => v + leaveLoads[i]);
       const peak = committed.length ? Math.max(...committed) : 0;
@@ -255,6 +286,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         person,
         loads,
         leaveDays,
+        ownLeaveDays,
         leaveLoads,
         committed,
         peak,
@@ -305,8 +337,9 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const customer = projects.filter((p) => p.cust);
     const internal = projects.filter((p) => !p.cust);
-    const value = customer.reduce((n, p) => n + p.value, 0);
-    const billed = customer.reduce((n, p) => n + p.billed, 0);
+    // Totals mix currencies, so they are added up in the base currency.
+    const value = customer.reduce((n, p) => n + p.valueBase, 0);
+    const billed = customer.reduce((n, p) => n + p.billedBase, 0);
 
     const allocationsFor = (projectId: string) =>
       people
@@ -355,6 +388,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       monthLabels,
       threshold,
       demand,
+      publicHolidays,
       capacity,
       capacityByMonth,
       roles: portfolio.roles,

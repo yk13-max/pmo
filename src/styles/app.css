@@ -22,6 +22,13 @@ a:hover { color: var(--color-accent-600); }
 .stat-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-top: 10px; }
 .stat-sub { font-size: 12px; color: var(--color-neutral-700); margin-top: 3px; }
 .stat-row { display: flex; flex-wrap: wrap; gap: var(--space-8) 72px; margin-bottom: var(--space-8); }
+/* One unbroken row of metrics: the columns share the width evenly and the numbers step
+   down rather than wrapping. Below tablet it falls back to wrapping. */
+.stat-row.one-line { flex-wrap: nowrap; gap: var(--space-6) 40px; }
+.stat-row.one-line > * { flex: 1 1 0; min-width: 0; }
+.stat-row.one-line .stat-value { font-size: clamp(26px, 2.6vw, 44px); }
+.stat-row.one-line .stat-sub { text-wrap: balance; }
+@media (max-width: 900px) { .stat-row.one-line { flex-wrap: wrap; } .stat-row.one-line > * { flex: 1 1 200px; } }
 
 .lede { font-size: 13px; color: var(--color-neutral-700); max-width: 64ch; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); font-size: 12px; color: var(--color-neutral-700); }
@@ -52,6 +59,10 @@ a:hover { color: var(--color-accent-600); }
 .alloc-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
 .alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
 .alloc-table .num { width: 58px; text-align: right; padding: 4px 4px; min-height: 30px; }
+/* Month columns carry the same width on the heading and the cell, so the labels sit
+   directly over the boxes they name however many months are on show. */
+.alloc-table th.month-col, .alloc-table td.month-col { width: 76px; text-align: right; }
+.alloc-table td.month-col .num { width: 100%; }
 .alloc-table input[type='number']::-webkit-inner-spin-button { margin-left: 2px; }
 
 .row-actions { display: flex; gap: var(--space-2); }

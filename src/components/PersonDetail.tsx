@@ -39,8 +39,8 @@ export function PersonDetail({
         </div>
         <div>
           <div className="stat-value" style={{ fontSize: 34 }}>{row.leaveDays.reduce((n, v) => n + v, 0)}</div>
-          <div className="stat-label">Leave days booked</div>
-          <div className="stat-sub">Across the same window</div>
+          <div className="stat-label">Days off</div>
+          <div className="stat-sub">Own leave plus public holidays</div>
         </div>
       </div>
 
@@ -91,7 +91,7 @@ export function PersonDetail({
               </Fragmentish>
             ))}
 
-            <span style={{ fontSize: 13, paddingTop: 10, color: 'var(--color-accent-700)' }}>Annual leave</span>
+            <span style={{ fontSize: 13, paddingTop: 10, color: 'var(--color-accent-700)' }}>Days off</span>
             {row.leaveDays.map((d, i) => (
               <span
                 key={i}

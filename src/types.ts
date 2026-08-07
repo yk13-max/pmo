@@ -44,6 +44,8 @@ export interface Project {
   invoiceDates: string[];
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
+  /** Currency the client is invoiced in. Budget and spend stay in the base currency. */
+  currency: CurrencyCode;
 }
 
 /** The invoice schedule every customer-facing project bills against. */
@@ -81,6 +83,17 @@ export type Allocations = Record<string, number>;
 /** Keyed `${personId}|${YYYY-MM}` → days of annual leave booked that month. */
 export type Leave = Record<string, number>;
 
+/** Keyed `YYYY-MM` → days everybody loses that month (public holidays, shutdowns). */
+export type PublicHolidays = Record<string, number>;
+
+export type CurrencyCode = 'GBP' | 'USD' | 'EUR';
+
+export const CURRENCIES: Record<CurrencyCode, { symbol: string; label: string }> = {
+  GBP: { symbol: '£', label: 'Pounds' },
+  USD: { symbol: '$', label: 'US dollars' },
+  EUR: { symbol: '€', label: 'Euros' },
+};
+
 export interface Portfolio {
   projects: Project[];
   people: Person[];
@@ -94,7 +107,14 @@ export interface Portfolio {
   threshold: number;
   /** The months resourcing plans across. */
   window: { startMonth: string; months: number };
+  /** Days off that apply to everyone, so they need entering only once. */
+  publicHolidays: PublicHolidays;
+  /** What one unit of each currency is worth in the base currency, for portfolio totals. */
+  fxToBase: Record<CurrencyCode, number>;
 }
+
+/** Totals across a mixed-currency portfolio are expressed in this. */
+export const BASE_CURRENCY: CurrencyCode = 'GBP';
 
 /** A full-time month, the yardstick every load percentage is measured against. */
 export const WORKING_DAYS_PER_MONTH = 21;

@@ -24,6 +24,8 @@ interface PortfolioStore {
   setThreshold: (pct: number) => void;
   /** The months resourcing plans across. */
   setWindow: (startMonth: string, months: number) => void;
+  /** Days off everyone takes in a month — public holidays, shutdowns. */
+  setPublicHoliday: (month: string, days: number) => void;
   saveProjectType: (def: ProjectTypeDef) => void;
   removeProjectType: (id: string) => void;
   replaceAll: (portfolio: Portfolio) => void;
@@ -48,11 +50,14 @@ export function normalise(p: Portfolio): Portfolio {
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
     projectTypes: p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
+    publicHolidays: p.publicHolidays ?? {},
+    fxToBase: { ...{ GBP: 1, USD: 0.79, EUR: 0.85 }, ...(p.fxToBase ?? {}) },
     projects: p.projects.map((project) => ({
       ...project,
       priority: project.priority ?? 3,
       phaseDates: project.phaseDates ?? [],
       invoiceDates: project.invoiceDates ?? [],
+      currency: project.currency ?? 'GBP',
     })),
     people: p.people.map((person) => ({
       ...person,
@@ -204,6 +209,15 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const setPublicHoliday = useCallback((month: string, days: number) => {
+    setPortfolio((prev) => {
+      const next = { ...prev.publicHolidays };
+      if (days > 0) next[month] = days;
+      else delete next[month];
+      return { ...prev, publicHolidays: next };
+    });
+  }, []);
+
   const setWindow = useCallback((startMonth: string, months: number) => {
     setPortfolio((prev) => ({ ...prev, window: { startMonth, months } }));
   }, []);
@@ -225,6 +239,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeRole,
       setThreshold,
       setWindow,
+      setPublicHoliday,
       saveProjectType,
       removeProjectType,
       replaceAll,
@@ -243,6 +258,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeRole,
       setThreshold,
       setWindow,
+      setPublicHoliday,
       saveProjectType,
       removeProjectType,
       replaceAll,

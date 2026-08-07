@@ -1,12 +1,14 @@
-import type { Portfolio } from '../types';
-import { PRIORITY_LABEL, WORKING_DAYS_PER_MONTH } from '../types';
+import type { CurrencyCode, Portfolio } from '../types';
+import { CURRENCIES, PRIORITY_LABEL, WORKING_DAYS_PER_MONTH } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 
 /* CSVs are written to be read by a person, not just re-imported: words rather than codes
-   ("Client Solutions", "At risk", "Customer-facing"), money in whole £k under a labelled
+   ("Client Solutions", "At risk", "Customer"), money in whole thousands under a labelled
    column, and one row per project or per person-month. Import accepts the same words back,
    and is case-insensitive about them. */
+
+const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
 
 function escape(value: string | number): string {
   const s = String(value ?? '');
@@ -73,12 +75,13 @@ export function projectsCsv(p: Portfolio): string {
       'Priority label',
       'Status',
       'Phase',
-      'Plan finished %',
+      '% through current phase',
       'Project manager',
       'Budget £k',
       'Spent £k',
-      'Agreed £k',
-      'Invoiced £k',
+      'Invoice currency',
+      'Agreed k',
+      'Invoiced k',
       'Team draw % (calculated)',
       'Start date',
       'End date',
@@ -89,7 +92,7 @@ export function projectsCsv(p: Portfolio): string {
       x.name,
       x.client,
       p.projectTypes.find((t) => t.id === x.type)?.label ?? x.type,
-      x.facing === 'C' ? 'Customer-facing' : 'Internal',
+      x.facing === 'C' ? 'Customer' : 'Internal',
       x.priority,
       PRIORITY_LABEL[x.priority] ?? '',
       RAG_LABEL[x.rag],
@@ -98,6 +101,7 @@ export function projectsCsv(p: Portfolio): string {
       person(x.pmId),
       x.budget,
       x.actual,
+      x.currency,
       x.value,
       x.billed,
       x.load,
@@ -135,11 +139,16 @@ export function allocationsCsv(p: Portfolio, months: string[]): string {
   return toCsv(['Person', 'Job title', 'Project', ...months.map(monthKeyLabel)], rows);
 }
 
+/** The first row is the days everybody takes; the rest is what each person books themselves. */
+export const HOLIDAY_ROW = 'Public holidays (everyone)';
+
 export function leaveCsv(p: Portfolio, months: string[]): string {
+  const holidays = [HOLIDAY_ROW, ...months.map((m) => p.publicHolidays[m] ?? 0)];
   const rows = p.people
     .map((person) => [person.name, ...months.map((m) => p.leave[`${person.id}|${m}`] ?? 0)])
     .filter((r) => r.slice(1).some((v) => Number(v) > 0));
-  return toCsv(['Person', ...months.map((m) => `${monthKeyLabel(m)} (days)`)], rows);
+  const body = holidays.slice(1).some((v) => Number(v) > 0) ? [holidays, ...rows] : rows;
+  return toCsv(['Person', ...months.map((m) => `${monthKeyLabel(m)} (days)`)], body);
 }
 
 export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
@@ -218,12 +227,12 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         priority: num(col(r, 'Priority')) || base?.priority || 3,
         rag: RAG_FROM_LABEL[col(r, 'Status').toLowerCase()] ?? base?.rag ?? 'G',
         phase: phaseIndex,
-        pct: num(col(r, 'Plan finished %')),
+        pct: num(col(r, '% through current phase')),
         pmId: pm?.id ?? base?.pmId ?? portfolio.people[0]?.id ?? '',
         budget: num(col(r, 'Budget £k')),
         actual: num(col(r, 'Spent £k')),
-        value: num(col(r, 'Agreed £k')),
-        billed: num(col(r, 'Invoiced £k')),
+        value: num(col(r, 'Agreed k')),
+        billed: num(col(r, 'Invoiced k')),
         load: num(col(r, 'Team draw % (calculated)')),
         startDate: col(r, 'Start date') || base?.startDate || '',
         endDate: col(r, 'End date') || base?.endDate || '',
@@ -232,6 +241,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         phaseDates: base?.phaseDates ?? [],
         invoiceDates: base?.invoiceDates ?? [],
         archived: base?.archived,
+        currency: (CURRENCY_CODES.find((c) => c === col(r, 'Invoice currency').trim().toUpperCase()) ??
+          base?.currency ??
+          'GBP') as CurrencyCode,
       };
       if (!merged.startDate || !merged.endDate) {
         skipped.push(`${name}: missing start or end date`);
@@ -305,16 +317,31 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
 
   if (kind === 'leave') {
     const leave = { ...portfolio.leave };
+    const publicHolidays = { ...portfolio.publicHolidays };
     const monthCols = headers.slice(1);
+    /** The month a column names, or null if it falls outside the planning window. */
+    const monthOf = (label: string) => months.find((m) => `${monthKeyLabel(m)} (days)` === label.trim()) ?? null;
     body.forEach((r) => {
       const personName = col(r, 'Person');
+      // The everyone-row is written first by the export and comes back the same way.
+      if (personName.trim().toLowerCase() === HOLIDAY_ROW.toLowerCase()) {
+        monthCols.forEach((label, i) => {
+          const month = monthOf(label);
+          if (!month) return;
+          const days = num(r[1 + i] ?? '');
+          if (days > 0) publicHolidays[month] = days;
+          else delete publicHolidays[month];
+        });
+        applied += 1;
+        return;
+      }
       const person = portfolio.people.find((x) => x.name.toLowerCase() === personName.toLowerCase());
       if (!person) {
         skipped.push(`${personName || '?'}: not found`);
         return;
       }
       monthCols.forEach((label, i) => {
-        const month = months.find((m) => `${monthKeyLabel(m)} (days)` === label.trim());
+        const month = monthOf(label);
         if (!month) return;
         const days = num(r[1 + i] ?? '');
         const key = `${person.id}|${month}`;
@@ -324,6 +351,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       applied += 1;
     });
     next.leave = leave;
+    next.publicHolidays = publicHolidays;
   }
 
   return { kind, portfolio: next, applied, skipped };
