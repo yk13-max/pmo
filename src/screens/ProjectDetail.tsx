@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Project } from '../types';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { hoursToDays } from '../lib/derive';
@@ -213,55 +214,7 @@ export function ProjectDetail({
         </div>
       ) }]
             : []),
-          { id: 'team', label: 'Who is working on it', count: team.length, render: () => (<>
-      <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Share of each person&rsquo;s working week committed to this project, month by month.
-      </p>
-      {team.length === 0 ? (
-        <p className="empty" style={{ maxWidth: 640, marginBottom: 'var(--space-8)' }}>
-          Nobody booked yet. Open “Edit project” to book people onto it.
-        </p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 700, marginBottom: 'var(--space-8)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${view.months.length}, 1fr) 70px`, gap: 'var(--space-2)', alignItems: 'end' }}>
-            <span />
-            {view.monthLabels.map((m) => (
-              <span key={m} style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'center' }}>
-                {m}
-              </span>
-            ))}
-            <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Total</span>
-          </div>
-          {team.map((row) => {
-            return (
-              <div
-                key={row.person.id}
-                style={{ display: 'grid', gridTemplateColumns: `180px repeat(${view.months.length}, 1fr) 70px`, gap: 'var(--space-2)', alignItems: 'center' }}
-              >
-                <div>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{row.person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
-                </div>
-                {row.loads.map((v, i) => (
-                  <div
-                    key={i}
-                    title={`${hoursToDays(row.hours[i]).toFixed(1)} days in ${view.monthLabels[i]}`}
-                    style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative' }}
-                  >
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, v)}%`, background: 'var(--color-text)' }} />
-                  </div>
-                ))}
-                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', textAlign: 'right' }}>
-                  {hoursToDays(row.totalHours).toFixed(1)}d
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      </>) },
+          { id: 'team', label: 'Who is working on it', count: team.length, render: () => <TeamGrid view={view} team={team} /> },
           { id: 'watch', label: 'What to watch', count: notes.length, render: () => (<>
       <h3 style={{ margin: '0 0 var(--space-3)' }}>What to watch</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxWidth: '64ch' }}>
@@ -274,6 +227,138 @@ export function ProjectDetail({
       </>) },
         ]}
       />
+    </div>
+  );
+}
+
+/* Each person's commitment to this project, month by month. Hovering a month opens the
+   detail behind the bar: the hours booked, and — the figure the tab is really asking for —
+   how much of everything the project draws that month is theirs. */
+function TeamGrid({
+  view,
+  team,
+}: {
+  view: PortfolioView;
+  team: ReturnType<PortfolioView['allocationsFor']>;
+}) {
+  const [hover, setHover] = useState<string | null>(null);
+  const cols = `180px repeat(${view.months.length}, 1fr) 70px`;
+  // What the whole team draws each month, so each person's share of it can be worked out.
+  const monthTotals = view.months.map((_, i) => team.reduce((n, r) => n + r.hours[i], 0));
+
+  return (
+    <>
+      <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+        Share of each person&rsquo;s working week committed to this project, month by month. Hover a month for the hours
+        behind it.
+      </p>
+      {team.length === 0 ? (
+        <p className="empty" style={{ maxWidth: 640, marginBottom: 'var(--space-8)' }}>
+          Nobody booked yet. Open “Edit project” to book people onto it.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 700, marginBottom: 'var(--space-8)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 'var(--space-2)', alignItems: 'end' }}>
+            <span />
+            {view.monthLabels.map((m) => (
+              <span key={m} style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'center' }}>
+                {m}
+              </span>
+            ))}
+            <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Total</span>
+          </div>
+          {team.map((row) => (
+            <div
+              key={row.person.id}
+              style={{ display: 'grid', gridTemplateColumns: cols, gap: 'var(--space-2)', alignItems: 'center' }}
+            >
+              <div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{row.person.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
+              </div>
+              {row.loads.map((v, i) => {
+                const key = `${row.person.id}-${i}`;
+                const hours = row.hours[i];
+                const share = monthTotals[i] ? (hours / monthTotals[i]) * 100 : 0;
+                return (
+                  <div
+                    key={i}
+                    onMouseEnter={() => setHover(key)}
+                    onMouseLeave={() => setHover(null)}
+                    style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative', cursor: hours ? 'help' : 'default' }}
+                  >
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, v)}%`, background: 'var(--color-text)' }} />
+                    {hover === key && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: '100%',
+                          transform: 'translateX(-50%)',
+                          marginTop: 6,
+                          minWidth: 210,
+                          padding: 'var(--space-3)',
+                          background: 'var(--color-bg)',
+                          boxShadow: 'var(--shadow-lg)',
+                          borderRadius: 'var(--radius-md)',
+                          zIndex: 6,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <div className="eyebrow" style={{ marginBottom: 6 }}>
+                          {row.person.name} · {view.monthLabels[i]}
+                        </div>
+                        <DetailRow label="Hours booked" value={`${hours}h`} />
+                        <DetailRow label="In days" value={`${hoursToDays(hours).toFixed(1)}d`} />
+                        <DetailRow label="Of their month" value={`${v}%`} />
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 'var(--space-4)',
+                            alignItems: 'baseline',
+                            paddingTop: 7,
+                            marginTop: 5,
+                            borderTop: '1px solid var(--color-divider)',
+                          }}
+                        >
+                          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                            Of the {hoursToDays(monthTotals[i]).toFixed(1)}d this project draws
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: 'var(--font-heading)',
+                              fontWeight: 600,
+                              fontSize: 19,
+                              color: 'var(--color-accent)',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                          >
+                            {share.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', textAlign: 'right' }}>
+                {hoursToDays(row.totalHours).toFixed(1)}d
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', fontSize: 13, padding: '2px 0' }}>
+      <span style={{ color: 'var(--color-neutral-700)' }}>{label}</span>
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </div>
   );
 }

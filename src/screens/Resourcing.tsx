@@ -121,7 +121,7 @@ export function Resourcing({
               Project work
             </span>
             <span>
-              <span style={{ width: 14, height: 12, background: 'var(--color-accent-700)', display: 'block' }} />
+              <span style={{ width: 14, height: 12, background: 'var(--color-accent)', display: 'block' }} />
               Days off, at the base of each bar
             </span>
             <span>
@@ -640,7 +640,7 @@ function DemandChart({ view }: { view: PortfolioView }) {
                       y={DEMAND_BASE - Math.max(0, scale(cap) - scale(avail))}
                       width={paleW}
                       height={Math.max(0, scale(cap) - scale(avail))}
-                      fill="var(--color-accent-700)"
+                      fill="var(--color-accent)"
                     />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh} width={darkW} height={dh} fill="var(--color-text)" />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh - oh} width={darkW} height={oh} fill="var(--color-accent-2)" />
@@ -713,7 +713,7 @@ function DemandChart({ view }: { view: PortfolioView }) {
           Shortfall
         </span>
         <span>
-          <span style={{ width: 14, height: 12, background: 'var(--color-accent-700)', display: 'block' }} />
+          <span style={{ width: 14, height: 12, background: 'var(--color-accent)', display: 'block' }} />
           Away on leave
         </span>
         <span>

@@ -83,7 +83,7 @@ export function PersonBars({
           return (
             <g key={i}>
               {hLeave > 0 && (
-                <rect x={x(i)} y={BASELINE - hLeave} width={width} height={hLeave} fill="var(--color-accent-700)" />
+                <rect x={x(i)} y={BASELINE - hLeave} width={width} height={hLeave} fill="var(--color-accent)" />
               )}
               {hTotal > hLeave && (
                 <rect
