@@ -38,12 +38,36 @@ export function PersonBars({
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const strip = useRef<HTMLDivElement>(null);
+  /* Which way there is more chart. Drives the edge fade, so a month cut in half by the
+     boundary reads as "keep scrolling" rather than as broken text. */
+  const [more, setMore] = useState({ left: false, right: false });
 
   useEffect(() => {
     const el = strip.current;
     // The tolerance stops the two charts nudging each other back and forth.
     if (el && scrollLeft !== undefined && Math.abs(el.scrollLeft - scrollLeft) > 1) el.scrollLeft = scrollLeft;
   }, [scrollLeft]);
+
+  const measure = () => {
+    const el = strip.current;
+    if (!el) return;
+    const next = {
+      left: el.scrollLeft > 1,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    };
+    setMore((prev) => (prev.left === next.left && prev.right === next.right ? prev : next));
+  };
+
+  useEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // Re-measured when the number of months changes the content width.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [person.loads.length, monthLabels.length]);
 
   const count = Math.max(1, person.loads.length);
   const slot = VB_W / count;
@@ -63,7 +87,23 @@ export function PersonBars({
 
   return (
     <div>
-    <div ref={strip} style={{ overflowX: 'auto' }} onScroll={(e) => onScrollLeft?.(e.currentTarget.scrollLeft)}>
+    <div
+      ref={strip}
+      style={{
+        overflowX: 'auto',
+        // Fades only on the side that has more to show, so nothing dims needlessly.
+        maskImage:
+          more.left || more.right
+            ? `linear-gradient(to right, ${more.left ? 'transparent' : '#000'} 0, #000 22px, #000 calc(100% - 22px), ${
+                more.right ? 'transparent' : '#000'
+              } 100%)`
+            : undefined,
+      }}
+      onScroll={(e) => {
+        onScrollLeft?.(e.currentTarget.scrollLeft);
+        measure();
+      }}
+    >
     <div style={{ position: 'relative', minWidth }}>
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -151,14 +191,15 @@ export function PersonBars({
           ))}
       </svg>
 
-      {person.loads.map((work, i) => {
+      {/* Only the figure itself rides on the bar. It is short enough to sit over any column
+          without spilling; the breakdown goes in the caption below, outside the scroller,
+          where nothing can cut it. */}
+      {person.loads.map((_, i) => {
         const isHover = hover === i;
         if (!showPct && !isHover) return null;
         const total = person.committed[i];
-        /* Sits just inside the top of the bar, so it never collides with the guide lines
-           running above it. */
+        // Just inside the top of the bar, clear of the guide lines running above it.
         const insideTop = ((BASELINE - h(total)) / VB_H) * height + 3;
-        // White only reads on the red fill; amber and grey need dark ink.
         const onRed = total > full;
         return (
           <span
@@ -166,28 +207,20 @@ export function PersonBars({
             style={{
               position: 'absolute',
               left: `${((i + 0.5) / count) * 100}%`,
-              top: isHover ? insideTop - 22 : insideTop,
+              top: insideTop,
               transform: 'translateX(-50%)',
               fontFamily: 'var(--font-heading)',
               fontWeight: 600,
-              fontSize: isHover ? 13 : 10,
+              fontSize: isHover ? 12 : 10,
               lineHeight: 1.2,
-              background: isHover ? 'var(--color-bg)' : 'transparent',
-              boxShadow: isHover ? 'var(--shadow-sm)' : 'none',
-              padding: isHover ? '1px 5px' : 0,
-              borderRadius: 'var(--radius-md)',
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
-              color: isHover ? 'var(--color-text)' : onRed ? '#ffffff' : 'var(--color-neutral-900)',
+              color: onRed ? '#ffffff' : 'var(--color-neutral-900)',
+              textShadow: isHover ? '0 0 3px var(--color-bg)' : 'none',
               zIndex: 2,
             }}
           >
             {total}%
-            {isHover && (person.leaveDays[i] || person.overheadLoad)
-              ? ` · ${work}% work${person.leaveDays[i] ? ` + ${person.leaveDays[i]}d leave` : ''}${
-                  person.overheadLoad ? ` + ${person.overheadLoad}% non-project` : ''
-                }`
-              : ''}
           </span>
         );
       })}
@@ -201,10 +234,36 @@ export function PersonBars({
       </div>
     </div>
     </div>
-      {/* Outside the scroller, so the note stays put while the months move under it. */}
-      <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 2 }}>
-        top of chart = {top}%{full !== 100 && ` · full month for them = ${full}%`}
+      {/* Both notes sit outside the scroller: they hold still while the months move under
+          them, and no column can push them off the edge. The caption keeps its height when
+          empty so nothing below it jumps as the pointer crosses the chart. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 'var(--space-3)',
+          marginTop: 3,
+          minHeight: 15,
+          fontSize: 10,
+          color: 'var(--color-neutral-600)',
+        }}
+      >
+        <span style={{ color: 'var(--color-text)', fontSize: 11, textWrap: 'pretty' }}>
+          {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
+        </span>
+        <span style={{ flex: 'none' }}>
+          top of chart = {top}%{full !== 100 && ` · full month for them = ${full}%`}
+        </span>
       </div>
     </div>
   );
+}
+
+/** What one month is made of, in words — the caption under the chart. */
+function monthDetail(person: PersonView, i: number, label: string): string {
+  const parts = [`${person.loads[i]}% project work`];
+  if (person.leaveDays[i]) parts.push(`${person.leaveDays[i]}d off`);
+  if (person.overheadLoad) parts.push(`${person.overheadLoad}% non-project`);
+  return `${label}: ${person.committed[i]}% committed — ${parts.join(' + ')}`;
 }
