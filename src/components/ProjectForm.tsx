@@ -7,9 +7,9 @@ import {
   MAX_DATE,
   PRIORITY_LABEL,
   PRIORITY_LEVELS,
-  WORKING_DAYS_PER_MONTH,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
+import { days, hoursToPct } from '../lib/derive';
 import { addMonths, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 
@@ -104,11 +104,12 @@ export function ProjectForm({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
-  // Mirrors the derived figure so it updates as bookings are edited.
-  const derivedLoad = Math.max(
+  // Mirrors the derived figure so it updates as bookings are edited. Bookings are hours.
+  const peakHours = Math.max(
     0,
     ...months.map((m) => people.reduce((n, person) => n + (alloc[`${person.id}|${m}`] ?? 0), 0)),
   );
+  const derivedLoad = Math.round(hoursToPct(peakHours));
 
   const typeDef = projectTypes.find((t) => t.id === draft.type) ?? projectTypes[0];
   const phases = typeDef?.phases ?? [];
@@ -439,7 +440,7 @@ export function ProjectForm({
                 fontSize: 16,
               }}
             >
-              {((derivedLoad / 100) * WORKING_DAYS_PER_MONTH).toFixed(1)} days
+              {days(peakHours)}
             </div>
             <div className="field-hint">
               Calculated from the bookings below — the total resource this project draws across the whole team in its
@@ -481,11 +482,9 @@ export function ProjectForm({
         <fieldset className="fieldset">
           <legend>Invoice dates</legend>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-            {INVOICE_STAGES.map(([label, share], i) => (
+            {INVOICE_STAGES.map((label, i) => (
               <div className="field" key={label} style={{ width: 190 }}>
-                <label htmlFor={`pf-inv-${i}`}>
-                  {label} · {Math.round(share * 100)}%
-                </label>
+                <label htmlFor={`pf-inv-${i}`}>{label}</label>
                 <input
                   id={`pf-inv-${i}`}
                   className="input"
@@ -505,7 +504,7 @@ export function ProjectForm({
             ))}
           </div>
           {err('invoiceDates')}
-          <p className="field-hint">Required — when each stage of the agreed value is expected to be raised.</p>
+          <p className="field-hint">Required — when each invoice is expected to be raised.</p>
         </fieldset>
       )}
 

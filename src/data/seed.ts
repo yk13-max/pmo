@@ -1,5 +1,5 @@
 import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
-import { WORKING_DAYS_PER_MONTH } from '../types';
+import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { DEFAULT_PROJECT_TYPES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
 
@@ -181,7 +181,11 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     months.forEach((month, mi) => {
       const shares = splitWhole(loads[mi], targets.map((p) => p.load));
       targets.forEach((project, pi) => {
-        if (shares[pi] > 0) allocations[`${project.id}|${personId}|${month}`] = shares[pi];
+        // The tuned figures are shares of a full-time month; bookings are kept in hours.
+        if (shares[pi] > 0) {
+          allocations[`${project.id}|${personId}|${month}`] =
+            Math.round((shares[pi] / 100) * HOURS_PER_FULL_MONTH * 2) / 2;
+        }
       });
     });
   });
@@ -207,5 +211,6 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     // A shutdown over the winter and the usual spring cluster, so nobody enters them by hand.
     publicHolidays: { [months[0]]: 1, [months[4]]: 2, [months[5]]: 2 },
     fxToBase: { GBP: 1, USD: 0.79, EUR: 0.85 },
+    allocationUnit: 'hours',
   };
 }

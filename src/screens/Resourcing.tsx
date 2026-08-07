@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Person } from '../types';
 import type { PortfolioView } from '../lib/derive';
+import { hoursToDays } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 import { PersonBars } from '../components/PersonBars';
@@ -369,7 +370,7 @@ export function Resourcing({
                                         <span style={{ color: 'var(--color-neutral-600)' }}> · {d.project.client}</span>
                                       </span>
                                       <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                        {d.loads[i]}% · {daysOver(d.loads[i])}d
+                                        {hoursToDays(d.hours[i]).toFixed(1)}d · {d.hours[i]}h
                                       </span>
                                     </div>
                                   ))}

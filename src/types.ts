@@ -48,12 +48,13 @@ export interface Project {
   currency: CurrencyCode;
 }
 
-/** The invoice schedule every customer-facing project bills against. */
-export const INVOICE_STAGES: [label: string, share: number][] = [
-  ['On kick-off', 0.3],
-  ['At design freeze', 0.3],
-  ['At validation', 0.25],
-  ['On handover', 0.15],
+/** The points a customer-facing project raises an invoice at. What each one is worth is
+    agreed with the client project by project, so no share is assumed here. */
+export const INVOICE_STAGES: string[] = [
+  'On kick-off',
+  'At design freeze',
+  'At validation',
+  'On handover',
 ];
 
 export const PRIORITY_LEVELS = [1, 2, 3, 4, 5] as const;
@@ -77,7 +78,7 @@ export interface Person {
   workingDays: number;
 }
 
-/** Keyed `${projectId}|${personId}|${YYYY-MM}` → % of that person's week. */
+/** Keyed `${projectId}|${personId}|${YYYY-MM}` → hours booked that month. */
 export type Allocations = Record<string, number>;
 
 /** Keyed `${personId}|${YYYY-MM}` → days of annual leave booked that month. */
@@ -111,6 +112,8 @@ export interface Portfolio {
   publicHolidays: PublicHolidays;
   /** What one unit of each currency is worth in the base currency, for portfolio totals. */
   fxToBase: Record<CurrencyCode, number>;
+  /** Marks allocations as hours. Stores written before the switch held percentages. */
+  allocationUnit: 'hours';
 }
 
 /** Totals across a mixed-currency portfolio are expressed in this. */
@@ -118,6 +121,10 @@ export const BASE_CURRENCY: CurrencyCode = 'GBP';
 
 /** A full-time month, the yardstick every load percentage is measured against. */
 export const WORKING_DAYS_PER_MONTH = 21;
+
+/** Time is booked in hours; every figure reported back is in days. */
+export const WORKING_HOURS_PER_DAY = 7.5;
+export const HOURS_PER_FULL_MONTH = WORKING_DAYS_PER_MONTH * WORKING_HOURS_PER_DAY;
 
 /** Projects and resourcing can be planned out to the end of this year. */
 export const MAX_YEAR = 2040;

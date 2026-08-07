@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PortfolioView } from '../lib/derive';
+import { hoursToDays } from '../lib/derive';
 import type { Person } from '../types';
 import { PersonBars } from './PersonBars';
 
@@ -57,9 +58,9 @@ export function PersonDetail({
             {view.monthLabels.map((m) => (
               <span key={m} className="eyebrow" style={{ textAlign: 'right' }}>{m}</span>
             ))}
-            <span className="eyebrow" style={{ textAlign: 'right' }}>Total / peak</span>
+            <span className="eyebrow" style={{ textAlign: 'right' }}>Total days</span>
 
-            {spread.map(({ project, loads, total }) => (
+            {spread.map(({ project, hours, totalHours }) => (
               <Fragmentish key={project.id}>
                 <button
                   type="button"
@@ -72,21 +73,22 @@ export function PersonDetail({
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}> · {project.client}</span>
                 </button>
-                {loads.map((v, i) => (
+                {hours.map((h, i) => (
                   <span
                     key={i}
+                    title={h ? `${h} hours booked` : undefined}
                     style={{
                       textAlign: 'right',
                       fontVariantNumeric: 'tabular-nums',
                       fontSize: 13,
-                      color: v ? 'var(--color-text)' : 'var(--color-neutral-400)',
+                      color: h ? 'var(--color-text)' : 'var(--color-neutral-400)',
                     }}
                   >
-                    {v ? `${v}%` : '·'}
+                    {h ? `${hoursToDays(h).toFixed(1)}d` : '·'}
                   </span>
                 ))}
                 <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                  {total}%
+                  {hoursToDays(totalHours).toFixed(1)}d
                 </span>
               </Fragmentish>
             ))}

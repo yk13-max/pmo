@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Allocations, Person, Portfolio, Project, ProjectTypeDef } from '../types';
-import { WORKING_DAYS_PER_MONTH } from '../types';
+import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
 import { planningMonths } from '../lib/dates';
@@ -16,7 +16,8 @@ interface PortfolioStore {
   setArchived: (id: string, archived: boolean) => void;
   savePerson: (person: Person) => void;
   deletePerson: (id: string) => void;
-  setAllocation: (projectId: string, personId: string, month: string, pct: number) => void;
+  /** Hours booked for one person on one project in one month. */
+  setAllocation: (projectId: string, personId: string, month: string, hours: number) => void;
   /** Days of annual leave for one person in one month. */
   setLeave: (personId: string, month: string, days: number) => void;
   addRole: (role: string) => void;
@@ -43,8 +44,21 @@ function isPortfolio(value: unknown): value is Portfolio {
 export function normalise(p: Portfolio): Portfolio {
   const roles = p.roles?.length ? p.roles : [...ROLES];
   const fromPeople = p.people.map((person) => person.role).filter((r) => r && !roles.includes(r));
+  /* Bookings used to be a share of a full-time month; they are hours now. A store without
+     the marker still holds percentages, so convert it once on the way in. */
+  const allocations =
+    p.allocationUnit === 'hours'
+      ? p.allocations
+      : Object.fromEntries(
+          Object.entries(p.allocations ?? {}).map(([key, pct]) => [
+            key,
+            Math.round((pct / 100) * HOURS_PER_FULL_MONTH * 2) / 2,
+          ]),
+        );
   return {
     ...p,
+    allocations,
+    allocationUnit: 'hours',
     leave: p.leave ?? {},
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
@@ -143,11 +157,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setAllocation = useCallback((projectId: string, personId: string, month: string, pct: number) => {
+  const setAllocation = useCallback((projectId: string, personId: string, month: string, hours: number) => {
     setPortfolio((prev) => {
       const next = { ...prev.allocations };
       const key = `${projectId}|${personId}|${month}`;
-      if (pct > 0) next[key] = pct;
+      if (hours > 0) next[key] = hours;
       else delete next[key];
       return { ...prev, allocations: next };
     });

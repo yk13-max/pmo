@@ -1,5 +1,5 @@
 import type { CurrencyCode, Portfolio } from '../types';
-import { CURRENCIES, PRIORITY_LABEL, WORKING_DAYS_PER_MONTH } from '../types';
+import { CURRENCIES, PRIORITY_LABEL, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 
@@ -16,7 +16,8 @@ function escape(value: string | number): string {
 }
 
 export function toCsv(headers: string[], rows: (string | number)[][]): string {
-  return [headers.join(','), ...rows.map((r) => r.map(escape).join(','))].join('\r\n');
+  // Headers need quoting as much as the cells do — a column name may carry a comma.
+  return [headers.map(escape).join(','), ...rows.map((r) => r.map(escape).join(','))].join('\r\n');
 }
 
 /** Splits CSV text into rows, honouring quoted fields and embedded newlines. */
@@ -63,8 +64,13 @@ const RAG_FROM_LABEL: Record<string, 'G' | 'A' | 'R'> = {
   'at risk': 'R',
 };
 
-export function projectsCsv(p: Portfolio): string {
+export function projectsCsv(p: Portfolio, months: string[]): string {
   const person = (id: string) => p.people.find((x) => x.id === id)?.name ?? '';
+  /** Days the whole team draws on a project in the first month of the window. */
+  const drawDays = (projectId: string) => {
+    const hours = p.people.reduce((n, x) => n + (p.allocations[`${projectId}|${x.id}|${months[0]}`] ?? 0), 0);
+    return (hours / WORKING_HOURS_PER_DAY).toFixed(1);
+  };
   return toCsv(
     [
       'Project',
@@ -82,7 +88,7 @@ export function projectsCsv(p: Portfolio): string {
       'Invoice currency',
       'Agreed k',
       'Invoiced k',
-      'Team draw % (calculated)',
+      'Team draw this month (days, calculated)',
       'Start date',
       'End date',
       'Next milestone',
@@ -104,7 +110,7 @@ export function projectsCsv(p: Portfolio): string {
       x.currency,
       x.value,
       x.billed,
-      x.load,
+      drawDays(x.id),
       x.startDate,
       x.endDate,
       x.milestone,
@@ -126,7 +132,8 @@ export function peopleCsv(p: Portfolio): string {
   );
 }
 
-/** One row per person-month, with project columns — the shape a planner actually reads. */
+/** One row per person-month, with project columns — the shape a planner actually reads.
+    Time is booked in hours, so that is what the file carries. */
 export function allocationsCsv(p: Portfolio, months: string[]): string {
   const rows: (string | number)[][] = [];
   p.people.forEach((person) => {
@@ -136,7 +143,10 @@ export function allocationsCsv(p: Portfolio, months: string[]): string {
       rows.push([person.name, person.role, project.name, ...values]);
     });
   });
-  return toCsv(['Person', 'Job title', 'Project', ...months.map(monthKeyLabel)], rows);
+  return toCsv(
+    ['Person', 'Job title', 'Project', ...months.map((m) => `${monthKeyLabel(m)} (hours)`)],
+    rows,
+  );
 }
 
 /** The first row is the days everybody takes; the rest is what each person books themselves. */
@@ -154,7 +164,7 @@ export function leaveCsv(p: Portfolio, months: string[]): string {
 export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
   const stamp = new Date().toISOString().slice(0, 10);
   return [
-    { name: `pmo-projects-${stamp}.csv`, content: projectsCsv(p) },
+    { name: `pmo-projects-${stamp}.csv`, content: projectsCsv(p, months) },
     { name: `pmo-people-${stamp}.csv`, content: peopleCsv(p) },
     { name: `pmo-allocations-${stamp}.csv`, content: allocationsCsv(p, months) },
     { name: `pmo-leave-${stamp}.csv`, content: leaveCsv(p, months) },
@@ -233,7 +243,8 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         actual: num(col(r, 'Spent £k')),
         value: num(col(r, 'Agreed k')),
         billed: num(col(r, 'Invoiced k')),
-        load: num(col(r, 'Team draw % (calculated)')),
+        // Draw is recalculated from the bookings, so the exported column is not read back.
+        load: base?.load ?? 0,
         startDate: col(r, 'Start date') || base?.startDate || '',
         endDate: col(r, 'End date') || base?.endDate || '',
         milestone: col(r, 'Next milestone') || base?.milestone || '',
@@ -303,11 +314,11 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         return;
       }
       monthCols.forEach((label, i) => {
-        const month = months.find((m) => monthKeyLabel(m) === label.trim());
+        const month = months.find((m) => `${monthKeyLabel(m)} (hours)` === label.trim());
         if (!month) return;
-        const pct = num(r[3 + i] ?? '');
+        const hours = num(r[3 + i] ?? '');
         const key = `${project.id}|${person.id}|${month}`;
-        if (pct > 0) allocations[key] = pct;
+        if (hours > 0) allocations[key] = hours;
         else delete allocations[key];
       });
       applied += 1;

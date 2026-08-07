@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import type { CurrencyCode, Person, Portfolio, Project, ProjectTypeDef, Rag } from '../types';
-import { BASE_CURRENCY, CURRENCIES, WORKING_DAYS_PER_MONTH } from '../types';
+import {
+  BASE_CURRENCY,
+  CURRENCIES,
+  HOURS_PER_FULL_MONTH,
+  WORKING_DAYS_PER_MONTH,
+  WORKING_HOURS_PER_DAY,
+} from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { PRIORITY_LABEL } from '../types';
 import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsFrom, shortDate, shortMonth } from './dates';
@@ -14,6 +20,18 @@ export function money(k: number, currency: CurrencyCode = BASE_CURRENCY): string
 
 export function moneyOrZero(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
   return k ? money(k, currency) : `${CURRENCIES[currency]?.symbol ?? '£'}0`;
+}
+
+/* Time is booked in hours and reported in days. Percentages survive only where the question
+   is "how full is this person's month", which is what the resourcing graphs measure. */
+export const hoursToPct = (hours: number) => (hours / HOURS_PER_FULL_MONTH) * 100;
+export const pctToHours = (pct: number) => (pct / 100) * HOURS_PER_FULL_MONTH;
+export const hoursToDays = (hours: number) => hours / WORKING_HOURS_PER_DAY;
+
+/** Days to one decimal, the way every resource figure is reported. */
+export function days(hours: number): string {
+  const d = hoursToDays(hours);
+  return `${d.toFixed(1)} day${d === 1 ? '' : 's'}`;
 }
 
 export function ragColor(rag: Rag): string {
@@ -40,8 +58,12 @@ export interface ProjectView extends Project {
   burnInk: string;
   burnInk2: string;
   loadLabel: string;
-  /** The same figure read as headcount — "1.35 people". */
-  loadPeopleLabel: string;
+  /** Days this project draws from the whole team in the current month. */
+  loadHours: number;
+  loadDaysLabel: string;
+  /** Its share of every day the portfolio draws this month, to one decimal. */
+  loadSharePct: number;
+  loadShareLabel: string;
   loadColor: string;
   loadInk: string;
   budgetLabel: string;
@@ -74,7 +96,10 @@ export function viewProject(
   load = project.load,
   /** What one unit of the project's currency is worth in the base currency. */
   fx = 1,
+  /** Hours this project draws this month, and every hour the portfolio draws in the same month. */
+  draw: { hours: number; portfolioHours: number } = { hours: 0, portfolioHours: 0 },
 ): ProjectView {
+  const sharePct = draw.portfolioHours ? (draw.hours / draw.portfolioHours) * 100 : 0;
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
   const phases = typeDef?.phases ?? [];
   const cust = project.facing === 'C';
@@ -110,7 +135,10 @@ export function viewProject(
     burnInk2: burn > 95 ? 'var(--color-accent-2)' : 'var(--color-text)',
     load,
     loadLabel: `${load}%`,
-    loadPeopleLabel: `${(load / 100).toFixed(2)} people`,
+    loadHours: draw.hours,
+    loadDaysLabel: days(draw.hours),
+    loadSharePct: sharePct,
+    loadShareLabel: `${sharePct.toFixed(1)}% of the portfolio's draw this month`,
     loadColor:
       load >= 200 ? 'var(--color-accent-2)' : load >= 100 ? 'var(--color-warning)' : 'var(--color-neutral-500)',
     loadInk: load >= 200 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
@@ -144,8 +172,10 @@ export function leavePct(days: number): number {
 
 export interface PersonView {
   person: Person;
-  /** Project work booked, % of a working week. */
+  /** Project work booked, % of a full-time month. */
   loads: number[];
+  /** The same work as booked — hours per month. */
+  bookedHours: number[];
   /** Every day off — their own leave plus the public holidays everybody takes. */
   leaveDays: number[];
   /** Just the days they booked themselves, which is what the leave table edits. */
@@ -202,12 +232,12 @@ export interface PortfolioView {
     atRisk: number;
     shortOfPeople: number;
   };
-  allocationsFor: (projectId: string) => { person: Person; loads: number[]; total: number }[];
-  /** This project's bookings keyed `${personId}|${month}`, for the edit form. */
+  allocationsFor: (projectId: string) => { person: Person; hours: number[]; loads: number[]; totalHours: number }[];
+  /** This project's bookings in hours, keyed `${personId}|${month}`, for the edit form. */
   allocationsOf: (projectId: string) => Record<string, number>;
   /** One person's booking across every project they touch, month by month. */
-  spreadFor: (personId: string) => { project: ProjectView; loads: number[]; total: number }[];
-  /** Everyone's monthly load with one project left out, so the form can warn on unsaved edits. */
+  spreadFor: (personId: string) => { project: ProjectView; hours: number[]; loads: number[]; totalHours: number }[];
+  /** Everyone's booked hours with one project left out, so the form can warn on unsaved edits. */
   loadsExcluding: (projectId: string) => Record<string, number[]>;
   today: Date;
 }
@@ -221,22 +251,22 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const monthLabels = months.map((m) => (portfolio.window.months > 12 ? monthKeyLabel(m) : shortMonth(m)));
     const { threshold, people, allocations } = portfolio;
 
-    /* Project load is the sum of everyone's booking on it. Reported for the busiest month
-       in the window, since that is the month that needs the people. */
-    const loadByProject = new Map<string, number>();
-    Object.entries(allocations).forEach(([key, pct]) => {
+    /* Project draw is the sum of everyone's booked hours on it, month by month. */
+    Object.entries(allocations).forEach(([key, hours]) => {
       const [projectId, , month] = key.split('|');
       const monthIndex = months.indexOf(month);
       if (monthIndex < 0) return;
       const perMonth = loadPerMonth.get(projectId) ?? months.map(() => 0);
-      perMonth[monthIndex] += pct;
+      perMonth[monthIndex] += hours;
       loadPerMonth.set(projectId, perMonth);
     });
     /* Team draw reports the current month — the month the window starts on — because that
        is the demand a lead is deciding about now. The peak is still available per month. */
-    loadPerMonth.forEach((perMonth, projectId) => {
-      loadByProject.set(projectId, perMonth[0] ?? 0);
-    });
+    const drawHours = (id: string) => loadPerMonth.get(id)?.[0] ?? 0;
+    // Archived work is out of the portfolio, so it is out of the share each project takes.
+    const portfolioHours = portfolio.projects
+      .filter((p) => !p.archived)
+      .reduce((n, p) => n + drawHours(p.id), 0);
 
     const allProjectViews = portfolio.projects.map((p) =>
       viewProject(
@@ -244,8 +274,9 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         people,
         threshold,
         portfolio.projectTypes,
-        loadByProject.get(p.id) ?? 0,
+        Math.round(hoursToPct(drawHours(p.id))),
         portfolio.fxToBase[p.currency] ?? 1,
+        { hours: drawHours(p.id), portfolioHours },
       ),
     );
     // Archived work keeps its data but is invisible to every screen except the archive.
@@ -259,13 +290,13 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       loadIndex.set(person.id, months.map(() => 0));
       bookedOn.set(person.id, new Set());
     });
-    Object.entries(allocations).forEach(([key, pct]) => {
+    Object.entries(allocations).forEach(([key, hours]) => {
       const [projectId, personId, month] = key.split('|');
       const monthIndex = months.indexOf(month);
-      const loads = loadIndex.get(personId);
+      const booked = loadIndex.get(personId);
       const project = projectById.get(projectId);
-      if (monthIndex < 0 || !loads || !project) return;
-      loads[monthIndex] += pct;
+      if (monthIndex < 0 || !booked || !project) return;
+      booked[monthIndex] += hours;
       bookedOn.get(personId)?.add(project.name);
     });
 
@@ -274,7 +305,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const publicHolidays = months.map((m) => portfolio.publicHolidays[m] ?? 0);
 
     const peopleViews: PersonView[] = people.map((person) => {
-      const loads = loadIndex.get(person.id) ?? months.map(() => 0);
+      /* Booked hours become a share of a full-time month here, once, so every graph and
+         threshold downstream still reads in whole percentages. */
+      const bookedHours = loadIndex.get(person.id) ?? months.map(() => 0);
+      const loads = bookedHours.map((h) => Math.round(hoursToPct(h)));
       const ownLeaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
       const leaveDays = ownLeaveDays.map((d, i) =>
         Math.min(person.workingDays, d + publicHolidays[i]),
@@ -285,6 +319,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       return {
         person,
         loads,
+        bookedHours,
         leaveDays,
         ownLeaveDays,
         leaveLoads,
@@ -341,20 +376,24 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const value = customer.reduce((n, p) => n + p.valueBase, 0);
     const billed = customer.reduce((n, p) => n + p.billedBase, 0);
 
+    /** One booking row: the hours as entered, and the same time as a share of the month. */
+    const row = (hours: number[]) => ({
+      hours,
+      loads: hours.map((h) => Math.round(hoursToPct(h))),
+      totalHours: hours.reduce((n, v) => n + v, 0),
+    });
+
     const allocationsFor = (projectId: string) =>
       people
-        .map((person) => {
-          const loads = months.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0);
-          return { person, loads, total: loads.reduce((n, v) => n + v, 0) };
-        })
-        .filter((row) => row.total > 0);
+        .map((person) => ({ person, ...row(months.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0)) }))
+        .filter((r) => r.totalHours > 0);
 
     const allocationsOf = (projectId: string) => {
       const out: Record<string, number> = {};
       people.forEach((person) => {
         months.forEach((month) => {
-          const pct = allocations[`${projectId}|${person.id}|${month}`];
-          if (pct) out[`${person.id}|${month}`] = pct;
+          const hours = allocations[`${projectId}|${person.id}|${month}`];
+          if (hours) out[`${person.id}|${month}`] = hours;
         });
       });
       return out;
@@ -362,13 +401,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const spreadFor = (personId: string) =>
       projects
-        .map((project) => {
-          const loads = months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0);
-          return { project, loads, total: loads.reduce((n, v) => n + v, 0) };
-        })
-        .filter((row) => row.total > 0)
-        .sort((a, b) => b.total - a.total);
+        .map((project) => ({ project, ...row(months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0)) }))
+        .filter((r) => r.totalHours > 0)
+        .sort((a, b) => b.totalHours - a.totalHours);
 
+    /** Hours each person carries from every *other* project, so the form can warn live. */
     const loadsExcluding = (projectId: string) => {
       const out: Record<string, number[]> = {};
       people.forEach((person) => {

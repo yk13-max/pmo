@@ -155,7 +155,7 @@ export function DataManager({
               <th style={{ textAlign: 'right', width: 90 }}>Spent</th>
               <th style={{ textAlign: 'right', width: 90 }}>Agreed</th>
               <th style={{ textAlign: 'right', width: 90 }}>Invoiced</th>
-              <th style={{ textAlign: 'right', width: 80 }}>Draw</th>
+              <th style={{ textAlign: 'right', width: 110 }}>Draw this month</th>
               <th style={{ width: 100 }}>Status</th>
               <th style={{ width: 120 }} />
             </tr>
@@ -183,7 +183,7 @@ export function DataManager({
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.actualLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.valueLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.billedLabel}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.loadInk }}>{p.loadLabel}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.loadInk }}>{p.loadDaysLabel}</td>
                 <td>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: p.ragColor }} />

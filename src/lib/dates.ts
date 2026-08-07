@@ -28,6 +28,11 @@ export function shortDate(iso: string): string {
   return `${String(d.getDate()).padStart(2, '0')} ${MONTH_NAMES[d.getMonth()]}`;
 }
 
+/** `01 Oct '27` — for dates in a list that can straddle years, where the month alone misleads. */
+export function shortDateYear(iso: string): string {
+  return `${shortDate(iso)} '${String(fromISO(iso).getFullYear()).slice(2)}`;
+}
+
 /** `Aug '26` — used on timeline and resourcing axes. */
 export function monthLabel(d: Date): string {
   return `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;

@@ -1,9 +1,9 @@
 import type { Project } from '../types';
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import { money } from '../lib/derive';
+import { hoursToDays } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
 import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
-import { shortDate } from '../lib/dates';
+import { shortDate, shortDateYear, toISO } from '../lib/dates';
 
 export function ProjectDetail({
   view,
@@ -24,16 +24,16 @@ export function ProjectDetail({
   const cs = view.projects.filter((p) => p.type === 'CS');
   const team = view.allocationsFor(project.id);
 
-  let running = 0;
-  const invoices = INVOICE_STAGES.map(([label, share], i) => {
-    const amount = Math.round(project.value * share);
-    running += amount;
-    const invoiced = running <= project.billed + 1;
+  /* Invoices are not apportioned — what each one is worth is agreed project by project. A
+     stage counts as raised once its date has passed. */
+  const invoices = INVOICE_STAGES.map((label, i) => {
+    const date = project.invoiceDates[i];
+    const invoiced = Boolean(date) && date <= toISO(view.today);
     return {
       label,
-      date: project.invoiceDates[i] ? shortDate(project.invoiceDates[i]) : 'No date set',
-      amount: money(amount, project.currency),
-      status: invoiced ? 'Invoiced' : 'Not yet due',
+      // Stages can straddle years, so the month alone would read out of order.
+      date: date ? shortDateYear(date) : 'No date set',
+      status: invoiced ? 'Raised' : 'Not yet due',
       ink: invoiced ? 'var(--color-text)' : 'var(--color-neutral-600)',
       dot: invoiced ? 'var(--color-accent)' : 'var(--color-neutral-300)',
     };
@@ -164,11 +164,12 @@ export function ProjectDetail({
         </div>
         <div>
           <div className="stat-value" style={{ color: project.loadInk }}>
-            {project.loadLabel}
+            {project.loadDaysLabel}
           </div>
           <div className="stat-label">Team draw this month</div>
           <div className="stat-sub">
-            {project.loadPeopleLabel} across the {team.length || 'no'} people below
+            {project.loadSharePct.toFixed(1)}% of the portfolio&rsquo;s draw, across the {team.length || 'no'} people
+            below
           </div>
         </div>
       </div>
@@ -191,8 +192,9 @@ export function ProjectDetail({
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <h3 style={{ margin: '0 0 4px' }}>When the client pays</h3>
           <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-            The agreed {project.valueLabel} is invoiced in four stages, billed in {project.currency}.{' '}
-            {project.billedLabel} has gone out; {project.toBillLabel} is still to come.
+            The agreed {project.valueLabel} is billed in {project.currency} across these stages. What each one is worth
+            is agreed with the client, so only the dates are tracked here. {project.billedLabel} has gone out;{' '}
+            {project.toBillLabel} is still to come.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 640 }}>
             {invoices.map((iv) => (
@@ -200,8 +202,9 @@ export function ProjectDetail({
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: iv.dot, display: 'block', flex: 'none' }} />
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16, color: iv.ink }}>{iv.label}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{iv.date}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 15, fontVariantNumeric: 'tabular-nums', color: iv.ink }}>{iv.amount}</span>
-                <span style={{ width: 110, textAlign: 'right', fontSize: 12, color: 'var(--color-neutral-600)' }}>{iv.status}</span>
+                <span style={{ marginLeft: 'auto', width: 110, textAlign: 'right', fontSize: 12, color: 'var(--color-neutral-600)' }}>
+                  {iv.status}
+                </span>
               </div>
             ))}
           </div>
@@ -226,10 +229,9 @@ export function ProjectDetail({
                 {m}
               </span>
             ))}
-            <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Peak</span>
+            <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Total</span>
           </div>
           {team.map((row) => {
-            const peak = Math.max(...row.loads);
             return (
               <div
                 key={row.person.id}
@@ -240,11 +242,17 @@ export function ProjectDetail({
                   <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
                 </div>
                 {row.loads.map((v, i) => (
-                  <div key={i} title={`${v}% in ${view.monthLabels[i]}`} style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative' }}>
+                  <div
+                    key={i}
+                    title={`${hoursToDays(row.hours[i]).toFixed(1)} days in ${view.monthLabels[i]}`}
+                    style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative' }}
+                  >
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, v)}%`, background: 'var(--color-text)' }} />
                   </div>
                 ))}
-                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', textAlign: 'right' }}>{peak}%</div>
+                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', textAlign: 'right' }}>
+                  {hoursToDays(row.totalHours).toFixed(1)}d
+                </div>
               </div>
             );
           })}

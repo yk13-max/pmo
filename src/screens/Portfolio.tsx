@@ -523,7 +523,7 @@ function Scatter({
                   {hovered.phaseName} · {hovered.phaseStep}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                  {hovered.loadPeopleLabel} of team time · {hovered.ragLabel}
+                  {hovered.loadDaysLabel} this month · {hovered.ragLabel}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginTop: 6 }}>
                   {hovered.typeLabel} · {hovered.facingLabel} · {hovered.pmName}
@@ -612,14 +612,16 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
             <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.moneySub}</div>
           </div>
           <div style={{ textAlign: 'right', flex: 'none' }}>
-            <div className="eyebrow">Team draw</div>
+            <div className="eyebrow">Team draw this month</div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 3 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: project.loadColor }} />
               <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, color: project.loadInk }}>
-                {project.loadLabel}
+                {project.loadDaysLabel}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.loadPeopleLabel}</div>
+            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
+              {project.loadSharePct.toFixed(1)}% of the portfolio
+            </div>
             <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.pmName}</div>
           </div>
         </div>
