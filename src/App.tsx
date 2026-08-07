@@ -22,7 +22,7 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   portfolio: [
     'Both delivery types',
     'Portfolio',
-    'Every delivery type side by side. The stripe names the type on the outside; internal work carries the lighter inner band.',
+    'Every delivery type side by side. The top of the stripe names the type; the bottom says who it is for, internal being the lighter half.',
   ],
   resources: [
     'People and capacity',

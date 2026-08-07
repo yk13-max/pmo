@@ -65,6 +65,14 @@ a:hover { color: var(--color-accent-600); }
 .alloc-table td.month-col .num { width: 100%; }
 .alloc-table input[type='number']::-webkit-inner-spin-button { margin-left: 2px; }
 
+/* A column title that sorts the table. It inherits the header's own type so the row still
+   reads as headings, not as a row of buttons. */
+.sort-header { appearance: none; border: 0; background: transparent; cursor: pointer; width: 100%;
+  display: flex; align-items: center; gap: 5px; padding: var(--space-2) 6px;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.sort-header:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header { color: var(--color-accent); }
+
 .row-actions { display: flex; gap: var(--space-2); }
 .empty { padding: var(--space-8); text-align: center; color: var(--color-neutral-700); border: 1px dashed var(--color-divider); border-radius: var(--radius-md); }
 

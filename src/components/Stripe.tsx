@@ -1,9 +1,9 @@
 import type { ProjectView } from '../lib/derive';
 
-/* The mark that runs alongside every project, in two tones: the outer band names the
-   delivery type, the inner band says who the work is for — internal being the lighter of
-   the two. Used on the portfolio cards, the timeline rows and the detail header so the
-   same project reads the same wherever it appears. */
+/* The mark that runs alongside every project, in two tones split across its length: the
+   top half names the delivery type, the bottom half says who the work is for — internal
+   being the lighter of the two. Used on the portfolio cards, the timeline rows and the
+   detail header so the same project reads the same wherever it appears. */
 export function Stripe({
   project,
   /** `fill` stretches to the parent's height; a number is a fixed height. */
@@ -21,10 +21,10 @@ export function Stripe({
     <span
       aria-hidden
       title={`${project.typeLabel} · ${project.facingLabel.toLowerCase()}`}
-      style={{ display: 'flex', width: 6, flex: 'none', ...box }}
+      style={{ display: 'flex', flexDirection: 'column', width: 3, flex: 'none', ...box }}
     >
-      <span style={{ width: 3, background: project.stripeType, display: 'block' }} />
-      <span style={{ width: 3, background: project.stripe, display: 'block' }} />
+      <span style={{ flex: 1, background: project.stripeType, display: 'block' }} />
+      <span style={{ flex: 1, background: project.stripe, display: 'block' }} />
     </span>
   );
 }
@@ -32,9 +32,9 @@ export function Stripe({
 /** The same two bands laid out for a legend swatch. */
 export function StripeSwatch({ type, facing }: { type: string; facing: string }) {
   return (
-    <span style={{ display: 'flex', width: 6, height: 15, flex: 'none' }}>
-      <span style={{ width: 3, background: type, display: 'block' }} />
-      <span style={{ width: 3, background: facing, display: 'block' }} />
+    <span style={{ display: 'flex', flexDirection: 'column', width: 3, height: 15, flex: 'none' }}>
+      <span style={{ flex: 1, background: type, display: 'block' }} />
+      <span style={{ flex: 1, background: facing, display: 'block' }} />
     </span>
   );
 }

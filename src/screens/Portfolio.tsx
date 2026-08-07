@@ -164,7 +164,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
             ))}
           </select>
         </label>
-        {/* Both bands of the stripe, named: the type on the outside, who it is for inside. */}
+        {/* Both halves of the stripe, named: the type on top, who it is for beneath. */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, color: 'var(--color-neutral-700)' }}>
           {view.projectTypes.map((t, i) => (
             <span key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

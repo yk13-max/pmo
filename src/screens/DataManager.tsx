@@ -5,6 +5,11 @@ import { usePortfolio } from '../store/portfolio';
 import { applyCsv, portfolioCsvFiles } from '../lib/csv';
 import { Tabs } from '../components/Tabs';
 import { ProjectTypeEditor } from '../components/ProjectTypeEditor';
+import { ProjectFilters, ProjectHeaders, useProjectsTable } from '../components/ProjectsTable';
+
+/* Whole-portfolio JSON transfer is kept but taken off the toolbar — CSV is what people
+   actually exchange. Set this to true to put the two buttons back. */
+const SHOW_JSON_TRANSFER = false;
 
 export function DataManager({
   view,
@@ -28,6 +33,7 @@ export function DataManager({
   const csvRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [newRole, setNewRole] = useState('');
+  const { rows, filters, setFilters, sort, setSort } = useProjectsTable(view.projects);
 
   const download = (name: string, content: string, type: string) => {
     const url = URL.createObjectURL(new Blob([content], { type }));
@@ -79,12 +85,16 @@ export function DataManager({
         <button type="button" className="btn btn-secondary" onClick={onNewPerson}>
           Add person
         </button>
-        <button type="button" className="btn btn-secondary" onClick={onExport}>
-          Export JSON
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-          Import JSON
-        </button>
+        {SHOW_JSON_TRANSFER && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={onExport}>
+              Export JSON
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
+              Import JSON
+            </button>
+          </>
+        )}
         <button type="button" className="btn btn-secondary" onClick={exportCsv}>
           Export CSV
         </button>
@@ -138,30 +148,26 @@ export function DataManager({
           { id: 'projects', label: 'Projects', count: view.projects.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Projects</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Everything the screens are built from. Editing a project also books people onto it.
+        Everything the screens are built from. Editing a project also books people onto it. Narrow the list with the
+        filters, and click any column title to sort by it.
       </p>
+      <ProjectFilters
+        view={view}
+        filters={filters}
+        setFilters={setFilters}
+        shown={rows.length}
+        total={view.projects.length}
+      />
+      {rows.length === 0 ? (
+        <p className="empty">No project matches these filters.</p>
+      ) : (
       <div style={{ overflowX: 'auto' }}>
         <table className="table">
           <thead>
-            <tr>
-              <th>Project</th>
-              <th style={{ width: 70 }}>Type</th>
-              <th style={{ width: 120 }}>For</th>
-              <th style={{ width: 110 }}>Owner</th>
-              <th style={{ width: 90 }}>Priority</th>
-              <th style={{ width: 150 }}>Phase</th>
-              <th style={{ textAlign: 'right', width: 70 }}>Done</th>
-              <th style={{ textAlign: 'right', width: 90 }}>Budget</th>
-              <th style={{ textAlign: 'right', width: 90 }}>Spent</th>
-              <th style={{ textAlign: 'right', width: 90 }}>Agreed</th>
-              <th style={{ textAlign: 'right', width: 90 }}>Invoiced</th>
-              <th style={{ textAlign: 'right', width: 110 }}>Draw this month</th>
-              <th style={{ width: 100 }}>Status</th>
-              <th style={{ width: 120 }} />
-            </tr>
+            <ProjectHeaders sort={sort} setSort={setSort} />
           </thead>
           <tbody>
-            {view.projects.map((p) => (
+            {rows.map((p) => (
               <tr key={p.id}>
                 <td>
                   <button type="button" className="card-link" onClick={() => onOpenProject(p.id)}>
@@ -214,6 +220,7 @@ export function DataManager({
           </tbody>
         </table>
       </div>
+      )}
 
       </>) },
           { id: 'types', label: 'Project types', count: view.projectTypes.length, render: () => <ProjectTypeEditor view={view} /> },
