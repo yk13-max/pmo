@@ -50,7 +50,7 @@ export function ProjectDetail({
   if (!notes.length) notes.push('Nothing outstanding. On plan, inside budget, and fully staffed.');
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Project</span>

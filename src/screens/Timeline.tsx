@@ -48,7 +48,7 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
   );
 
   return (
-    <div style={{ maxWidth: 1240 }}>
+    <div>
       <div className="legend" style={{ marginBottom: 'var(--space-6)' }}>
         <span>
           <span style={{ width: 26, height: 8, background: 'var(--color-neutral-500)', display: 'block' }} />

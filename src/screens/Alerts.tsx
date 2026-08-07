@@ -22,7 +22,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
   const capY = BASELINE - (100 / CEILING) * BAR_TOP;
 
   return (
-    <div style={{ maxWidth: 1180 }}>
+    <div>
       <div className="stat-row">
         <Stat value={atRisk.length} label="Projects at risk" sub="Flagged by their project manager" color="var(--color-accent-2-700)" />
         <Stat value={overbooked.length} label="People overbooked" sub="Committed past a full week" color="var(--color-accent-2-700)" />

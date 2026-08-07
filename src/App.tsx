@@ -56,6 +56,14 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
 
 type Editing = { kind: 'project'; project: Project | null } | { kind: 'person'; person: Person | null } | null;
 
+/** Screens whose content reads better at a narrower measure. The width wraps the header
+    too, so a screen's title, buttons and body share one centred column. */
+const SCREEN_WIDTH: Partial<Record<ScreenId, number>> = {
+  timeline: 1240,
+  detail: 1100,
+  alerts: 1180,
+};
+
 export function App() {
   const store = usePortfolio();
   const view = usePortfolioView(store.portfolio);
@@ -125,6 +133,7 @@ export function App() {
       </aside>
 
       <main className="main">
+       <div style={{ maxWidth: SCREEN_WIDTH[screen], marginInline: 'auto' }}>
         <header
           style={{
             display: 'flex',
@@ -182,6 +191,7 @@ export function App() {
             onExport={exportJson}
           />
         )}
+       </div>
       </main>
 
       {editing?.kind === 'project' && (
