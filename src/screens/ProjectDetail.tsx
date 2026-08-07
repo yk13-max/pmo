@@ -2,14 +2,8 @@ import type { Project } from '../types';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
-import { PRIORITY_LABEL } from '../types';
-
-const INVOICE_STAGES: [label: string, share: number][] = [
-  ['On kick-off', 0.3],
-  ['At design freeze', 0.3],
-  ['At validation', 0.25],
-  ['On handover', 0.15],
-];
+import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
+import { shortDate } from '../lib/dates';
 
 export function ProjectDetail({
   view,
@@ -31,12 +25,13 @@ export function ProjectDetail({
   const team = view.allocationsFor(project.id);
 
   let running = 0;
-  const invoices = INVOICE_STAGES.map(([label, share]) => {
+  const invoices = INVOICE_STAGES.map(([label, share], i) => {
     const amount = Math.round(project.value * share);
     running += amount;
     const invoiced = running <= project.billed + 1;
     return {
       label,
+      date: project.invoiceDates[i] ? shortDate(project.invoiceDates[i]) : 'No date set',
       amount: money(amount),
       status: invoiced ? 'Invoiced' : 'Not yet due',
       ink: invoiced ? 'var(--color-text)' : 'var(--color-neutral-600)',
@@ -53,8 +48,8 @@ export function ProjectDetail({
   if (!notes.length) notes.push('Nothing outstanding. On plan, inside budget, and fully staffed.');
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
+    <div className="printable">
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Project</span>
           <select className="input" style={{ width: 'auto', minWidth: 320 }} value={project.id} onChange={(e) => onSelect(e.target.value)}>
@@ -76,6 +71,9 @@ export function ProjectDetail({
         </label>
         <button type="button" className="btn btn-secondary" onClick={() => onEdit(project)}>
           Edit project
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
+          Export as PDF
         </button>
       </div>
 
@@ -114,6 +112,7 @@ export function ProjectDetail({
 
       <Tabs
         storageKey="detail"
+        renderAll
         tabs={[
           { id: 'progress', label: 'Progress & money', render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where it has got to</h3>
@@ -131,6 +130,9 @@ export function ProjectDetail({
               }}
             />
             <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, lineHeight: 1.2, textWrap: 'pretty' }}>{name}</span>
+            {project.phaseDates[i] && (
+              <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{shortDate(project.phaseDates[i])}</span>
+            )}
             <span
               style={{
                 fontSize: 11,
@@ -164,7 +166,7 @@ export function ProjectDetail({
           <div className="stat-value" style={{ color: project.loadInk }}>
             {project.loadLabel}
           </div>
-          <div className="stat-label">Team draw at its peak</div>
+          <div className="stat-label">Team draw this month</div>
           <div className="stat-sub">
             {project.loadPeopleLabel} across the {team.length || 'no'} people below
           </div>
@@ -197,6 +199,7 @@ export function ProjectDetail({
               <div key={iv.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: iv.dot, display: 'block', flex: 'none' }} />
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16, color: iv.ink }}>{iv.label}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{iv.date}</span>
                 <span style={{ marginLeft: 'auto', fontSize: 15, fontVariantNumeric: 'tabular-nums', color: iv.ink }}>{iv.amount}</span>
                 <span style={{ width: 110, textAlign: 'right', fontSize: 12, color: 'var(--color-neutral-600)' }}>{iv.status}</span>
               </div>

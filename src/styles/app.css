@@ -64,3 +64,19 @@ a:hover { color: var(--color-accent-600); }
 .tab[aria-selected='true'] { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 .tab .tab-count { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--color-neutral-600); margin-left: 7px; }
 .tab[aria-selected='true'] .tab-count { color: var(--color-accent-600); }
+
+.stat-more { display: block; font-size: 11px; color: var(--color-accent); margin-top: 6px; opacity: 0; transition: opacity 120ms; }
+.stat-button:hover .stat-more, .stat-button:focus-visible .stat-more { opacity: 1; }
+
+/* — printing — the project detail page exports as a PDF with every tab expanded — */
+.print-only { display: none; }
+@media print {
+  .sidebar, .no-print, .tabs, .btn, .drawer-backdrop { display: none !important; }
+  .shell, .main { display: block; max-width: none; padding: 0; margin: 0; background: #fff; }
+  .print-only { display: block; }
+  .print-panel-title { margin: var(--space-6) 0 var(--space-3); page-break-after: avoid; }
+  /* Every panel is mounted; print reveals the ones the screen was hiding. */
+  .printable .tab-panel { display: block !important; page-break-inside: avoid; }
+  .table { font-size: 11px; }
+  a[href]::after { content: ''; }
+}

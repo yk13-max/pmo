@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Facing, Person, Project, ProjectTypeDef, Rag } from '../types';
-import { MAX_DATE, PRIORITY_LABEL, PRIORITY_LEVELS } from '../types';
+import { INVOICE_STAGES, MAX_DATE, PRIORITY_LABEL, PRIORITY_LEVELS } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { addMonths, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
@@ -37,6 +37,8 @@ function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
     milestone: type?.milestones[0] ?? '',
     milestoneDate: toISO(addMonths(today, 1)),
     priority: 3,
+    phaseDates: [],
+    invoiceDates: [],
   };
 }
 
@@ -101,6 +103,14 @@ export function ProjectForm({
 
   const typeDef = projectTypes.find((t) => t.id === draft.type) ?? projectTypes[0];
   const phases = typeDef?.phases ?? [];
+  /* A person with no types listed is treated as available to everything; anyone with an
+     explicit list must include this project's type to be bookable. */
+  const ineligible = new Set(
+    people.filter((p) => p.types.length > 0 && !p.types.includes(draft.type)).map((p) => p.id),
+  );
+  const strandedBookings = people.filter(
+    (p) => ineligible.has(p.id) && months.some((m) => (alloc[`${p.id}|${m}`] ?? 0) > 0),
+  );
   const internal = draft.facing === 'I';
   const errors: Record<string, string> = {};
   if (!draft.name.trim()) errors.name = 'Give the project a name.';
@@ -109,6 +119,18 @@ export function ProjectForm({
   if (num(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
   if (draft.endDate <= draft.startDate) errors.endDate = 'The end date must come after the start date.';
   if (!internal && num(draft.billed) > num(draft.value)) errors.billed = 'Invoiced cannot exceed the agreed value.';
+  if (draft.milestoneDate && draft.endDate && draft.milestoneDate > draft.endDate)
+    errors.milestoneDate = `The next thing due falls after the project ends (${draft.endDate}). Move it earlier, or push the end date out.`;
+  if (draft.milestoneDate && draft.startDate && draft.milestoneDate < draft.startDate)
+    errors.milestoneDate = 'The next thing due falls before the project starts.';
+  if (strandedBookings.length)
+    errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
+
+  const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
+  const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
+  if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
+  if (!internal && invoiceDates.some((d) => d && draft.endDate && d > draft.endDate))
+    errors.invoiceDates = 'An invoice is dated after the project ends.';
 
   const submit = () => {
     setTouched(true);
@@ -125,6 +147,8 @@ export function ProjectForm({
         value: internal ? 0 : num(draft.value),
         billed: internal ? 0 : num(draft.billed),
         load: derivedLoad,
+        phaseDates,
+        invoiceDates: internal ? [] : invoiceDates,
       },
       alloc,
     );
@@ -307,7 +331,26 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-msdate">Due on</label>
-            <input id="pf-msdate" className="input" type="date" max={MAX_DATE} value={draft.milestoneDate} onChange={(e) => set('milestoneDate', e.target.value)} />
+            <input
+              id="pf-msdate"
+              className="input"
+              type="date"
+              max={draft.endDate || MAX_DATE}
+              value={draft.milestoneDate}
+              aria-invalid={invalid('milestoneDate')}
+              onChange={(e) => set('milestoneDate', e.target.value)}
+            />
+            {err('milestoneDate')}
+            {touched && errors.milestoneDate && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ paddingInline: 0 }}
+                onClick={() => set('milestoneDate', draft.endDate)}
+              >
+                Set it to the end date
+              </button>
+            )}
           </div>
         </div>
       </fieldset>
@@ -376,7 +419,68 @@ export function ProjectForm({
       </fieldset>
 
       <fieldset className="fieldset">
+        <legend>Phase dates</legend>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          {phases.map((phase: string, i: number) => (
+            <div className="field" key={phase} style={{ width: 180 }}>
+              <label htmlFor={`pf-phase-${i}`}>
+                {i + 1}. {phase}
+              </label>
+              <input
+                id={`pf-phase-${i}`}
+                className="input"
+                type="date"
+                max={MAX_DATE}
+                value={phaseDates[i]}
+                onChange={(e) =>
+                  setDraft((d) => {
+                    const next = phases.map((_: string, j: number) => d.phaseDates[j] ?? '');
+                    next[i] = e.target.value;
+                    return { ...d, phaseDates: next };
+                  })
+                }
+              />
+            </div>
+          ))}
+        </div>
+        <p className="field-hint">When each phase is planned to complete. Shown on the project detail stepper.</p>
+      </fieldset>
+
+      {!internal && (
+        <fieldset className="fieldset">
+          <legend>Invoice dates</legend>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+            {INVOICE_STAGES.map(([label, share], i) => (
+              <div className="field" key={label} style={{ width: 190 }}>
+                <label htmlFor={`pf-inv-${i}`}>
+                  {label} · {Math.round(share * 100)}%
+                </label>
+                <input
+                  id={`pf-inv-${i}`}
+                  className="input"
+                  type="date"
+                  max={MAX_DATE}
+                  value={invoiceDates[i]}
+                  aria-invalid={invalid('invoiceDates')}
+                  onChange={(e) =>
+                    setDraft((d) => {
+                      const next = INVOICE_STAGES.map((_, j) => d.invoiceDates[j] ?? '');
+                      next[i] = e.target.value;
+                      return { ...d, invoiceDates: next };
+                    })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          {err('invoiceDates')}
+          <p className="field-hint">Required — when each stage of the agreed value is expected to be raised.</p>
+        </fieldset>
+      )}
+
+      <fieldset className="fieldset">
         <legend>Who is working on it</legend>
+        {touched && errors.types && <div className="field-error" style={{ marginBottom: 'var(--space-2)' }}>{errors.types}</div>}
         <AllocationGrid
           people={people}
           months={months}
@@ -384,6 +488,8 @@ export function ProjectForm({
           value={alloc}
           threshold={threshold}
           otherLoads={otherLoads}
+          ineligible={ineligible}
+          typeLabel={typeDef?.label ?? draft.type}
           onChange={(personId, month, pct) =>
             setAlloc((prev) => {
               const next = { ...prev };
@@ -403,7 +509,7 @@ export function ProjectForm({
             style={{ marginRight: 'auto', color: 'var(--color-accent-2-700)' }}
             onClick={() => onDelete(project.id)}
           >
-            Delete project
+            Archive project
           </button>
         )}
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

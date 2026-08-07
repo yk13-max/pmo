@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 export function Stat({
   value,
@@ -6,15 +6,22 @@ export function Stat({
   sub,
   color = 'var(--color-text)',
   spark,
+  onClick,
+  hover,
 }: {
   value: ReactNode;
   label: string;
   sub: string;
   color?: string;
   spark?: ReactNode;
+  /** Makes the whole tile a button. */
+  onClick?: () => void;
+  /** Panel shown while the pointer is over the tile. */
+  hover?: ReactNode;
 }) {
-  return (
-    <div>
+  const [showing, setShowing] = useState(false);
+  const body = (
+    <>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-3)' }}>
         <div className="stat-value" style={{ color }}>
           {value}
@@ -23,6 +30,48 @@ export function Stat({
       </div>
       <div className="stat-label">{label}</div>
       <div className="stat-sub">{sub}</div>
+    </>
+  );
+
+  return (
+    <div
+      style={{ position: 'relative' }}
+      onMouseEnter={() => hover && setShowing(true)}
+      onMouseLeave={() => hover && setShowing(false)}
+    >
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="stat-button"
+          style={{ background: 'transparent', border: 0, padding: 0, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+        >
+          {body}
+          <span className="stat-more">See the detail →</span>
+        </button>
+      ) : (
+        body
+      )}
+      {hover && showing && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '100%',
+            marginTop: 6,
+            minWidth: 260,
+            maxWidth: 380,
+            padding: 'var(--space-3)',
+            background: 'var(--color-bg)',
+            boxShadow: 'var(--shadow-lg)',
+            borderRadius: 'var(--radius-md)',
+            zIndex: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          {hover}
+        </div>
+      )}
     </div>
   );
 }

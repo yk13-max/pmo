@@ -21,7 +21,7 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   portfolio: [
     'Both delivery types',
     'Portfolio',
-    'CDMO programmes and Client Solutions projects side by side. Internal work carries the quiet stripe.',
+    'Every delivery type side by side. Internal work carries the lighter stripe.',
   ],
   resources: [
     'People and capacity',
@@ -173,6 +173,7 @@ export function App() {
             onOpenPerson={(person) => setEditing({ kind: 'person-detail', person })}
             onSetThreshold={store.setThreshold}
             onSetWindow={store.setWindow}
+            onSetLeave={store.setLeave}
           />
         )}
         {screen === 'financials' && <Financials view={view} onOpenProject={openProject} />}
@@ -222,7 +223,9 @@ export function App() {
             }}
             onCancel={() => setEditing(null)}
             onDelete={(id) => {
-              store.deleteProject(id);
+              const project = view.projects.find((p) => p.id === id);
+              if (!window.confirm(`Archive ${project?.name ?? 'this project'}? It keeps all its data and moves to the archive on the Data screen, where it can be restored.`)) return;
+              store.setArchived(id, true);
               if (detailId === id) setDetailId(null);
               setEditing(null);
             }}

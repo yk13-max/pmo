@@ -2,12 +2,8 @@ import type { PortfolioView } from '../lib/derive';
 import { money } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
+import { PersonBars } from '../components/PersonBars';
 
-const BAR_W = 200;
-const BAR_H = 60;
-const BAR_TOP = 46;
-const BASELINE = 58;
-const CEILING = 150;
 
 export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const atRisk = view.projects.filter((p) => p.rag === 'R');
@@ -18,9 +14,6 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
     .sort((a, b) => b.value - b.billed - (a.value - a.billed))
     .slice(0, 6);
 
-  const slot = (BAR_W - 8) / Math.max(1, view.months.length);
-  const barWidth = Math.min(24, slot - 6);
-  const capY = BASELINE - (100 / CEILING) * BAR_TOP;
 
   return (
     <div>
@@ -99,42 +92,8 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Past a full week in {months.join(', ')}</div>
                 </div>
-                <div style={{ flex: 'none', width: BAR_W }}>
-                  <svg viewBox={`0 0 ${BAR_W} ${BAR_H}`} style={{ width: BAR_W, height: BAR_H, display: 'block' }} role="img" aria-label={`${p.person.name} monthly load`}>
-                    <line
-                      x1={0}
-                      y1={BASELINE - (Math.min(view.threshold, CEILING) / CEILING) * BAR_TOP}
-                      x2={BAR_W}
-                      y2={BASELINE - (Math.min(view.threshold, CEILING) / CEILING) * BAR_TOP}
-                      stroke="var(--color-warning)"
-                      strokeWidth={1}
-                      strokeDasharray="1 3"
-                    />
-                    <line x1={0} y1={capY} x2={BAR_W} y2={capY} stroke="var(--color-text)" strokeWidth={1} strokeDasharray="3 3" />
-                    <line x1={0} y1={BASELINE} x2={BAR_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} />
-                    {p.committed.map((v, i) => {
-                      const h = (Math.min(v, CEILING) / CEILING) * BAR_TOP;
-                      return (
-                        <rect
-                          key={i}
-                          x={4 + i * slot + (slot - barWidth) / 2}
-                          y={BASELINE - h}
-                          width={barWidth}
-                          height={h}
-                          fill={v > p.person.capacity ? 'var(--color-accent-2)' : v > (p.person.capacity * view.threshold) / 100 ? 'var(--color-warning)' : 'var(--color-neutral-400)'}
-                        >
-                          <title>{`${view.monthLabels[i]}: ${v}%`}</title>
-                        </rect>
-                      );
-                    })}
-                  </svg>
-                  <div style={{ display: 'flex', paddingLeft: 4, marginTop: 5 }}>
-                    {view.monthLabels.map((m) => (
-                      <span key={m} style={{ width: slot, textAlign: 'center', fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
+                <div style={{ flex: '1 1 260px', minWidth: 220 }}>
+                  <PersonBars person={p} monthLabels={view.monthLabels} threshold={view.threshold} showPct />
                 </div>
               </div>
             );

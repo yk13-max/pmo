@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { PortfolioView } from '../lib/derive';
 import type { Person } from '../types';
+import { PersonBars } from './PersonBars';
 
 /** One person's month-by-month spread: which projects take their time, plus leave. */
 export function PersonDetail({
@@ -43,6 +44,10 @@ export function PersonDetail({
         </div>
       </div>
 
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <PersonBars person={row} monthLabels={view.monthLabels} threshold={view.threshold} showPct height={120} />
+      </div>
+
       {spread.length === 0 ? (
         <p className="empty">Not booked on any project yet.</p>
       ) : (
@@ -52,7 +57,7 @@ export function PersonDetail({
             {view.monthLabels.map((m) => (
               <span key={m} className="eyebrow" style={{ textAlign: 'right' }}>{m}</span>
             ))}
-            <span className="eyebrow" style={{ textAlign: 'right' }}>Total</span>
+            <span className="eyebrow" style={{ textAlign: 'right' }}>Total / peak</span>
 
             {spread.map(({ project, loads, total }) => (
               <Fragmentish key={project.id}>
@@ -123,7 +128,21 @@ export function PersonDetail({
                 {v}%
               </span>
             ))}
-            <span style={{ paddingTop: 8, borderTop: '1px solid var(--color-divider)' }} />
+            {/* Carries the peak so the closing rule has content under the Total column
+                rather than trailing off into an empty cell. */}
+            <span
+              style={{
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                fontSize: 13,
+                fontWeight: 600,
+                paddingTop: 8,
+                borderTop: '1px solid var(--color-divider)',
+                color: ink(row.peak),
+              }}
+            >
+              {row.peak}%
+            </span>
           </div>
         </div>
       )}

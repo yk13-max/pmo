@@ -12,6 +12,8 @@ interface PortfolioStore {
   /** `projectAllocations` is keyed `${personId}|${month}` and replaces this project's bookings. */
   saveProject: (project: Project, projectAllocations?: Record<string, number>) => void;
   deleteProject: (id: string) => void;
+  /** Archiving keeps the data; only the archive screen shows it. */
+  setArchived: (id: string, archived: boolean) => void;
   savePerson: (person: Person) => void;
   deletePerson: (id: string) => void;
   setAllocation: (projectId: string, personId: string, month: string, pct: number) => void;
@@ -46,7 +48,12 @@ export function normalise(p: Portfolio): Portfolio {
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
     projectTypes: p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
-    projects: p.projects.map((project) => ({ ...project, priority: project.priority ?? 3 })),
+    projects: p.projects.map((project) => ({
+      ...project,
+      priority: project.priority ?? 3,
+      phaseDates: project.phaseDates ?? [],
+      invoiceDates: project.invoiceDates ?? [],
+    })),
     people: p.people.map((person) => ({
       ...person,
       capacity: person.capacity ?? 100,
@@ -102,6 +109,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       ...prev,
       projects: prev.projects.filter((p) => p.id !== id),
       allocations: dropKeys(prev.allocations, (key) => key.split('|')[0] === id),
+    }));
+  }, []);
+
+  const setArchived = useCallback((id: string, archived: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, archived } : p)),
     }));
   }, []);
 
@@ -202,6 +216,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       portfolio,
       saveProject,
       deleteProject,
+      setArchived,
       savePerson,
       deletePerson,
       setAllocation,
@@ -219,6 +234,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       portfolio,
       saveProject,
       deleteProject,
+      setArchived,
       savePerson,
       deletePerson,
       setAllocation,

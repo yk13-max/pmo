@@ -7,6 +7,9 @@ export function AllocationGrid({
   value,
   threshold,
   otherLoads,
+  /** Ids of people whose project types do not cover this project. */
+  ineligible,
+  typeLabel,
   onChange,
 }: {
   people: Person[];
@@ -17,6 +20,8 @@ export function AllocationGrid({
   threshold: number;
   /** Each person's load from every *other* project, so warnings track unsaved edits. */
   otherLoads: Record<string, number[]>;
+  ineligible: Set<string>;
+  typeLabel: string;
   onChange: (personId: string, month: string, pct: number) => void;
 }) {
   if (!people.length) {
@@ -39,11 +44,17 @@ export function AllocationGrid({
         <tbody>
           {people.map((person) => {
             const rowTotal = months.reduce((n, m) => n + (value[`${person.id}|${m}`] ?? 0), 0);
+            const barred = ineligible.has(person.id);
             return (
-              <tr key={person.id}>
+              <tr key={person.id} style={barred ? { opacity: 0.55 } : undefined}>
                 <td>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{person.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{person.role}</div>
+                  {barred && (
+                    <div style={{ fontSize: 11, color: 'var(--color-accent-2-700)' }}>
+                      Does not work on {typeLabel}
+                    </div>
+                  )}
                 </td>
                 {months.map((month, i) => {
                   const pct = value[`${person.id}|${month}`] ?? 0;
@@ -57,8 +68,15 @@ export function AllocationGrid({
                         min={0}
                         max={100}
                         step={1}
+                        disabled={barred}
                         aria-label={`${person.name}, ${monthLabels[i]}`}
-                        title={over ? `${person.name} is booked to ${total}% across all projects in ${monthLabels[i]}` : undefined}
+                        title={
+                          barred
+                            ? `${person.name} is not assigned to ${typeLabel} projects`
+                            : over
+                              ? `${person.name} is booked to ${total}% across all projects in ${monthLabels[i]}`
+                              : undefined
+                        }
                         style={over ? { borderColor: 'var(--color-accent-2-600)' } : undefined}
                         value={pct === 0 ? '' : pct}
                         placeholder="0"
@@ -73,7 +91,7 @@ export function AllocationGrid({
           })}
           <tr>
             <td style={{ fontSize: 11, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
-              Everyone, all projects
+              Everyone, total resource draw across the whole business
             </td>
             {months.map((month, i) => {
               const total = people.reduce(
@@ -92,7 +110,8 @@ export function AllocationGrid({
       </table>
       <p className="field-hint" style={{ marginTop: 'var(--space-2)' }}>
         Percentages are of each person&rsquo;s working week. A box turns red when that person is booked past 100% across
-        the whole portfolio; over-allocation is flagged from {threshold}%.
+        the whole portfolio; over-allocation is flagged from {threshold}%. People whose project types do not include
+        {' '}{typeLabel} cannot be booked here — change their types on the Data screen first.
       </p>
     </div>
   );

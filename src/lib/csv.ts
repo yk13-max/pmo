@@ -229,6 +229,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         endDate: col(r, 'End date') || base?.endDate || '',
         milestone: col(r, 'Next milestone') || base?.milestone || '',
         milestoneDate: col(r, 'Milestone date') || base?.milestoneDate || '',
+        phaseDates: base?.phaseDates ?? [],
+        invoiceDates: base?.invoiceDates ?? [],
+        archived: base?.archived,
       };
       if (!merged.startDate || !merged.endDate) {
         skipped.push(`${name}: missing start or end date`);

@@ -160,6 +160,14 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       milestone: (DEFAULT_PROJECT_TYPES.find((t) => t.id === type)?.milestones ?? [])[phase] ?? '',
       milestoneDate: milestoneDate(anchor, i),
       priority: rag === 'R' ? 1 : budget >= 1000 ? 2 : rag === 'A' ? 3 : facing === 'I' ? 4 : 3,
+      // Phases spread evenly across the project's run; invoices at the quarter points.
+      phaseDates: (DEFAULT_PROJECT_TYPES.find((t) => t.id === type)?.phases ?? []).map((_, k, all) =>
+        toISO(addMonths(start, Math.round(((k + 1) / all.length) * duration))),
+      ),
+      invoiceDates:
+        facing === 'C'
+          ? [0.1, 0.35, 0.7, 1].map((share) => toISO(addMonths(start, Math.round(share * duration))))
+          : [],
     };
   });
 

@@ -8,10 +8,13 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
   const internal = view.projects.filter((p) => !p.cust);
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
 
-  const maxValue = Math.max(1, ...customer.map((p) => p.value));
+  const maxValue = Math.max(1, ...customer.map((p) => Math.max(p.value, Math.round(p.budget * 1.35))));
   const maxInternal = Math.max(1, ...internal.map((p) => p.budget));
 
   const invoiceBars = [...customer].sort((a, b) => b.value - b.billed - (a.value - a.billed));
+  /* An indicative view of what a project could still grow to: the share of its budget not
+     yet covered by agreed value. Shown in a third colour so it never reads as committed. */
+  const prospect = (p: ProjectView) => Math.max(0, Math.round(p.budget * 1.35) - p.value);
   const drawBars = [...internal].sort((a, b) => b.budget - a.budget);
 
   return (
@@ -51,8 +54,9 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
               <>
       <h3 style={{ margin: '0 0 4px' }}>How much we have invoiced</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        The full bar is what the client agreed to pay. The dark part is what we have invoiced. The projects with the most
-        left to bill come first.
+        The full bar is what the client agreed to pay, the dark part what we have invoiced, and the pale teal beyond it an
+        indicative view of further scope this work could still grow into. The projects with the most left to bill come
+        first.
       </p>
       <div className="legend" style={{ marginBottom: 'var(--space-6)' }}>
         <span>
@@ -62,6 +66,10 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         <span>
           <span style={{ width: 14, height: 12, background: 'var(--color-neutral-300)', display: 'block' }} />
           Agreed but not yet invoiced
+        </span>
+        <span>
+          <span style={{ width: 14, height: 12, background: 'var(--color-teal-300)', display: 'block' }} />
+          Scope in prospect — indicative, not agreed
         </span>
       </div>
       {invoiceBars.length === 0 ? (
@@ -74,8 +82,9 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
               project={p}
               onOpen={() => onOpenProject(p.id)}
               trackWidth={(p.value / maxValue) * 100}
+              prospectWidth={((p.value + prospect(p)) / maxValue) * 100}
               fillWidth={(p.billed / maxValue) * 100}
-              fillColor={p.rag === 'R' ? 'var(--color-accent-2)' : 'var(--color-text)'}
+              fillColor="var(--color-text)"
               main={
                 <>
                   {p.billedLabel} <span style={{ color: 'var(--color-neutral-600)' }}>/ {p.valueLabel}</span>
@@ -189,6 +198,7 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
 function MoneyBar({
   project,
   trackWidth,
+  prospectWidth,
   fillWidth,
   fillColor,
   main,
@@ -197,6 +207,8 @@ function MoneyBar({
 }: {
   project: ProjectView;
   trackWidth: number;
+  /** Optional third band beyond the agreed value — indicative scope, not committed. */
+  prospectWidth?: number;
   fillWidth: number;
   fillColor: string;
   main: React.ReactNode;
@@ -214,6 +226,12 @@ function MoneyBar({
         </div>
       </button>
       <div style={{ height: 14, background: 'var(--color-neutral-200)', position: 'relative' }}>
+        {prospectWidth !== undefined && (
+          <div
+            title="Indicative further scope — not agreed"
+            style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${prospectWidth}%`, background: 'var(--color-teal-300)' }}
+          />
+        )}
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${trackWidth}%`, background: 'var(--color-neutral-300)' }} />
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${fillWidth}%`, background: fillColor }} />
       </div>

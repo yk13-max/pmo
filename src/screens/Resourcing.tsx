@@ -3,24 +3,10 @@ import type { Person } from '../types';
 import type { PortfolioView } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
+import { PersonBars } from '../components/PersonBars';
 import { monthOptions } from '../lib/dates';
 import { MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
 
-/* The mini graphs are drawn in a 0-100 user space and stretched to whatever room the
-   person's card gives them, so they fill their area on any screen width. Each person's
-   vertical scale runs to their own peak commitment — the top edge IS their peak — with a
-   floor of 100 so the full-week line never falls off the top for someone under-committed. */
-const VB_W = 100;
-const VB_H = 100;
-const BASELINE = 92;
-const PLOT_TOP = 8;
-
-const slotW = (count: number) => VB_W / Math.max(count, 1);
-const barW = (count: number) => slotW(count) * 0.62;
-const barX = (i: number, count: number) => i * slotW(count) + (slotW(count) - barW(count)) / 2;
-const scaleFor = (peak: number) => Math.max(peak, 100);
-const barHeight = (pct: number, peak: number) => (Math.min(pct, scaleFor(peak)) / scaleFor(peak)) * (BASELINE - PLOT_TOP);
-const lineY = (pct: number, peak: number) => BASELINE - barHeight(pct, peak);
 
 /** A share of a full-time month expressed in working days, to one decimal. */
 const daysOver = (pct: number) => ((pct / 100) * WORKING_DAYS_PER_MONTH).toFixed(1);
@@ -31,14 +17,15 @@ export function Resourcing({
   onOpenPerson,
   onSetThreshold,
   onSetWindow,
+  onSetLeave,
 }: {
   view: PortfolioView;
   onAddPerson: () => void;
   onOpenPerson: (person: Person) => void;
   onSetThreshold: (pct: number) => void;
   onSetWindow: (startMonth: string, months: number) => void;
+  onSetLeave: (personId: string, month: string, days: number) => void;
 }) {
-  const [hoverBar, setHoverBar] = useState<string | null>(null);
   const [showPct, setShowPct] = useState(false);
   const [hoverDriver, setHoverDriver] = useState<string | null>(null);
 
@@ -255,125 +242,7 @@ export function Resourcing({
                     {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
                   </div>
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <svg
-                    viewBox={`0 0 ${VB_W} ${VB_H}`}
-                    preserveAspectRatio="none"
-                    style={{ width: '100%', height: 104, display: 'block' }}
-                    role="img"
-                    aria-label={`How much of ${p.person.name}'s time is promised each month, peaking at ${p.peak}%`}
-                  >
-                    <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
-                    {p.loads.map((work, i) => {
-                      const total = p.committed[i];
-                      const full = p.person.capacity;
-                      const hTotal = barHeight(total, p.peak);
-                      const hWork = barHeight(work, p.peak);
-                      return (
-                        <g key={i}>
-                          <rect
-                            x={barX(i, p.loads.length)}
-                            y={BASELINE - hWork}
-                            width={barW(p.loads.length)}
-                            height={hWork}
-                            fill={
-                              total > full
-                                ? 'var(--color-accent-2)'
-                                : total > (full * view.threshold) / 100
-                                  ? 'var(--color-warning)'
-                                  : 'var(--color-neutral-400)'
-                            }
-                          />
-                          {hTotal > hWork && (
-                            <rect
-                              x={barX(i, p.loads.length)}
-                              y={BASELINE - hTotal}
-                              width={barW(p.loads.length)}
-                              height={hTotal - hWork}
-                              fill="var(--color-accent-300)"
-                            />
-                          )}
-                        </g>
-                      );
-                    })}
-                    {p.loads.map((_, i) => (
-                      <rect
-                        key={`hit-${i}`}
-                        x={i * slotW(p.loads.length)}
-                        y={0}
-                        width={slotW(p.loads.length)}
-                        height={BASELINE}
-                        fill="transparent"
-                        style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                        onMouseEnter={() => setHoverBar(`${p.person.id}-${i}`)}
-                        onMouseLeave={() => setHoverBar(null)}
-                      />
-                    ))}
-                    {/* Drawn last so the guides read over the bars rather than behind them. */}
-                    <line
-                      x1={0}
-                      y1={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
-                      x2={VB_W}
-                      y2={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
-                      stroke="var(--color-warning)"
-                      strokeWidth={2}
-                      strokeDasharray="3 3"
-                      vectorEffect="non-scaling-stroke"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={0}
-                      y1={lineY(p.person.capacity, p.peak)}
-                      x2={VB_W}
-                      y2={lineY(p.person.capacity, p.peak)}
-                      stroke="var(--color-text)"
-                      strokeWidth={2}
-                      strokeDasharray="6 3"
-                      vectorEffect="non-scaling-stroke"
-                      pointerEvents="none"
-                    />
-                  </svg>
-                  {p.loads.map((work, i) => {
-                    if (!showPct && hoverBar !== `${p.person.id}-${i}`) return null;
-                    const isHover = hoverBar === `${p.person.id}-${i}`;
-                    const h = barHeight(p.committed[i], p.peak);
-                    return (
-                      <span
-                        key={`tip-${i}`}
-                        style={{
-                          position: 'absolute',
-                          left: `${((i + 0.5) / p.loads.length) * 100}%`,
-                          top: ((BASELINE - h) / VB_H) * 104 - 21,
-                          transform: 'translateX(-50%)',
-                          fontFamily: 'var(--font-heading)',
-                          fontWeight: 600,
-                          fontSize: isHover ? 13 : 11,
-                          background: isHover ? 'var(--color-bg)' : 'transparent',
-                          boxShadow: isHover ? 'var(--shadow-sm)' : 'none',
-                          padding: isHover ? '1px 5px' : 0,
-                          borderRadius: 'var(--radius-md)',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          color: isHover ? 'var(--color-text)' : 'var(--color-neutral-700)',
-                          zIndex: 2,
-                        }}
-                      >
-                        {p.committed[i]}%{isHover && p.leaveDays[i] ? ` · ${work}% work + ${p.leaveDays[i]}d leave` : ''}
-                      </span>
-                    );
-                  })}
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${view.monthLabels.length}, 1fr)`, marginTop: 5 }}>
-                    {view.monthLabels.map((m) => (
-                      <span key={m} style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)' }}>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 2 }}>
-                    top of chart = {scaleFor(p.peak)}%
-                    {p.person.capacity !== 100 && ` · full month for them = ${p.person.capacity}%`}
-                  </div>
-                </div>
+                <PersonBars person={p} monthLabels={view.monthLabels} threshold={view.threshold} showPct={showPct} />
               </div>
             );
           })}
@@ -384,6 +253,62 @@ export function Resourcing({
           { id: 'demand', label: 'People the work needs', count: `${Math.max(0, ...view.demand).toFixed(1)} peak`, render: () => (
             <DemandChart view={view} />
           ) },
+          { id: 'leave', label: 'Annual leave', count: `${view.peopleViews.reduce((n, p) => n + p.leaveDays.reduce((a, b) => a + b, 0), 0)}d`, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>Annual leave</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+        Days booked per person per month. Editable here — it feeds straight into the graphs and capacity.
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="alloc-table" style={{ maxWidth: 1040 }}>
+          <thead>
+            <tr>
+              <th style={{ minWidth: 160 }}>Person</th>
+              {view.monthLabels.map((m) => (
+                <th key={m} style={{ textAlign: 'right' }}>{m}</th>
+              ))}
+              <th style={{ textAlign: 'right' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.peopleViews.map((p) => (
+              <tr key={p.person.id}>
+                <td>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{p.person.role}</div>
+                </td>
+                {view.months.map((month, i) => (
+                  <td key={month}>
+                    <input
+                      className="input num"
+                      type="number"
+                      min={0}
+                      max={WORKING_DAYS_PER_MONTH}
+                      aria-label={`${p.person.name} leave in ${view.monthLabels[i]}`}
+                      value={p.leaveDays[i] || ''}
+                      placeholder="0"
+                      onChange={(e) =>
+                        onSetLeave(
+                          p.person.id,
+                          month,
+                          Math.max(0, Math.min(WORKING_DAYS_PER_MONTH, Math.round(Number(e.target.value) || 0))),
+                        )
+                      }
+                    />
+                  </td>
+                ))}
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.leaveDays.reduce((a, b) => a + b, 0)}d
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="field-hint" style={{ marginTop: 'var(--space-2)' }}>
+        {WORKING_DAYS_PER_MONTH} working days is a full month. Leave is stacked on top of project work in the graphs and
+        taken off available capacity.
+      </p>
+      </>) },
           { id: 'roles', label: 'Job titles with no cover', count: view.roleShortages.length, render: () => (<>
 
       <h3 style={{ margin: '0 0 4px' }}>Job titles with no cover</h3>

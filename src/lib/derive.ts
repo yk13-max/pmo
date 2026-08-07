@@ -58,7 +58,7 @@ export interface ProjectView extends Project {
   durationMonths: number;
 }
 
-/** Total resource a project draws from the whole team in a month, as a share of one
+/** Total resource a project draws from the whole team this month, as a share of one
     full-time month. 150% means the project consumes one and a half people. */
 export function viewProject(
   project: Project,
@@ -157,6 +157,7 @@ export interface RoleShortage {
 
 export interface PortfolioView {
   projects: ProjectView[];
+  archivedProjects: ProjectView[];
   people: Person[];
   peopleViews: PersonView[];
   /** `YYYY-MM` keys for the six planning months. */
@@ -214,13 +215,18 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       perMonth[monthIndex] += pct;
       loadPerMonth.set(projectId, perMonth);
     });
+    /* Team draw reports the current month — the month the window starts on — because that
+       is the demand a lead is deciding about now. The peak is still available per month. */
     loadPerMonth.forEach((perMonth, projectId) => {
-      loadByProject.set(projectId, Math.max(0, ...perMonth));
+      loadByProject.set(projectId, perMonth[0] ?? 0);
     });
 
-    const projects = portfolio.projects.map((p) =>
+    const allProjectViews = portfolio.projects.map((p) =>
       viewProject(p, people, threshold, portfolio.projectTypes, loadByProject.get(p.id) ?? 0),
     );
+    // Archived work keeps its data but is invisible to every screen except the archive.
+    const projects = allProjectViews.filter((p) => !p.archived);
+    const archivedProjects = allProjectViews.filter((p) => p.archived);
 
     const projectById = new Map(portfolio.projects.map((p) => [p.id, p]));
     const loadIndex = new Map<string, number[]>();
@@ -342,6 +348,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     return {
       projects,
+      archivedProjects,
       people,
       peopleViews,
       months,

@@ -2,11 +2,13 @@ import { useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money, ragColor } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
+import { Drawer } from '../components/Drawer';
 
 const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
 const RAG_FILTERS = ['All', 'On track', 'Watch', 'At risk'] as const;
 
 export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
+  const [showShortfall, setShowShortfall] = useState(false);
   const [type, setType] = useState<string>('All');
   const [rag, setRag] = useState<string>('All');
   const [pm, setPm] = useState<string>('All');
@@ -27,6 +29,9 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
     );
 
   const managers = [...new Set(view.people.filter((p) => p.role === 'Project manager').map((p) => p.name))];
+  const notAtRiskPct = view.projects.length
+    ? Math.round(((view.projects.length - view.totals.atRisk) / view.projects.length) * 100)
+    : 100;
   const hovered = shown.find((p) => p.id === hoverId) ?? null;
 
   return (
@@ -63,6 +68,28 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           label="At risk"
           sub="Flagged by the project manager"
           color="var(--color-accent-2-700)"
+          hover={
+            <>
+              <div className="eyebrow" style={{ marginBottom: 6 }}>Projects flagged at risk</div>
+              {view.projects.filter((p) => p.rag === 'R').length === 0 ? (
+                <div style={{ fontSize: 13 }}>Nothing flagged.</div>
+              ) : (
+                view.projects
+                  .filter((p) => p.rag === 'R')
+                  .map((p) => (
+                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', fontSize: 13, padding: '2px 0' }}>
+                      <span>
+                        {p.name}
+                        <span style={{ color: 'var(--color-neutral-600)' }}> · {p.client}</span>
+                      </span>
+                      <span style={{ color: 'var(--color-neutral-600)', whiteSpace: 'nowrap' }}>
+                        {p.burnLabel} spent · {p.pmName}
+                      </span>
+                    </div>
+                  ))
+              )}
+            </>
+          }
           spark={
             <Spark
               gap={1}
@@ -80,9 +107,26 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           label="Short of people"
           sub={`Depend on someone already booked past ${view.threshold}% of their month`}
           color="var(--color-accent-700)"
+          onClick={() => setShowShortfall(true)}
           spark={<ShortfallSpark view={view} />}
         />
+        <Stat
+          value={`${notAtRiskPct}%`}
+          label="Not at risk"
+          sub={`${view.projects.length - view.totals.atRisk} of ${view.projects.length} projects on track or watching`}
+          color={notAtRiskPct >= 80 ? 'var(--color-text)' : 'var(--color-accent-700)'}
+          spark={
+            <Spark
+              cells={[
+                { flex: Math.max(1, view.projects.length - view.totals.atRisk), height: 9, bg: 'var(--color-text)', title: 'Not at risk' },
+                { flex: Math.max(0.0001, view.totals.atRisk), height: 9, bg: 'var(--color-accent-2)', title: 'At risk' },
+              ]}
+            />
+          }
+        />
       </div>
+
+      {showShortfall && <ShortfallDetail view={view} onClose={() => setShowShortfall(false)} onOpenProject={onOpenProject} />}
 
       <Scatter projects={shown} hovered={hovered} onHover={setHoverId} />
 
@@ -144,6 +188,105 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
         </div>
       )}
     </div>
+  );
+}
+
+/** What sits behind "Short of people": which projects, and which people are the pinch. */
+function ShortfallDetail({
+  view,
+  onClose,
+  onOpenProject,
+}: {
+  view: PortfolioView;
+  onClose: () => void;
+  onOpenProject: (id: string) => void;
+}) {
+  const stretched = view.peopleViews
+    .map((pv) => ({
+      pv,
+      months: pv.committed
+        .map((v, i) => (v > (pv.person.capacity * view.threshold) / 100 ? i : -1))
+        .filter((i) => i >= 0),
+    }))
+    .filter((r) => r.months.length);
+
+  const affected = view.projects
+    .map((project) => ({
+      project,
+      people: stretched.filter((r) =>
+        r.months.some((i) => (view.allocationsOf(project.id)[`${r.pv.person.id}|${view.months[i]}`] ?? 0) > 0),
+      ),
+    }))
+    .filter((r) => r.people.length);
+
+  return (
+    <Drawer title="Short of people" kicker="What is behind the number" onClose={onClose}>
+      <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
+        {affected.length} project{affected.length === 1 ? '' : 's'} depend on {stretched.length} person
+        {stretched.length === 1 ? '' : 's'} already booked past {view.threshold}% of their own month.
+      </p>
+
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>The people</h4>
+      <table className="table" style={{ marginBottom: 'var(--space-6)' }}>
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th style={{ width: 150 }}>Job title</th>
+            <th style={{ width: 90, textAlign: 'right' }}>Peak</th>
+            <th>Months past the threshold</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stretched.map(({ pv, months }) => (
+            <tr key={pv.person.id}>
+              <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{pv.person.name}</td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{pv.person.role}</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
+                {pv.peak}%
+              </td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                {months.map((i) => view.monthLabels[i]).join(', ')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>The projects</h4>
+      {affected.length === 0 ? (
+        <p className="empty">No project is currently exposed.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th style={{ width: 80 }}>Priority</th>
+              <th style={{ width: 90 }}>Status</th>
+              <th>Stretched people it relies on</th>
+            </tr>
+          </thead>
+          <tbody>
+            {affected.map(({ project, people }) => (
+              <tr key={project.id}>
+                <td>
+                  <button type="button" className="card-link" onClick={() => onOpenProject(project.id)}>
+                    <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
+                      {project.name}
+                    </span>
+                    <span style={{ color: 'var(--color-neutral-600)', fontSize: 12 }}> · {project.client}</span>
+                  </button>
+                </td>
+                <td style={{ fontSize: 13 }}>P{project.priority}</td>
+                <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{project.ragLabel}</td>
+                <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                  {people.map((r) => r.pv.person.name).join(', ')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Drawer>
   );
 }
 

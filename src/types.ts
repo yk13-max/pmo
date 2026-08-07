@@ -38,7 +38,21 @@ export interface Project {
   milestoneDate: string;
   /** 1 = highest. Set by the PMO, used for ranking and callouts. */
   priority: number;
+  /** Planned end date for each phase of this project's type, ISO, index-aligned to phases. */
+  phaseDates: string[];
+  /** Date each invoice stage is expected to be raised, ISO, aligned to INVOICE_STAGES. */
+  invoiceDates: string[];
+  /** Archived projects keep all their data but drop out of every screen. */
+  archived?: boolean;
 }
+
+/** The invoice schedule every customer-facing project bills against. */
+export const INVOICE_STAGES: [label: string, share: number][] = [
+  ['On kick-off', 0.3],
+  ['At design freeze', 0.3],
+  ['At validation', 0.25],
+  ['On handover', 0.15],
+];
 
 export const PRIORITY_LEVELS = [1, 2, 3, 4, 5] as const;
 export const PRIORITY_LABEL: Record<number, string> = {

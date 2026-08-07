@@ -23,7 +23,7 @@ export function DataManager({
   onOpenProject: (id: string) => void;
   onExport: () => void;
 }) {
-  const { replaceAll, resetToSeed, portfolio, addRole, removeRole } = usePortfolio();
+  const { replaceAll, resetToSeed, portfolio, addRole, removeRole, setArchived, deleteProject } = usePortfolio();
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
@@ -191,9 +191,23 @@ export function DataManager({
                   </span>
                 </td>
                 <td>
-                  <button type="button" className="btn btn-ghost" onClick={() => onEditProject(p)}>
-                    Edit
-                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => onEditProject(p)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => {
+                        if (window.confirm(`Archive ${p.name}? It keeps all its data and can be restored from the Archive tab.`)) {
+                          setArchived(p.id, true);
+                          setMessage({ tone: 'ok', text: `${p.name} archived.` });
+                        }
+                      }}
+                    >
+                      Archive
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -276,6 +290,63 @@ export function DataManager({
         </span>
       </div>
 
+      </>) },
+          { id: 'archive', label: 'Archive', count: view.archivedProjects.length, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>Archived projects</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+        Archived work keeps every field, booking and invoice date, but drops out of the portfolio, resourcing,
+        financials, timeline and alerts. Restore it and it reappears everywhere.
+      </p>
+      {view.archivedProjects.length === 0 ? (
+        <p className="empty">Nothing archived.</p>
+      ) : (
+        <table className="table" style={{ maxWidth: 1040 }}>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th style={{ width: 120 }}>Type</th>
+              <th style={{ width: 110 }}>Owner</th>
+              <th style={{ textAlign: 'right', width: 100 }}>Budget</th>
+              <th style={{ width: 100 }}>Status</th>
+              <th style={{ width: 210 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {view.archivedProjects.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.name}</span>
+                  <span style={{ color: 'var(--color-neutral-600)', fontSize: 12 }}> · {p.client}</span>
+                </td>
+                <td style={{ fontSize: 12 }}>{p.typeLabel}</td>
+                <td style={{ fontSize: 12 }}>{p.pmName}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.budgetLabel}</td>
+                <td style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{p.ragLabel}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => setArchived(p.id, false)}>
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ color: 'var(--color-accent-2-700)' }}
+                      onClick={() => {
+                        if (window.confirm(`Permanently delete ${p.name} and its bookings? This cannot be undone.`)) {
+                          deleteProject(p.id);
+                          setMessage({ tone: 'ok', text: `${p.name} deleted for good.` });
+                        }
+                      }}
+                    >
+                      Delete for good
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       </>) },
           { id: 'people', label: 'People', count: view.people.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>People</h3>

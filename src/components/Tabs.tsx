@@ -9,7 +9,16 @@ export interface TabDef {
 }
 
 /** Turns a page's sections into tabs so it reads as one screen rather than a long scroll. */
-export function Tabs({ tabs, storageKey }: { tabs: TabDef[]; storageKey?: string }) {
+export function Tabs({
+  tabs,
+  storageKey,
+  renderAll = false,
+}: {
+  tabs: TabDef[];
+  storageKey?: string;
+  /** Keep every panel mounted and hidden, so printing can reveal them all. */
+  renderAll?: boolean;
+}) {
   const [active, setActive] = useState(() => {
     const saved = storageKey ? sessionStorage.getItem(`tabs:${storageKey}`) : null;
     return saved && tabs.some((t) => t.id === saved) ? saved : tabs[0]?.id;
@@ -38,7 +47,21 @@ export function Tabs({ tabs, storageKey }: { tabs: TabDef[]; storageKey?: string
           </button>
         ))}
       </div>
-      <div role="tabpanel">{current.render()}</div>
+      {renderAll ? (
+        tabs.map((t) => (
+          <div
+            key={t.id}
+            role="tabpanel"
+            className="tab-panel"
+            style={t.id === current.id ? undefined : { display: 'none' }}
+          >
+            <h3 className="print-only print-panel-title">{t.label}</h3>
+            {t.render()}
+          </div>
+        ))
+      ) : (
+        <div role="tabpanel">{current.render()}</div>
+      )}
     </div>
   );
 }
