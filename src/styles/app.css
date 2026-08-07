@@ -85,9 +85,11 @@ a:hover { color: var(--color-accent-600); }
   .sidebar, .no-print, .tabs, .btn, .drawer-backdrop { display: none !important; }
   .shell, .main { display: block; max-width: none; padding: 0; margin: 0; background: #fff; }
   .print-only { display: block; }
-  .print-panel-title { margin: var(--space-6) 0 var(--space-3); page-break-after: avoid; }
-  /* Every panel is mounted; print reveals the ones the screen was hiding. */
+  /* Every panel is mounted; print reveals the ones the screen was hiding, each still led
+     by its own heading. */
   .printable .tab-panel { display: block !important; page-break-inside: avoid; }
+  .printable .tab-panel + .tab-panel { margin-top: var(--space-8); }
+  .printable .tab-panel h3 { page-break-after: avoid; }
   .table { font-size: 11px; }
   a[href]::after { content: ''; }
 }

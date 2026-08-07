@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { addMonths, fromISO, quarterLabel, startOfMonth } from '../lib/dates';
 import { Tabs } from '../components/Tabs';
+import { Stripe } from '../components/Stripe';
 
 const WINDOW_BEFORE = 6;
 const WINDOW_MONTHS = 24;
@@ -164,7 +165,7 @@ function TimelineRow({
       onMouseLeave={() => onHover(null)}
     >
       <button type="button" className="card-link" onClick={onOpen} style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
-        <span style={{ width: 3, height: 15, background: project.stripe, display: 'block', flex: 'none' }} />
+        <Stripe project={project} height={15} />
         <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>
           {project.name}
         </span>

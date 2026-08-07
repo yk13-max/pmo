@@ -48,6 +48,8 @@ export function Tabs({
         ))}
       </div>
       {renderAll ? (
+        /* Every panel opens with its own heading, so print reveals them as they are rather
+           than adding a second title above each one. */
         tabs.map((t) => (
           <div
             key={t.id}
@@ -55,7 +57,6 @@ export function Tabs({
             className="tab-panel"
             style={t.id === current.id ? undefined : { display: 'none' }}
           >
-            <h3 className="print-only print-panel-title">{t.label}</h3>
             {t.render()}
           </div>
         ))

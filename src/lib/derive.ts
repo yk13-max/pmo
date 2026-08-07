@@ -34,6 +34,20 @@ export function days(hours: number): string {
   return `${d.toFixed(1)} day${d === 1 ? '' : 's'}`;
 }
 
+/* Each delivery type gets its own colour so CDMO and Client Solutions can be told apart at
+   a glance. The first two are the brand's navy and teal; further types cycle on from there. */
+const TYPE_COLOURS = [
+  'var(--color-accent)',
+  'var(--color-teal-600)',
+  'var(--color-accent-2)',
+  'var(--color-warning)',
+  'var(--color-teal-800)',
+];
+
+export function typeColour(index: number): string {
+  return TYPE_COLOURS[((index % TYPE_COLOURS.length) + TYPE_COLOURS.length) % TYPE_COLOURS.length];
+}
+
 export function ragColor(rag: Rag): string {
   if (rag === 'R') return 'var(--color-accent-2)';
   if (rag === 'A') return 'var(--color-warning)';
@@ -49,7 +63,11 @@ export interface ProjectView extends Project {
   typeShort: string;
   typeLabel: string;
   facingLabel: string;
+  /** Inner band of the stripe: who the work is for. Internal is the lighter tone. */
   stripe: string;
+  /** Outer band of the stripe: which delivery type it is. */
+  stripeType: string;
+  sterileLabel: string;
   ragLabel: string;
   ragColor: string;
   pmName: string;
@@ -124,7 +142,9 @@ export function viewProject(
     typeShort: typeDef?.id ?? project.type,
     typeLabel: typeDef?.label ?? project.type,
     facingLabel: cust ? 'Customer' : 'Internal',
-    stripe: cust ? 'var(--color-accent)' : 'var(--color-neutral-400)',
+    stripe: cust ? 'var(--color-text)' : 'var(--color-neutral-300)',
+    stripeType: typeColour(types.findIndex((t) => t.id === project.type)),
+    sterileLabel: project.sterile ? 'Sterile' : 'Non-sterile',
     ragLabel: RAG_LABEL[project.rag],
     ragColor: ragColor(project.rag),
     pmName: pm?.name ?? 'Unassigned',

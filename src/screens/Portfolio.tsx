@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import { money, ragColor } from '../lib/derive';
+import { money, ragColor, typeColour } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
+import { Stripe, StripeSwatch } from '../components/Stripe';
 import { Drawer } from '../components/Drawer';
 
 const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
@@ -163,13 +164,20 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
             ))}
           </select>
         </label>
+        {/* Both bands of the stripe, named: the type on the outside, who it is for inside. */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+          {view.projectTypes.map((t, i) => (
+            <span key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <StripeSwatch type={typeColour(i)} facing="var(--color-neutral-200)" />
+              {t.label}
+            </span>
+          ))}
           <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ width: 3, height: 14, background: 'var(--color-accent)', display: 'block' }} />
+            <StripeSwatch type="var(--color-neutral-200)" facing="var(--color-text)" />
             Customer
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ width: 3, height: 14, background: 'var(--color-neutral-400)', display: 'block' }} />
+            <StripeSwatch type="var(--color-neutral-200)" facing="var(--color-neutral-300)" />
             Internal
           </span>
           <span>
@@ -562,7 +570,7 @@ function Scatter({
 function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => void }) {
   return (
     <article style={{ position: 'relative', padding: '2px 0 2px var(--space-4)' }}>
-      <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, display: 'block', background: project.stripe }} />
+      <Stripe project={project} absolute />
       <button type="button" className="card-link" onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, width: '100%' }}>
           <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>

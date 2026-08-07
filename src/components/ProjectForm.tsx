@@ -7,6 +7,7 @@ import {
   MAX_DATE,
   PRIORITY_LABEL,
   PRIORITY_LEVELS,
+  STERILE_TYPE,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { days, hoursToPct } from '../lib/derive';
@@ -46,6 +47,7 @@ function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
     milestoneDate: toISO(addMonths(today, 1)),
     priority: 3,
     currency: 'GBP',
+    sterile: false,
     phaseDates: [],
     invoiceDates: [],
   };
@@ -231,6 +233,23 @@ export function ProjectForm({
             </select>
             <div className="field-hint">Internal work draws on a budget pool and carries no invoice side.</div>
           </div>
+          {draft.type === STERILE_TYPE && (
+            <div className="field">
+              <label htmlFor="pf-sterile">Sterile product</label>
+              <select
+                id="pf-sterile"
+                className="input"
+                value={draft.sterile ? 'yes' : 'no'}
+                onChange={(e) => set('sterile', e.target.value === 'yes')}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+              <div className="field-hint">
+                Asked of {typeDef?.label ?? STERILE_TYPE} work only — sterile products carry extra validation.
+              </div>
+            </div>
+          )}
           <div className="field">
             <label htmlFor="pf-pm">Project manager</label>
             <select

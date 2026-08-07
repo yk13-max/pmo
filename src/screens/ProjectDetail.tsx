@@ -2,7 +2,8 @@ import type { Project } from '../types';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { hoursToDays } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
-import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
+import { Stripe } from '../components/Stripe';
+import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_TYPE } from '../types';
 import { shortDate, shortDateYear, toISO } from '../lib/dates';
 
 export function ProjectDetail({
@@ -78,7 +79,7 @@ export function ProjectDetail({
       </div>
 
       <div style={{ position: 'relative', paddingLeft: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: project.stripe, display: 'block' }} />
+        <Stripe project={project} absolute />
         <div className="kicker">{project.client}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 44, lineHeight: 1.05, letterSpacing: '-.025em', marginTop: 6 }}>
           {project.name}
@@ -99,6 +100,7 @@ export function ProjectDetail({
             P{project.priority} {PRIORITY_LABEL[project.priority]}
           </span>
           <span>{project.facingLabel}</span>
+          {project.type === STERILE_TYPE && <span>{project.sterileLabel}</span>}
           <span>Run by {project.pmName}</span>
           <span>
             {project.startLabel} → {project.endLabel}

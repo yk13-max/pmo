@@ -1,5 +1,5 @@
 import type { CurrencyCode, Portfolio } from '../types';
-import { CURRENCIES, PRIORITY_LABEL, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
+import { CURRENCIES, PRIORITY_LABEL, STERILE_TYPE, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 
@@ -77,6 +77,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'Client or function',
       'Delivery type',
       'For',
+      'Sterile',
       'Priority',
       'Priority label',
       'Status',
@@ -99,6 +100,8 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       x.client,
       p.projectTypes.find((t) => t.id === x.type)?.label ?? x.type,
       x.facing === 'C' ? 'Customer' : 'Internal',
+      // Only Client Solutions work is asked the question, so the rest stay blank.
+      x.type === STERILE_TYPE ? (x.sterile ? 'Yes' : 'No') : '',
       x.priority,
       PRIORITY_LABEL[x.priority] ?? '',
       RAG_LABEL[x.rag],
@@ -252,6 +255,10 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         phaseDates: base?.phaseDates ?? [],
         invoiceDates: base?.invoiceDates ?? [],
         archived: base?.archived,
+        // A file without the column leaves the stored answer alone.
+        sterile: headers.some((h) => h.trim().toLowerCase() === 'sterile')
+          ? col(r, 'Sterile').toLowerCase() === 'yes'
+          : base?.sterile,
         currency: (CURRENCY_CODES.find((c) => c === col(r, 'Invoice currency').trim().toUpperCase()) ??
           base?.currency ??
           'GBP') as CurrencyCode,

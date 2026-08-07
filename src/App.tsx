@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePortfolio } from './store/portfolio';
 import { usePortfolioView, money } from './lib/derive';
+import { useRoute } from './lib/route';
 import { weekNumber } from './lib/dates';
 import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
@@ -21,7 +22,7 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   portfolio: [
     'Both delivery types',
     'Portfolio',
-    'Every delivery type side by side. Internal work carries the lighter stripe.',
+    'Every delivery type side by side. The stripe names the type on the outside; internal work carries the lighter inner band.',
   ],
   resources: [
     'People and capacity',
@@ -72,15 +73,29 @@ const SCREEN_WIDTH: Partial<Record<ScreenId, number>> = {
 export function App() {
   const store = usePortfolio();
   const view = usePortfolioView(store.portfolio);
-  const [screen, setScreen] = useState<ScreenId>('portfolio');
-  const [detailId, setDetailId] = useState<string | null>(view.projects[0]?.id ?? null);
+  const [route, go] = useRoute({ screen: 'portfolio', projectId: null });
+  const { screen, projectId } = route;
   const [editing, setEditing] = useState<Editing>(null);
+  /* The address only names a project on the detail screen, so the last one opened is
+     remembered here — reaching the screen from the nav lands where you left it. */
+  const [lastProjectId, setLastProjectId] = useState<string | null>(projectId);
+  useEffect(() => {
+    if (projectId) setLastProjectId(projectId);
+  }, [projectId]);
 
-  const selected = view.projects.find((p) => p.id === detailId) ?? view.projects[0] ?? null;
+  const selected =
+    view.projects.find((p) => p.id === (projectId ?? lastProjectId)) ?? view.projects[0] ?? null;
+
+  /* Moving between areas closes whatever was open over the top, so going back never
+     leaves an edit pane floating above a screen it does not belong to. */
+  const setScreen = (id: ScreenId) => {
+    setEditing(null);
+    go(id === 'detail' ? { screen: id, projectId: lastProjectId ?? selected?.id ?? null } : { screen: id });
+  };
 
   const openProject = (id: string) => {
-    setDetailId(id);
-    setScreen('detail');
+    setEditing(null);
+    go({ screen: 'detail', projectId: id });
   };
 
   const exportJson = () => {
@@ -183,7 +198,7 @@ export function App() {
           <ProjectDetail
             view={view}
             project={selected}
-            onSelect={setDetailId}
+            onSelect={(id) => go({ projectId: id })}
             onEdit={(project) => setEditing({ kind: 'project', project })}
           />
         )}
@@ -219,7 +234,7 @@ export function App() {
             otherLoads={view.loadsExcluding(editing.project?.id ?? '')}
             onSave={(project, allocations) => {
               store.saveProject(project, allocations);
-              setDetailId((current) => current ?? project.id);
+              if (!projectId) go({ projectId: project.id });
               setEditing(null);
             }}
             onCancel={() => setEditing(null)}
@@ -227,7 +242,7 @@ export function App() {
               const project = view.projects.find((p) => p.id === id);
               if (!window.confirm(`Archive ${project?.name ?? 'this project'}? It keeps all its data and moves to the archive on the Data screen, where it can be restored.`)) return;
               store.setArchived(id, true);
-              if (detailId === id) setDetailId(null);
+              if (projectId === id) go({ projectId: null });
               setEditing(null);
             }}
           />

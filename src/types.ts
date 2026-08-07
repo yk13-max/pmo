@@ -46,7 +46,12 @@ export interface Project {
   archived?: boolean;
   /** Currency the client is invoiced in. Budget and spend stay in the base currency. */
   currency: CurrencyCode;
+  /** Whether the product is sterile. Only asked of Client Solutions work. */
+  sterile?: boolean;
 }
+
+/** The delivery type that carries the sterile question. */
+export const STERILE_TYPE = 'CS';
 
 /** The points a customer-facing project raises an invoice at. What each one is worth is
     agreed with the client project by project, so no share is assumed here. */
@@ -123,7 +128,7 @@ export const BASE_CURRENCY: CurrencyCode = 'GBP';
 export const WORKING_DAYS_PER_MONTH = 21;
 
 /** Time is booked in hours; every figure reported back is in days. */
-export const WORKING_HOURS_PER_DAY = 7.5;
+export const WORKING_HOURS_PER_DAY = 8;
 export const HOURS_PER_FULL_MONTH = WORKING_DAYS_PER_MONTH * WORKING_HOURS_PER_DAY;
 
 /** Projects and resourcing can be planned out to the end of this year. */
