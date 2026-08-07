@@ -13,16 +13,18 @@ const CEILING = 150;
 const slotW = (count: number) => (BAR_W - 8) / Math.max(count, 1);
 const barW = (count: number) => Math.min(24, slotW(count) - 6);
 const barX = (i: number, count: number) => 4 + i * slotW(count) + (slotW(count) - barW(count)) / 2;
+const barHeight = (pct: number) => (Math.min(pct, CEILING) / CEILING) * BAR_TOP;
+const thresholdY = (pct: number) => BASELINE - barHeight(pct);
 
 export function Resourcing({
   view,
   onAddPerson,
-  onEditPerson,
+  onOpenPerson,
   onSetThreshold,
 }: {
   view: PortfolioView;
   onAddPerson: () => void;
-  onEditPerson: (person: Person) => void;
+  onOpenPerson: (person: Person) => void;
   onSetThreshold: (pct: number) => void;
 }) {
   const [hoverBar, setHoverBar] = useState<string | null>(null);
@@ -33,9 +35,21 @@ export function Resourcing({
     (best, p) => (!best || p.peak > best.peak ? p : best),
     null,
   );
-  const overMonths = view.peopleViews.flatMap((p) =>
-    p.loads.map((v, i) => (v > 100 ? { person: p.person, month: view.monthLabels[i], over: v - 100, projects: p.projectNames } : null)),
-  ).filter((r): r is NonNullable<typeof r> => r !== null);
+  const overMonths = view.peopleViews
+    .flatMap((p) =>
+      p.committed.map((v, i) =>
+        v > 100
+          ? {
+              person: p.person,
+              month: view.monthLabels[i],
+              over: v - 100,
+              leaveDays: p.leaveDays[i],
+              projects: p.projectNames,
+            }
+          : null,
+      ),
+    )
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 
   const managerCount = view.people.filter((p) => p.role === 'Project manager').length;
 
@@ -73,15 +87,45 @@ export function Resourcing({
           sub="Counting each person separately"
           color="var(--color-accent-700)"
         />
+        <Stat
+          value={view.roleShortages.length}
+          label="Roles short 3 months running"
+          sub={
+            view.roleShortages.length
+              ? view.roleShortages
+                  .map((s) => `${s.role} (${s.months[0]}–${s.months[s.months.length - 1]})`)
+                  .join(' · ')
+              : 'No title is oversubscribed for three months straight'
+          }
+          color={view.roleShortages.length ? 'var(--color-accent-2-700)' : 'var(--color-text)'}
+        />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
         <div>
           <h3 style={{ margin: '0 0 4px' }}>Person by person</h3>
           <p className="lede" style={{ margin: 0 }}>
-            One bar per month, showing how much of that person&rsquo;s time is already promised. The dotted line is a full
-            week — bars above it are impossible, not merely busy.
+            One bar per month, showing how much of that person&rsquo;s time is already spoken for. Click a name to see how
+            that splits across their projects.
           </p>
+          <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
+            <span>
+              <span style={{ width: 14, height: 12, background: 'var(--color-neutral-400)', display: 'block' }} />
+              Project work
+            </span>
+            <span>
+              <span style={{ width: 14, height: 12, background: 'var(--color-accent-300)', display: 'block' }} />
+              Annual leave
+            </span>
+            <span>
+              <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
+              A full week (100%)
+            </span>
+            <span>
+              <span style={{ width: 16, height: 0, borderTop: '1px dotted var(--color-warning)', display: 'block' }} />
+              Over-allocation threshold ({view.threshold}%)
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <label className="field" style={{ margin: 0 }}>
@@ -116,7 +160,8 @@ export function Resourcing({
                   <button
                     type="button"
                     className="card-link"
-                    onClick={() => onEditPerson(p.person)}
+                    onClick={() => onOpenPerson(p.person)}
+                    title={`See ${p.person.name}'s spread across projects`}
                     style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.15 }}
                   >
                     <span className="project-name">{p.person.name}</span>
@@ -144,7 +189,10 @@ export function Resourcing({
                   >
                     {p.peak}%
                   </div>
-                  <div className="eyebrow">peak load · {view.monthLabels[p.peakMonthIndex] ?? '—'}</div>
+                  <div className="eyebrow">
+                    peak commitment · {view.monthLabels[p.peakMonthIndex] ?? '—'}
+                    {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
+                  </div>
                 </div>
                 <div style={{ flex: 'none', width: BAR_W, position: 'relative' }}>
                   <svg
@@ -153,25 +201,46 @@ export function Resourcing({
                     role="img"
                     aria-label={`How much of ${p.person.name}'s time is promised each month`}
                   >
+                    <line
+                      x1={0}
+                      y1={thresholdY(view.threshold)}
+                      x2={BAR_W}
+                      y2={thresholdY(view.threshold)}
+                      stroke="var(--color-warning)"
+                      strokeWidth={1}
+                      strokeDasharray="1 3"
+                    />
                     <line x1={0} y1={capY} x2={BAR_W} y2={capY} stroke="var(--color-text)" strokeWidth={1} strokeDasharray="3 3" />
                     <line x1={0} y1={BASELINE} x2={BAR_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} />
-                    {p.loads.map((v, i) => {
-                      const h = (Math.min(v, CEILING) / CEILING) * BAR_TOP;
+                    {p.loads.map((work, i) => {
+                      const total = p.committed[i];
+                      const hTotal = barHeight(total);
+                      const hWork = barHeight(work);
                       return (
-                        <rect
-                          key={i}
-                          x={barX(i, p.loads.length)}
-                          y={BASELINE - h}
-                          width={barW(p.loads.length)}
-                          height={h}
-                          fill={
-                            v > 100
-                              ? 'var(--color-accent-2)'
-                              : v > view.threshold
-                                ? 'var(--color-warning)'
-                                : 'var(--color-neutral-400)'
-                          }
-                        />
+                        <g key={i}>
+                          <rect
+                            x={barX(i, p.loads.length)}
+                            y={BASELINE - hWork}
+                            width={barW(p.loads.length)}
+                            height={hWork}
+                            fill={
+                              total > 100
+                                ? 'var(--color-accent-2)'
+                                : total > view.threshold
+                                  ? 'var(--color-warning)'
+                                  : 'var(--color-neutral-400)'
+                            }
+                          />
+                          {hTotal > hWork && (
+                            <rect
+                              x={barX(i, p.loads.length)}
+                              y={BASELINE - hTotal}
+                              width={barW(p.loads.length)}
+                              height={hTotal - hWork}
+                              fill="var(--color-accent-300)"
+                            />
+                          )}
+                        </g>
                       );
                     })}
                     {p.loads.map((_, i) => (
@@ -188,9 +257,9 @@ export function Resourcing({
                       />
                     ))}
                   </svg>
-                  {p.loads.map((v, i) => {
+                  {p.loads.map((work, i) => {
                     if (hoverBar !== `${p.person.id}-${i}`) return null;
-                    const h = (Math.min(v, CEILING) / CEILING) * BAR_TOP;
+                    const h = barHeight(p.committed[i]);
                     return (
                       <span
                         key={`tip-${i}`}
@@ -211,7 +280,7 @@ export function Resourcing({
                           zIndex: 2,
                         }}
                       >
-                        {v}%
+                        {p.committed[i]}%{p.leaveDays[i] ? ` · ${work}% work + ${p.leaveDays[i]}d leave` : ''}
                       </span>
                     );
                   })}
@@ -239,6 +308,48 @@ export function Resourcing({
 
       <DemandChart view={view} />
 
+      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Job titles with no cover</h3>
+      <p className="lede">
+        A title is short when everyone holding it is booked past their available time, so the overspill cannot be handed
+        to a colleague who does the same job. Three months running makes it a hiring problem, not a scheduling one.
+      </p>
+      {view.roleShortages.length === 0 ? (
+        <p className="empty" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
+          No job title is oversubscribed for three consecutive months.
+        </p>
+      ) : (
+        <table className="table" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
+          <thead>
+            <tr>
+              <th style={{ width: 220 }}>Job title</th>
+              <th style={{ width: 90 }}>People</th>
+              <th style={{ width: 200 }}>Months</th>
+              <th style={{ textAlign: 'right', width: 150 }}>Worst gap</th>
+              <th>What it means</th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.roleShortages.map((s) => (
+              <tr key={`${s.role}-${s.months[0]}`}>
+                <td>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{s.role}</span>
+                </td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>{s.headcount}</td>
+                <td>{s.months.join(', ')}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
+                  {s.worstGap.toFixed(2)} people
+                </td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>
+                  {s.headcount === 1
+                    ? 'The only person with this title — nobody can take the overspill.'
+                    : `All ${s.headcount} are over their available time in the same months.`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
       <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Where the overspill comes from</h3>
       <p className="lede">The oversold months, and the projects driving them.</p>
       {overMonths.length === 0 ? (
@@ -265,7 +376,12 @@ export function Resourcing({
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
                   +{row.over}% · {(row.over / 100).toFixed(2)} FTE
                 </td>
-                <td style={{ color: 'var(--color-neutral-700)' }}>{row.projects.join(', ')}</td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>
+                  {row.projects.join(', ')}
+                  {row.leaveDays > 0 && (
+                    <span style={{ color: 'var(--color-accent-700)' }}> · {row.leaveDays}d leave</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -281,7 +397,7 @@ const DEMAND_BASE = 230;
 
 function DemandChart({ view }: { view: PortfolioView }) {
   const cap = view.capacity;
-  const ceiling = Math.max(1, Math.max(cap, ...view.demand) * 1.15);
+  const ceiling = Math.max(1, Math.max(cap, ...view.demand, ...view.capacityByMonth) * 1.15);
   const scale = (v: number) => (v / ceiling) * 200;
   const slot = 950 / Math.max(1, view.months.length);
   const paleW = slot * 0.71;
@@ -291,8 +407,8 @@ function DemandChart({ view }: { view: PortfolioView }) {
     <div style={{ margin: 'var(--space-8) 0' }}>
       <h3 style={{ marginBottom: 4 }}>How many people the work needs</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        The pale column is the {view.people.length} people we have. The dark column is how many the promised work needs.
-        Red is the shortfall — work with nobody free to do it.
+        The pale column is the {view.people.length} people we have, with the tinted part away on leave. The dark column is
+        how many the promised work needs. Red is the shortfall — work with nobody free to do it.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
@@ -321,11 +437,20 @@ function DemandChart({ view }: { view: PortfolioView }) {
               {view.months.map((m, i) => {
                 const left = 70 + i * slot;
                 const d = view.demand[i];
-                const dh = scale(Math.min(d, cap));
-                const oh = scale(Math.max(0, d - cap));
+                // Available capacity dips in months with leave booked.
+                const avail = view.capacityByMonth[i];
+                const dh = scale(Math.min(d, avail));
+                const oh = scale(Math.max(0, d - avail));
                 return (
                   <g key={m}>
                     <rect x={left + (slot - paleW) / 2} y={DEMAND_BASE - scale(cap)} width={paleW} height={scale(cap)} fill="var(--color-neutral-200)" />
+                    <rect
+                      x={left + (slot - paleW) / 2}
+                      y={DEMAND_BASE - scale(cap)}
+                      width={paleW}
+                      height={Math.max(0, scale(cap) - scale(avail))}
+                      fill="var(--color-accent-300)"
+                    />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh} width={darkW} height={dh} fill="var(--color-text)" />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh - oh} width={darkW} height={oh} fill="var(--color-accent-2)" />
                   </g>
@@ -395,6 +520,10 @@ function DemandChart({ view }: { view: PortfolioView }) {
         <span>
           <span style={{ width: 14, height: 12, background: 'var(--color-accent-2)', display: 'block' }} />
           Shortfall
+        </span>
+        <span>
+          <span style={{ width: 14, height: 12, background: 'var(--color-accent-300)', display: 'block' }} />
+          Away on leave
         </span>
         <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />

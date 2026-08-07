@@ -10,7 +10,7 @@ const CEILING = 150;
 
 export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const atRisk = view.projects.filter((p) => p.rag === 'R');
-  const overbooked = view.peopleViews.filter((p) => p.loads.some((v) => v > 100));
+  const overbooked = view.peopleViews.filter((p) => p.committed.some((v) => v > 100));
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
   const unbilled = view.projects
     .filter((p) => p.cust && p.value > p.billed)
@@ -70,13 +70,17 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         </div>
       )}
 
-      <SectionHeading dot="var(--color-accent-2)" title="People booked past a full week" note="Red bars are months where more work is promised than there are hours to do it." />
+      <SectionHeading
+        dot="var(--color-accent-2)"
+        title="People booked past a full week"
+        note={`Red bars are months where work plus annual leave exceeds the hours available. The dashed line is a full week, the dotted line the ${view.threshold}% threshold.`}
+      />
       {overbooked.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nobody is booked past a full week.</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(420px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
           {overbooked.map((p) => {
-            const months = p.loads.map((v, i) => (v > 100 ? view.monthLabels[i] : null)).filter(Boolean);
+            const months = p.committed.map((v, i) => (v > 100 ? view.monthLabels[i] : null)).filter(Boolean);
             return (
               <div key={p.person.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)', position: 'relative', paddingLeft: 'var(--space-4)' }}>
                 <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 3, background: 'var(--color-accent-2)', display: 'block' }} />
@@ -90,9 +94,18 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                 </div>
                 <div style={{ flex: 'none', width: BAR_W }}>
                   <svg viewBox={`0 0 ${BAR_W} ${BAR_H}`} style={{ width: BAR_W, height: BAR_H, display: 'block' }} role="img" aria-label={`${p.person.name} monthly load`}>
+                    <line
+                      x1={0}
+                      y1={BASELINE - (Math.min(view.threshold, CEILING) / CEILING) * BAR_TOP}
+                      x2={BAR_W}
+                      y2={BASELINE - (Math.min(view.threshold, CEILING) / CEILING) * BAR_TOP}
+                      stroke="var(--color-warning)"
+                      strokeWidth={1}
+                      strokeDasharray="1 3"
+                    />
                     <line x1={0} y1={capY} x2={BAR_W} y2={capY} stroke="var(--color-text)" strokeWidth={1} strokeDasharray="3 3" />
                     <line x1={0} y1={BASELINE} x2={BAR_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} />
-                    {p.loads.map((v, i) => {
+                    {p.committed.map((v, i) => {
                       const h = (Math.min(v, CEILING) / CEILING) * BAR_TOP;
                       return (
                         <rect

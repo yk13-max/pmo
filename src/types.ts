@@ -41,10 +41,19 @@ export interface Person {
 /** Keyed `${projectId}|${personId}|${YYYY-MM}` → % of that person's week. */
 export type Allocations = Record<string, number>;
 
+/** Keyed `${personId}|${YYYY-MM}` → days of annual leave booked that month. */
+export type Leave = Record<string, number>;
+
 export interface Portfolio {
   projects: Project[];
   people: Person[];
   allocations: Allocations;
+  leave: Leave;
+  /** Job titles available when adding someone. Editable on the Data screen. */
+  roles: string[];
   /** Load above which a person counts as over-allocated, %. */
   threshold: number;
 }
+
+/** Working days in an average month, for turning leave days into a share of capacity. */
+export const WORKING_DAYS_PER_MONTH = 21;

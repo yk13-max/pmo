@@ -6,6 +6,7 @@ import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
 import { ProjectForm } from './components/ProjectForm';
 import { PersonForm } from './components/PersonForm';
+import { PersonDetail } from './components/PersonDetail';
 import { Portfolio } from './screens/Portfolio';
 import { Resourcing } from './screens/Resourcing';
 import { Financials } from './screens/Financials';
@@ -54,7 +55,11 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   ],
 };
 
-type Editing = { kind: 'project'; project: Project | null } | { kind: 'person'; person: Person | null } | null;
+type Editing =
+  | { kind: 'project'; project: Project | null }
+  | { kind: 'person'; person: Person | null }
+  | { kind: 'person-detail'; person: Person }
+  | null;
 
 /** Screens whose content reads better at a narrower measure. The width wraps the header
     too, so a screen's title, buttons and body share one centred column. */
@@ -165,7 +170,7 @@ export function App() {
           <Resourcing
             view={view}
             onAddPerson={() => setEditing({ kind: 'person', person: null })}
-            onEditPerson={(person) => setEditing({ kind: 'person', person })}
+            onOpenPerson={(person) => setEditing({ kind: 'person-detail', person })}
             onSetThreshold={store.setThreshold}
           />
         )}
@@ -231,14 +236,36 @@ export function App() {
         >
           <PersonForm
             person={editing.person}
+            roles={view.roles}
+            months={view.months}
+            monthLabels={view.monthLabels}
+            leaveDays={
+              view.peopleViews.find((p) => p.person.id === editing.person?.id)?.leaveDays ?? view.months.map(() => 0)
+            }
             onSave={(person) => {
               store.savePerson(person);
               setEditing(null);
             }}
+            onAddRole={store.addRole}
+            onSetLeave={store.setLeave}
             onCancel={() => setEditing(null)}
             onDelete={(id) => {
               store.deletePerson(id);
               setEditing(null);
+            }}
+          />
+        </Drawer>
+      )}
+
+      {editing?.kind === 'person-detail' && (
+        <Drawer title={editing.person.name} kicker={editing.person.role} onClose={() => setEditing(null)}>
+          <PersonDetail
+            view={view}
+            person={editing.person}
+            onEdit={() => setEditing({ kind: 'person', person: editing.person })}
+            onOpenProject={(id) => {
+              setEditing(null);
+              openProject(id);
             }}
           />
         </Drawer>

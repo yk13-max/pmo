@@ -1,5 +1,5 @@
-import type { Allocations, Facing, Person, Portfolio, Project, ProjectType, Rag } from '../types';
-import { PHASE_MILESTONES } from './phases';
+import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
+import { PHASE_MILESTONES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
 
 type ProjectSeed = [
@@ -69,6 +69,17 @@ const PEOPLE_SEED: PersonSeed[] = [
   ['Carrie', 'Regulatory support', '', [102, 118, 148, 136, 116, 100],
     ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek']],
 ];
+
+/** Annual leave in days, per person, across the six planning months. */
+const LEAVE_SEED: Record<string, number[]> = {
+  Saranan: [0, 0, 3, 0, 5, 0],
+  Andy: [5, 0, 0, 2, 4, 0],
+  Neil: [0, 2, 0, 0, 6, 0],
+  Toby: [3, 0, 0, 5, 3, 0],
+  Josh: [0, 0, 2, 0, 5, 0],
+  Anna: [4, 0, 0, 0, 4, 0],
+  Carrie: [0, 3, 0, 0, 5, 2],
+};
 
 /** Month offset and day-of-month for each project's next milestone. */
 const MILESTONE_OFFSETS: [months: number, day: number][] = [
@@ -160,5 +171,14 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     });
   });
 
-  return { projects, people, allocations, threshold: 85 };
+  const leave: Leave = {};
+  PEOPLE_SEED.forEach(([name]) => {
+    const days = LEAVE_SEED[name];
+    if (!days) return;
+    months.forEach((month, i) => {
+      if (days[i] > 0) leave[`person-${name.toLowerCase()}|${month}`] = days[i];
+    });
+  });
+
+  return { projects, people, allocations, leave, roles: [...ROLES], threshold: 85 };
 }

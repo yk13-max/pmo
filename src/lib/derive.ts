@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Person, Portfolio, Project, Rag } from '../types';
+import { WORKING_DAYS_PER_MONTH } from '../types';
 import { PHASES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
 import { fromISO, monthLabel, monthSpan, planningMonths, shortDate, shortMonth } from './dates';
 
@@ -110,13 +111,35 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
   };
 }
 
+/** Annual leave expressed as the share of a working month it consumes. */
+export function leavePct(days: number): number {
+  return Math.round((days / WORKING_DAYS_PER_MONTH) * 100);
+}
+
 export interface PersonView {
   person: Person;
+  /** Project work booked, % of a working week. */
   loads: number[];
+  /** Annual leave booked, in days. */
+  leaveDays: number[];
+  /** That leave as a share of the month. */
+  leaveLoads: number[];
+  /** Work plus leave — what actually consumes the person's month. */
+  committed: number[];
   peak: number;
   peakMonthIndex: number;
   /** Names of the projects this person is booked on, in the planning window. */
   projectNames: string[];
+}
+
+export interface RoleShortage {
+  role: string;
+  /** Consecutive months where the whole role is oversubscribed. */
+  months: string[];
+  /** Largest gap over the role's combined capacity, in people. */
+  worstGap: number;
+  /** How many people hold this title. */
+  headcount: number;
 }
 
 export interface PortfolioView {
@@ -128,7 +151,14 @@ export interface PortfolioView {
   monthLabels: string[];
   threshold: number;
   demand: number[];
+  /** Headcount, ignoring leave. */
   capacity: number;
+  /** Capacity actually available each month once leave is taken out. */
+  capacityByMonth: number[];
+  roles: string[];
+  /** Roles oversubscribed for 3+ months running, where no colleague of the same
+      title has room to absorb the overspill. */
+  roleShortages: RoleShortage[];
   totals: {
     value: number;
     billed: number;
@@ -143,6 +173,8 @@ export interface PortfolioView {
   allocationsFor: (projectId: string) => { person: Person; loads: number[]; total: number }[];
   /** This project's bookings keyed `${personId}|${month}`, for the edit form. */
   allocationsOf: (projectId: string) => Record<string, number>;
+  /** One person's booking across every project they touch, month by month. */
+  spreadFor: (personId: string) => { project: ProjectView; loads: number[]; total: number }[];
   /** Everyone's monthly load with one project left out, so the form can warn on unsaved edits. */
   loadsExcluding: (projectId: string) => Record<string, number[]>;
   today: Date;
@@ -175,18 +207,61 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const peopleViews: PersonView[] = people.map((person) => {
       const loads = loadIndex.get(person.id) ?? months.map(() => 0);
-      const peak = loads.length ? Math.max(...loads) : 0;
+      const leaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
+      const leaveLoads = leaveDays.map(leavePct);
+      const committed = loads.map((v, i) => v + leaveLoads[i]);
+      const peak = committed.length ? Math.max(...committed) : 0;
       return {
         person,
         loads,
+        leaveDays,
+        leaveLoads,
+        committed,
         peak,
-        peakMonthIndex: loads.indexOf(peak),
+        peakMonthIndex: committed.indexOf(peak),
         projectNames: [...(bookedOn.get(person.id) ?? [])],
       };
     });
 
     const demand = months.map((_, i) => peopleViews.reduce((n, p) => n + p.loads[i], 0) / 100);
     const capacity = people.reduce((n, p) => n + p.capacity, 0) / 100;
+    // Leave comes straight off the capacity available that month.
+    const capacityByMonth = months.map(
+      (_, i) => peopleViews.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i]), 0) / 100,
+    );
+
+    /* A role is short when the work booked to everyone holding that title exceeds their
+       combined capacity for the month — meaning the overspill cannot be handed to a
+       colleague who does the same job. Three months running makes it structural rather
+       than a bad fortnight. */
+    const roleShortages: RoleShortage[] = [];
+    const rolesInUse = [...new Set(people.map((p) => p.role))];
+    rolesInUse.forEach((role) => {
+      const holders = peopleViews.filter((p) => p.person.role === role);
+      if (!holders.length) return;
+      const gaps = months.map((_, i) => {
+        const booked = holders.reduce((n, p) => n + p.loads[i], 0);
+        const available = holders.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i]), 0);
+        return (booked - available) / 100;
+      });
+      let run: number[] = [];
+      const flush = () => {
+        if (run.length >= 3) {
+          roleShortages.push({
+            role,
+            months: run.map((i) => monthLabels[i]),
+            worstGap: Math.max(...run.map((i) => gaps[i])),
+            headcount: holders.length,
+          });
+        }
+        run = [];
+      };
+      gaps.forEach((gap, i) => {
+        if (gap > 0) run.push(i);
+        else flush();
+      });
+      flush();
+    });
 
     const customer = projects.filter((p) => p.cust);
     const internal = projects.filter((p) => !p.cust);
@@ -212,6 +287,15 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       return out;
     };
 
+    const spreadFor = (personId: string) =>
+      projects
+        .map((project) => {
+          const loads = months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0);
+          return { project, loads, total: loads.reduce((n, v) => n + v, 0) };
+        })
+        .filter((row) => row.total > 0)
+        .sort((a, b) => b.total - a.total);
+
     const loadsExcluding = (projectId: string) => {
       const out: Record<string, number[]> = {};
       people.forEach((person) => {
@@ -231,6 +315,9 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       threshold,
       demand,
       capacity,
+      capacityByMonth,
+      roles: portfolio.roles,
+      roleShortages,
       totals: {
         value,
         billed,
@@ -244,6 +331,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       },
       allocationsFor,
       allocationsOf,
+      spreadFor,
       loadsExcluding,
       today,
     };

@@ -1,36 +1,68 @@
 import { useState } from 'react';
 import type { Person } from '../types';
-import { ROLES } from '../data/phases';
+import { WORKING_DAYS_PER_MONTH } from '../types';
+import { leavePct } from '../lib/derive';
 
-function emptyPerson(): Person {
-  return { id: `person-${crypto.randomUUID().slice(0, 8)}`, name: '', role: ROLES[0], discipline: '', capacity: 100 };
+function emptyPerson(role: string): Person {
+  return { id: `person-${crypto.randomUUID().slice(0, 8)}`, name: '', role, discipline: '', capacity: 100 };
 }
 
 export function PersonForm({
   person,
+  roles,
+  months,
+  monthLabels,
+  leaveDays,
   onSave,
+  onAddRole,
+  onSetLeave,
   onCancel,
   onDelete,
 }: {
   person: Person | null;
+  roles: string[];
+  months: string[];
+  monthLabels: string[];
+  /** Days of leave already booked, one per planning month. */
+  leaveDays: number[];
   onSave: (person: Person) => void;
+  onAddRole: (role: string) => void;
+  onSetLeave: (personId: string, month: string, days: number) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
 }) {
-  const [draft, setDraft] = useState<Person>(() => person ?? emptyPerson());
+  const [draft, setDraft] = useState<Person>(() => person ?? emptyPerson(roles[0] ?? 'Project manager'));
   const [capacity, setCapacity] = useState(String(draft.capacity));
+  // Held locally so Cancel discards leave edits, like every other field on this form.
+  const [leave, setLeave] = useState<number[]>(leaveDays);
+  const [newRole, setNewRole] = useState('');
+  const [addingRole, setAddingRole] = useState(false);
   const [touched, setTouched] = useState(false);
 
   const nameError = draft.name.trim() ? '' : 'Give this person a name.';
+
+  const commitRole = () => {
+    const clean = newRole.trim();
+    if (!clean) return;
+    onAddRole(clean);
+    setDraft((d) => ({ ...d, role: clean }));
+    setNewRole('');
+    setAddingRole(false);
+  };
 
   const submit = () => {
     setTouched(true);
     if (nameError) return;
     const parsed = Math.round(Number(capacity));
+    if (person) {
+      months.forEach((month, i) => {
+        if (leave[i] !== leaveDays[i]) onSetLeave(person.id, month, leave[i]);
+      });
+    }
     onSave({
       ...draft,
       name: draft.name.trim(),
-      capacity: Number.isFinite(parsed) && parsed > 0 ? parsed : 100,
+      capacity: Number.isFinite(parsed) && parsed > 0 ? Math.min(100, parsed) : 100,
     });
   };
 
@@ -50,14 +82,45 @@ export function PersonForm({
           {touched && nameError && <div className="field-error">{nameError}</div>}
         </div>
         <div className="field">
-          <label htmlFor="pn-role">Role</label>
-          <select id="pn-role" className="input" value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })}>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="pn-role">Job title</label>
+          {addingRole ? (
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <input
+                id="pn-role-new"
+                className="input"
+                autoFocus
+                value={newRole}
+                placeholder="Quality engineer"
+                onChange={(e) => setNewRole(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitRole();
+                  }
+                }}
+              />
+              <button type="button" className="btn btn-secondary" onClick={commitRole}>
+                Add
+              </button>
+            </div>
+          ) : (
+            <select
+              id="pn-role"
+              className="input"
+              value={draft.role}
+              onChange={(e) => {
+                if (e.target.value === '__new') setAddingRole(true);
+                else setDraft({ ...draft, role: e.target.value });
+              }}
+            >
+              {roles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+              <option value="__new">+ Add a new job title…</option>
+            </select>
+          )}
         </div>
         <div className="field">
           <label htmlFor="pn-disc">Works across</label>
@@ -73,6 +136,41 @@ export function PersonForm({
           <div className="field-hint">100% is a full week on project work.</div>
         </div>
       </div>
+
+      {person ? (
+        <fieldset className="fieldset">
+          <legend>Annual leave, in days</legend>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            {months.map((month, i) => (
+              <div className="field" key={month} style={{ width: 92 }}>
+                <label htmlFor={`pn-leave-${month}`}>{monthLabels[i]}</label>
+                <input
+                  id={`pn-leave-${month}`}
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={WORKING_DAYS_PER_MONTH}
+                  value={leave[i] || ''}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const days = Math.max(0, Math.min(WORKING_DAYS_PER_MONTH, Math.round(Number(e.target.value) || 0)));
+                    setLeave((prev) => prev.map((v, j) => (j === i ? days : v)));
+                  }}
+                />
+                <div className="field-hint">{leave[i] ? `${leavePct(leave[i])}%` : ' '}</div>
+              </div>
+            ))}
+          </div>
+          <p className="field-hint">
+            Leave is counted against capacity: {WORKING_DAYS_PER_MONTH} working days is a full month, so it shows in the
+            resource graphs stacked on top of project work.
+          </p>
+        </fieldset>
+      ) : (
+        <p className="field-hint" style={{ marginBottom: 'var(--space-6)' }}>
+          Annual leave can be booked once this person is saved.
+        </p>
+      )}
 
       <div className="drawer-actions">
         {person && onDelete && (

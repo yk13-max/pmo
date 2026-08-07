@@ -20,9 +20,10 @@ export function DataManager({
   onOpenProject: (id: string) => void;
   onExport: () => void;
 }) {
-  const { replaceAll, resetToSeed, portfolio } = usePortfolio();
+  const { replaceAll, resetToSeed, portfolio, addRole, removeRole } = usePortfolio();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+  const [newRole, setNewRole] = useState('');
 
   const importFile = async (file: File) => {
     try {
@@ -144,6 +145,78 @@ export function DataManager({
         </table>
       </div>
 
+      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Job titles</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+        The titles offered when adding someone. A title in use cannot be removed — change the person&rsquo;s title first.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', maxWidth: 900 }}>
+        {view.roles.map((role) => {
+          const inUse = view.people.filter((p) => p.role === role).length;
+          return (
+            <span
+              key={role}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '5px 10px',
+                borderRadius: 3,
+                border: '1px solid var(--color-divider)',
+                fontSize: 13,
+              }}
+            >
+              {role}
+              <span style={{ color: 'var(--color-neutral-600)', fontSize: 11 }}>{inUse || 'unused'}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${role}`}
+                title={inUse ? `${inUse} person(s) hold this title` : `Remove ${role}`}
+                disabled={inUse > 0}
+                onClick={() => removeRole(role)}
+                style={{
+                  border: 0,
+                  background: 'transparent',
+                  cursor: inUse ? 'not-allowed' : 'pointer',
+                  color: inUse ? 'var(--color-neutral-400)' : 'var(--color-accent-2-700)',
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </span>
+          );
+        })}
+        <span style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
+          <input
+            className="input"
+            style={{ width: 200 }}
+            value={newRole}
+            placeholder="Add a job title"
+            aria-label="New job title"
+            onChange={(e) => setNewRole(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newRole.trim()) {
+                addRole(newRole);
+                setNewRole('');
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={!newRole.trim()}
+            onClick={() => {
+              addRole(newRole);
+              setNewRole('');
+            }}
+          >
+            Add
+          </button>
+        </span>
+      </div>
+
       <h3 style={{ margin: 'var(--space-8) 0 4px' }}>People</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Removing someone also removes their bookings from every project.
@@ -155,6 +228,7 @@ export function DataManager({
             <th style={{ width: 180 }}>Role</th>
             <th style={{ width: 150 }}>Works across</th>
             <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
+            <th style={{ textAlign: 'right', width: 90 }}>Leave</th>
             <th style={{ textAlign: 'right', width: 100 }}>Peak load</th>
             <th style={{ width: 100 }} />
           </tr>
@@ -168,6 +242,9 @@ export function DataManager({
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.discipline || 'Both'}</td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+                {row.leaveDays.reduce((n, d) => n + d, 0)}d
+              </td>
               <td
                 style={{
                   textAlign: 'right',
