@@ -67,7 +67,7 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
           At risk
         </span>
         <span>
-          <span style={{ width: 26, height: 8, background: 'var(--color-process-yellow)', display: 'block' }} />
+          <span style={{ width: 26, height: 8, background: 'var(--color-warning)', display: 'block' }} />
           Watch
         </span>
         <span>Hover a bar for its dates and team</span>

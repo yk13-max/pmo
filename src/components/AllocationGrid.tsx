@@ -91,7 +91,7 @@ export function AllocationGrid({
         </tbody>
       </table>
       <p className="field-hint" style={{ marginTop: 'var(--space-2)' }}>
-        Percentages are of each person&rsquo;s working week. A box turns magenta when that person is booked past 100% across
+        Percentages are of each person&rsquo;s working week. A box turns red when that person is booked past 100% across
         the whole portfolio; over-allocation is flagged from {threshold}%.
       </p>
     </div>

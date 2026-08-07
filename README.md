@@ -8,6 +8,10 @@ npm run dev      # http://localhost:5173
 npm run build    # production bundle in dist/
 ```
 
+Styling is layered: `src/styles/broadsheet.css` is the design system (structure and components),
+`src/styles/theme.css` is the PolarSeal brand layer that overrides its palette and typeface, and it
+loads last. Retheming means editing that one file.
+
 Seven screens: Portfolio, Resourcing, Financials, Timeline, Project detail, Alerts, and Data
 (add/edit/remove projects and people, import/export the portfolio as JSON). The portfolio lives in
 `localStorage` and starts from the sample data in `src/data/seed.ts`; "Reset to sample data" on the

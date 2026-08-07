@@ -194,7 +194,7 @@ function Scatter({
       <h3 style={{ marginBottom: 4 }}>Every project on one chart</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Read left to right for how far a project has got, bottom to top for how big its budget is. Big and top-right means
-        expensive work that is nearly done; magenta means the project manager has flagged a problem.
+        expensive work that is nearly done; red means the project manager has flagged a problem.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
@@ -327,7 +327,7 @@ function Scatter({
           At risk
         </span>
         <span>
-          <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'var(--color-process-yellow)', display: 'block' }} />
+          <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'var(--color-warning)', display: 'block' }} />
           Watch
         </span>
         <span>Bigger circle = takes more of the team&rsquo;s time</span>

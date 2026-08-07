@@ -115,7 +115,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', fontSize: 11, lineHeight: 1.6, color: 'var(--color-neutral-600)' }}>
+        <div style={{ marginTop: 'auto', fontSize: 11, lineHeight: 1.6, color: 'var(--color-accent-300)' }}>
           Week {weekNumber(view.today)} · FY{String(view.today.getFullYear()).slice(2)}
           <br />
           {view.people.length} people · {view.projects.length} projects

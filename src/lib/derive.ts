@@ -14,7 +14,7 @@ export function moneyOrZero(k: number): string {
 
 export function ragColor(rag: Rag): string {
   if (rag === 'R') return 'var(--color-accent-2)';
-  if (rag === 'A') return 'var(--color-process-yellow)';
+  if (rag === 'A') return 'var(--color-warning)';
   return 'var(--color-neutral-500)';
 }
 
@@ -91,7 +91,7 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
       project.load > 100
         ? 'var(--color-accent-2)'
         : project.load > threshold
-          ? 'var(--color-process-yellow)'
+          ? 'var(--color-warning)'
           : 'var(--color-neutral-500)',
     loadInk: project.load > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
     budgetLabel: money(project.budget),

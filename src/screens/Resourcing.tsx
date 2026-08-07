@@ -168,7 +168,7 @@ export function Resourcing({
                             v > 100
                               ? 'var(--color-accent-2)'
                               : v > view.threshold
-                                ? 'var(--color-process-yellow)'
+                                ? 'var(--color-warning)'
                                 : 'var(--color-neutral-400)'
                           }
                         />
@@ -292,7 +292,7 @@ function DemandChart({ view }: { view: PortfolioView }) {
       <h3 style={{ marginBottom: 4 }}>How many people the work needs</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         The pale column is the {view.people.length} people we have. The dark column is how many the promised work needs.
-        Magenta is the shortfall — work with nobody free to do it.
+        Red is the shortfall — work with nobody free to do it.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>

@@ -30,7 +30,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         <Stat value={money(view.totals.toBill)} label="Waiting to be invoiced" sub="Agreed work not yet billed" />
       </div>
 
-      <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="Filled squares are phases finished, the cyan square is where the project is now." />
+      <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="Filled squares are phases finished, the navy square is where the project is now." />
       {atRisk.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nothing flagged at risk.</p>
       ) : (
@@ -70,7 +70,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         </div>
       )}
 
-      <SectionHeading dot="var(--color-accent-2)" title="People booked past a full week" note="Magenta bars are months where more work is promised than there are hours to do it." />
+      <SectionHeading dot="var(--color-accent-2)" title="People booked past a full week" note="Red bars are months where more work is promised than there are hours to do it." />
       {overbooked.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nobody is booked past a full week.</p>
       ) : (
@@ -101,7 +101,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                           y={BASELINE - h}
                           width={barWidth}
                           height={h}
-                          fill={v > 100 ? 'var(--color-accent-2)' : v > view.threshold ? 'var(--color-process-yellow)' : 'var(--color-neutral-400)'}
+                          fill={v > 100 ? 'var(--color-accent-2)' : v > view.threshold ? 'var(--color-warning)' : 'var(--color-neutral-400)'}
                         >
                           <title>{`${view.monthLabels[i]}: ${v}%`}</title>
                         </rect>

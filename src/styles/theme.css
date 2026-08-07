@@ -1,0 +1,186 @@
+/* PolarSeal brand theme.
+   Loaded after broadsheet.css: the design system keeps supplying structure (spacing,
+   components, elevation) while this file replaces the palette and typeface.
+
+   Colours are sampled from polarseal.net — navy chrome, teal highlight, grey text on
+   white — and the tonal ramps are regenerated in OKLCH around those hues, with each
+   brand colour sitting at its -600 step so -700/-800 are reliably darker.
+
+   Two roles the brand does not supply are the RAG statuses "watch" and "at risk";
+   those hues are chosen to sit beside the brand rather than fight it. */
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/poppins-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/poppins-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* — ground — */
+  --color-bg: #ffffff;
+  --color-surface: #f2f6f9;
+  --color-text: #262d32;
+  --color-divider: color-mix(in srgb, #0a4b75 18%, transparent);
+
+  /* — brand — */
+  --color-brand-navy: #0a4b75;
+  --color-brand-teal: #12aebe;
+
+  /* Primary accent: the navy. Carries links, primary buttons, current phase,
+     customer-facing stripes — every role that needs to read as text or a control. */
+  --color-accent: #0a4b75;
+  --color-accent-100: #edf7ff;
+  --color-accent-200: #d4ebff;
+  --color-accent-300: #acd7fa;
+  --color-accent-400: #83bbe9;
+  --color-accent-500: #619bca;
+  --color-accent-600: #144b71;
+  --color-accent-700: #073554;
+  --color-accent-800: #012138;
+  --color-accent-900: #00101f;
+
+  /* Alert accent: reserved for at-risk, over-allocation and shortfall. */
+  --color-accent-2: #bb3d48;
+  --color-accent-2-100: #fff1f1;
+  --color-accent-2-200: #ffdfde;
+  --color-accent-2-300: #ffbebd;
+  --color-accent-2-400: #ff8e91;
+  --color-accent-2-500: #ed6068;
+  --color-accent-2-600: #bb3d48;
+  --color-accent-2-700: #8d2731;
+  --color-accent-2-800: #60131c;
+  --color-accent-2-900: #39060d;
+
+  /* Teal: highlight only. At 2.68:1 on white it never carries text or a small
+     graphic on the page ground — it lives on the navy chrome, where it reads 3.44:1. */
+  --color-teal-100: #e6f9fc;
+  --color-teal-200: #c3f2f8;
+  --color-teal-300: #8de1ec;
+  --color-teal-400: #4cc8d7;
+  --color-teal-500: #2dbbcb;
+  --color-teal-600: #12aebe;
+  --color-teal-700: #14808c;
+  --color-teal-800: #00555e;
+  --color-teal-900: #003237;
+
+  /* Neutrals, cooled toward the navy so greys sit with the brand.
+     -600 is darkened to #61707c so 10-11px caps clear 4.5:1 on both grounds. */
+  --color-neutral-100: #f2f6f9;
+  --color-neutral-200: #e1e9f0;
+  --color-neutral-300: #c9d6e2;
+  --color-neutral-400: #a8bac8;
+  --color-neutral-500: #899baa;
+  --color-neutral-600: #61707c;
+  --color-neutral-700: #53606a;
+  --color-neutral-800: #3a434b;
+  --color-neutral-900: #262d32;
+
+  /* "Watch" status — the app's own token. The design system's --color-process-yellow
+     stays where it is, meaning what it means there: a print separation plate. */
+  --color-warning: #d18500;
+
+  --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-heading-weight: 600;
+  --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+
+  /* Poppins is geometric and wide; the serif's tight tracking looks cramped in it. */
+  --heading-tracking: -0.01em;
+
+  /* Shadows re-tinted from the navy rather than warm ink. */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #0a4b75 16%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #0a4b75 18%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #0a4b75 22%, transparent);
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: var(--heading-tracking);
+}
+
+/* The site pairs a navy chrome bar with a white content area; the sidebar plays
+   that part here. Every value below cleared contrast against the navy ground. */
+.sidebar {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+.sidebar .eyebrow,
+.sidebar > div:last-child {
+  color: var(--color-accent-300);
+}
+.nav-item {
+  color: var(--color-accent-200);
+  position: relative;
+}
+.nav-item:hover {
+  background: color-mix(in srgb, #ffffff 12%, transparent);
+  color: #ffffff;
+}
+.nav-item[aria-current='page'] {
+  background: color-mix(in srgb, #ffffff 14%, transparent);
+  color: #ffffff;
+}
+/* The teal highlight, in the one place the brand puts it: a mark on the navy. */
+.nav-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--color-brand-teal);
+}
+.nav-item .count {
+  color: var(--color-accent-400);
+}
+
+/* Buttons pick up the brand's square-ish, solid treatment. */
+.btn {
+  border-radius: 3px;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover {
+  background: var(--color-accent-700);
+}
+.btn-secondary {
+  border-color: var(--color-divider);
+}
+
+.input {
+  background: #ffffff;
+  border-color: color-mix(in srgb, #0a4b75 22%, transparent);
+  border-radius: 3px;
+}
+.input:focus-visible {
+  border-color: var(--color-brand-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-teal) 22%, transparent);
+}
+
+.chip {
+  border-radius: 3px;
+}
+.chip[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.table th {
+  color: var(--color-neutral-700);
+  border-bottom-color: var(--color-divider);
+}
