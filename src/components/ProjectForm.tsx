@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Facing, Person, Project, ProjectType, Rag } from '../types';
+import { MAX_DATE, PRIORITY_LABEL, PRIORITY_LEVELS } from '../types';
 import { PHASES, PHASE_MILESTONES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
 import { addMonths, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
@@ -35,6 +36,7 @@ function emptyProject(pmId: string): Project {
     endDate: toISO(addMonths(today, 9)),
     milestone: PHASE_MILESTONES.CS[0],
     milestoneDate: toISO(addMonths(today, 1)),
+    priority: 3,
   };
 }
 
@@ -206,6 +208,22 @@ export function ProjectForm({
             {err('pmId')}
           </div>
           <div className="field">
+            <label htmlFor="pf-priority">Priority</label>
+            <select
+              id="pf-priority"
+              className="input"
+              value={draft.priority}
+              onChange={(e) => setDraft((d) => ({ ...d, priority: Number(e.target.value) }))}
+            >
+              {PRIORITY_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {level} — {PRIORITY_LABEL[level]}
+                </option>
+              ))}
+            </select>
+            <div className="field-hint">1 is highest. Drives ranking and the callouts on the portfolio chart.</div>
+          </div>
+          <div className="field">
             <label htmlFor="pf-rag">Status</label>
             <select id="pf-rag" className="input" value={draft.rag} onChange={(e) => set('rag', e.target.value as Rag)}>
               {(Object.keys(RAG_LABEL) as Rag[]).map((r) => (
@@ -254,7 +272,7 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-start">Started</label>
-            <input id="pf-start" className="input" type="date" value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
+            <input id="pf-start" className="input" type="date" max={MAX_DATE} value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
           </div>
           <div className="field">
             <label htmlFor="pf-end">Finishes</label>
@@ -262,6 +280,7 @@ export function ProjectForm({
               id="pf-end"
               className="input"
               type="date"
+              max={MAX_DATE}
               value={draft.endDate}
               aria-invalid={invalid('endDate')}
               onChange={(e) => set('endDate', e.target.value)}
@@ -280,7 +299,7 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-msdate">Due on</label>
-            <input id="pf-msdate" className="input" type="date" value={draft.milestoneDate} onChange={(e) => set('milestoneDate', e.target.value)} />
+            <input id="pf-msdate" className="input" type="date" max={MAX_DATE} value={draft.milestoneDate} onChange={(e) => set('milestoneDate', e.target.value)} />
           </div>
         </div>
       </fieldset>

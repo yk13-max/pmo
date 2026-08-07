@@ -12,6 +12,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   const [rag, setRag] = useState<string>('All');
   const [pm, setPm] = useState<string>('All');
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [sort, setSort] = useState<'status' | 'priority'>('priority');
 
   const shown = view.projects
     .filter(
@@ -20,7 +21,11 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
         (rag === 'All' || p.ragLabel === rag) &&
         (pm === 'All' || p.pmName === pm),
     )
-    .sort((a, b) => RAG_ORDER[a.rag] - RAG_ORDER[b.rag] || b.load - a.load);
+    .sort((a, b) =>
+      sort === 'priority'
+        ? a.priority - b.priority || RAG_ORDER[a.rag] - RAG_ORDER[b.rag]
+        : RAG_ORDER[a.rag] - RAG_ORDER[b.rag] || b.load - a.load,
+    );
 
   const managers = [...new Set(view.people.filter((p) => p.role === 'Project manager').map((p) => p.name))];
   const hovered = shown.find((p) => p.id === hoverId) ?? null;
@@ -93,6 +98,18 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
       >
         <FilterChips label="Type" options={TYPE_FILTERS} value={type} onChange={setType} />
         <FilterChips label="Status" options={RAG_FILTERS} value={rag} onChange={setRag} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span className="eyebrow">Rank by</span>
+          <select
+            className="input"
+            style={{ width: 'auto' }}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'status' | 'priority')}
+          >
+            <option value="priority">Priority</option>
+            <option value="status">Status then load</option>
+          </select>
+        </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Owner</span>
           <select className="input" style={{ width: 'auto', minWidth: 160 }} value={pm} onChange={(e) => setPm(e.target.value)}>
@@ -187,7 +204,37 @@ function Scatter({
   const radius = (load: number) => 5 + (load / 100) * 7;
 
   const xTicks = [0, 25, 50, 75, 100];
+  const xMinor = [12.5, 37.5, 62.5, 87.5];
   const yTicks = [0, Math.round(maxBudget / 4), Math.round(maxBudget / 2), maxBudget];
+  const yMinor = [maxBudget / 8, (maxBudget * 3) / 8, (maxBudget * 5) / 8, (maxBudget * 7) / 8];
+
+  /* Callouts are limited to what a delivery lead would stop on: anything at risk, plus
+     priority 1-2. Labels are placed only where they will not collide with one already
+     placed, so a crowded corner stays readable. */
+  const callouts: { p: ProjectView; x: number; y: number; text: string; anchor: 'start' | 'end' }[] = [];
+  const placed: { x: number; y: number; w: number }[] = [];
+  [...projects]
+    .filter((p) => p.rag === 'R' || p.priority <= 2)
+    .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
+    .forEach((p) => {
+      const cx = x(p.pct);
+      const cy = y(p.budget);
+      const text =
+        p.rag === 'R' && p.burn > 90
+          ? `${p.name} · ${p.burnLabel} spent`
+          : p.rag === 'R'
+            ? `${p.name} · at risk`
+            : p.cust && p.value > p.billed
+              ? `${p.name} · ${p.toBillLabel} to bill`
+              : `${p.name} · P${p.priority}`;
+      const w = text.length * 6.2 + 24;
+      const anchor: 'start' | 'end' = cx > 720 ? 'end' : 'start';
+      const left = anchor === 'start' ? cx : cx - w;
+      const clash = placed.some((k) => Math.abs(k.y - cy) < 15 && left < k.x + k.w && k.x < left + w);
+      if (clash) return;
+      placed.push({ x: left, y: cy, w });
+      callouts.push({ p, x: cx, y: cy, text, anchor });
+    });
 
   return (
     <div style={{ marginBottom: 'var(--space-8)' }}>
@@ -210,11 +257,18 @@ function Scatter({
               role="img"
               aria-label="Every project by how much of its plan is finished against its approved budget"
             >
+              <rect x={70} y={34} width={950} height={266} fill="none" stroke="var(--color-neutral-200)" strokeWidth={1} />
+              {xMinor.map((t) => (
+                <line key={`xm-${t}`} x1={x(t)} y1={34} x2={x(t)} y2={300} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
+              ))}
+              {yMinor.map((t) => (
+                <line key={`ym-${t}`} x1={70} y1={y(t)} x2={1020} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
+              ))}
               {xTicks.map((t) => (
                 <line key={t} x1={x(t)} y1={34} x2={x(t)} y2={300} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
               {yTicks.map((t) => (
-                <line key={t} x1={70} y1={y(t)} x2={1020} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={1} />
+                <line key={t} x1={70} y1={y(t)} x2={1020} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
               {projects.map((p) => (
                 <circle
@@ -241,6 +295,29 @@ function Scatter({
                 />
               ))}
             </svg>
+            {!hovered &&
+              callouts.map((c) => (
+                <span
+                  key={`co-${c.p.id}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${(c.x / CHART_W) * 100}%`,
+                    top: `${(c.y / CHART_H) * 100}%`,
+                    transform: c.anchor === 'start' ? 'translate(14px,-50%)' : 'translate(-100%,-50%)',
+                    marginLeft: c.anchor === 'end' ? -14 : 0,
+                    fontSize: 11,
+                    lineHeight: 1.3,
+                    whiteSpace: 'nowrap',
+                    color: c.p.rag === 'R' ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)',
+                    background: 'color-mix(in srgb, var(--color-bg) 82%, transparent)',
+                    padding: '1px 4px',
+                    borderRadius: 2,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {c.text}
+                </span>
+              ))}
             {xTicks.map((t) => (
               <span
                 key={t}
@@ -331,6 +408,7 @@ function Scatter({
           Watch
         </span>
         <span>Bigger circle = takes more of the team&rsquo;s time</span>
+        <span>Labels mark at-risk and priority 1&ndash;2 work</span>
         <span>Hover a circle for the project&rsquo;s details</span>
       </div>
     </div>
@@ -346,8 +424,23 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
           <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
             {project.client}
           </span>
-          <span style={{ flex: 'none', fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
-            {project.typeShort}
+          <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              title={`Priority ${project.priority} — ${project.priorityLabel}`}
+              style={{
+                fontSize: 10,
+                letterSpacing: '.08em',
+                padding: '1px 6px',
+                borderRadius: 2,
+                background: project.priority <= 2 ? 'var(--color-accent-2-100)' : 'var(--color-neutral-200)',
+                color: project.priority <= 2 ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)',
+              }}
+            >
+              P{project.priority}
+            </span>
+            <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+              {project.typeShort}
+            </span>
           </span>
         </div>
         <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 26, lineHeight: 1.1, letterSpacing: '-.015em' }}>

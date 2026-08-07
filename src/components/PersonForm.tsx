@@ -3,8 +3,20 @@ import type { Person } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { leavePct } from '../lib/derive';
 
+/** A part-timer's month as a share of a full-time one. */
+function capacityFromDays(days: number): number {
+  return Math.max(0, Math.round((days / WORKING_DAYS_PER_MONTH) * 100));
+}
+
 function emptyPerson(role: string): Person {
-  return { id: `person-${crypto.randomUUID().slice(0, 8)}`, name: '', role, discipline: '', capacity: 100 };
+  return {
+    id: `person-${crypto.randomUUID().slice(0, 8)}`,
+    name: '',
+    role,
+    discipline: '',
+    capacity: 100,
+    workingDays: WORKING_DAYS_PER_MONTH,
+  };
 }
 
 export function PersonForm({
@@ -32,7 +44,7 @@ export function PersonForm({
   onDelete?: (id: string) => void;
 }) {
   const [draft, setDraft] = useState<Person>(() => person ?? emptyPerson(roles[0] ?? 'Project manager'));
-  const [capacity, setCapacity] = useState(String(draft.capacity));
+  const [workingDays, setWorkingDays] = useState(String(draft.workingDays));
   // Held locally so Cancel discards leave edits, like every other field on this form.
   const [leave, setLeave] = useState<number[]>(leaveDays);
   const [newRole, setNewRole] = useState('');
@@ -53,7 +65,7 @@ export function PersonForm({
   const submit = () => {
     setTouched(true);
     if (nameError) return;
-    const parsed = Math.round(Number(capacity));
+    const days = Math.min(WORKING_DAYS_PER_MONTH, Math.max(0.5, Number(workingDays) || WORKING_DAYS_PER_MONTH));
     if (person) {
       months.forEach((month, i) => {
         if (leave[i] !== leaveDays[i]) onSetLeave(person.id, month, leave[i]);
@@ -62,7 +74,8 @@ export function PersonForm({
     onSave({
       ...draft,
       name: draft.name.trim(),
-      capacity: Number.isFinite(parsed) && parsed > 0 ? Math.min(100, parsed) : 100,
+      workingDays: days,
+      capacity: capacityFromDays(days),
     });
   };
 
@@ -131,9 +144,21 @@ export function PersonForm({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="pn-cap">Available week (%)</label>
-          <input id="pn-cap" className="input" type="number" min={0} max={100} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-          <div className="field-hint">100% is a full week on project work.</div>
+          <label htmlFor="pn-cap">Working days a month</label>
+          <input
+            id="pn-cap"
+            className="input"
+            type="number"
+            min={1}
+            max={WORKING_DAYS_PER_MONTH}
+            step={0.5}
+            value={workingDays}
+            onChange={(e) => setWorkingDays(e.target.value)}
+          />
+          <div className="field-hint">
+            {WORKING_DAYS_PER_MONTH} is full time. Fewer means part time — {capacityFromDays(Number(workingDays) || 0)}% of
+            a full-time month.
+          </div>
         </div>
       </div>
 

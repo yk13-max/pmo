@@ -2,30 +2,38 @@ import { useState } from 'react';
 import type { Person } from '../types';
 import type { PortfolioView } from '../lib/derive';
 import { Stat } from '../components/Stat';
+import { Tabs } from '../components/Tabs';
+import { monthOptions } from '../lib/dates';
+import { MAX_YEAR } from '../types';
 
-const BAR_W = 200;
-const BAR_H = 60;
-const BAR_TOP = 46;
-const BASELINE = 58;
-/** Bars are drawn against a 150% ceiling, so a full week sits two thirds up. */
-const CEILING = 150;
+/* The mini graphs are drawn in a 0-100 user space and stretched to whatever room the
+   person's card gives them, so they fill their area on any screen width. Each person's
+   vertical scale runs to their own peak commitment — the top edge IS their peak — with a
+   floor of 100 so the full-week line never falls off the top for someone under-committed. */
+const VB_W = 100;
+const VB_H = 100;
+const BASELINE = 92;
+const PLOT_TOP = 8;
 
-const slotW = (count: number) => (BAR_W - 8) / Math.max(count, 1);
-const barW = (count: number) => Math.min(24, slotW(count) - 6);
-const barX = (i: number, count: number) => 4 + i * slotW(count) + (slotW(count) - barW(count)) / 2;
-const barHeight = (pct: number) => (Math.min(pct, CEILING) / CEILING) * BAR_TOP;
-const thresholdY = (pct: number) => BASELINE - barHeight(pct);
+const slotW = (count: number) => VB_W / Math.max(count, 1);
+const barW = (count: number) => slotW(count) * 0.62;
+const barX = (i: number, count: number) => i * slotW(count) + (slotW(count) - barW(count)) / 2;
+const scaleFor = (peak: number) => Math.max(peak, 100);
+const barHeight = (pct: number, peak: number) => (Math.min(pct, scaleFor(peak)) / scaleFor(peak)) * (BASELINE - PLOT_TOP);
+const lineY = (pct: number, peak: number) => BASELINE - barHeight(pct, peak);
 
 export function Resourcing({
   view,
   onAddPerson,
   onOpenPerson,
   onSetThreshold,
+  onSetWindow,
 }: {
   view: PortfolioView;
   onAddPerson: () => void;
   onOpenPerson: (person: Person) => void;
   onSetThreshold: (pct: number) => void;
+  onSetWindow: (startMonth: string, months: number) => void;
 }) {
   const [hoverBar, setHoverBar] = useState<string | null>(null);
 
@@ -38,11 +46,11 @@ export function Resourcing({
   const overMonths = view.peopleViews
     .flatMap((p) =>
       p.committed.map((v, i) =>
-        v > 100
+        v > p.person.capacity
           ? {
               person: p.person,
               month: view.monthLabels[i],
-              over: v - 100,
+              over: v - p.person.capacity,
               leaveDays: p.leaveDays[i],
               projects: p.projectNames,
             }
@@ -101,7 +109,11 @@ export function Resourcing({
         />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+      <Tabs
+        storageKey="resourcing"
+        tabs={[
+          { id: 'people', label: 'Person by person', count: view.people.length, render: () => (<>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
         <div>
           <h3 style={{ margin: '0 0 4px' }}>Person by person</h3>
           <p className="lede" style={{ margin: 0 }}>
@@ -119,7 +131,7 @@ export function Resourcing({
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
-              A full week (100%)
+              Their full month
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dotted var(--color-warning)', display: 'block' }} />
@@ -142,6 +154,40 @@ export function Resourcing({
               onChange={(e) => onSetThreshold(Number(e.target.value))}
             />
           </label>
+          <label className="field" style={{ margin: 0 }}>
+            <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+              Plan from
+            </span>
+            <select
+              className="input"
+              style={{ width: 'auto', minWidth: 110 }}
+              value={view.months[0]}
+              onChange={(e) => onSetWindow(e.target.value, view.months.length)}
+            >
+              {monthOptions(new Date().getFullYear() - 1, MAX_YEAR).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field" style={{ margin: 0 }}>
+            <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+              For
+            </span>
+            <select
+              className="input"
+              style={{ width: 'auto', minWidth: 96 }}
+              value={view.months.length}
+              onChange={(e) => onSetWindow(view.months[0], Number(e.target.value))}
+            >
+              {[3, 6, 12, 18, 24].map((n) => (
+                <option key={n} value={n}>
+                  {n} months
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" className="btn btn-secondary" onClick={onAddPerson}>
             Add person
           </button>
@@ -153,10 +199,9 @@ export function Resourcing({
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(408px,1fr))', gap: 'var(--space-8) 64px' }}>
           {view.peopleViews.map((p) => {
-            const capY = BASELINE - (100 / CEILING) * BAR_TOP;
             return (
-              <div key={p.person.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div key={p.person.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ minWidth: 0 }}>
                   <button
                     type="button"
                     className="card-link"
@@ -180,9 +225,9 @@ export function Resourcing({
                       fontSize: 26,
                       marginTop: 10,
                       color:
-                        p.peak > 100
+                        p.peak > p.person.capacity
                           ? 'var(--color-accent-2-700)'
-                          : p.peak > view.threshold
+                          : p.peak > (p.person.capacity * view.threshold) / 100
                             ? 'var(--color-accent-700)'
                             : 'var(--color-text)',
                     }}
@@ -194,28 +239,40 @@ export function Resourcing({
                     {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
                   </div>
                 </div>
-                <div style={{ flex: 'none', width: BAR_W, position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
                   <svg
-                    viewBox={`0 0 ${BAR_W} ${BAR_H}`}
-                    style={{ width: BAR_W, height: BAR_H, display: 'block' }}
+                    viewBox={`0 0 ${VB_W} ${VB_H}`}
+                    preserveAspectRatio="none"
+                    style={{ width: '100%', height: 104, display: 'block' }}
                     role="img"
-                    aria-label={`How much of ${p.person.name}'s time is promised each month`}
+                    aria-label={`How much of ${p.person.name}'s time is promised each month, peaking at ${p.peak}%`}
                   >
                     <line
                       x1={0}
-                      y1={thresholdY(view.threshold)}
-                      x2={BAR_W}
-                      y2={thresholdY(view.threshold)}
+                      y1={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
+                      x2={VB_W}
+                      y2={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
                       stroke="var(--color-warning)"
-                      strokeWidth={1}
-                      strokeDasharray="1 3"
+                      strokeWidth={0.6}
+                      strokeDasharray="1 2"
+                      vectorEffect="non-scaling-stroke"
                     />
-                    <line x1={0} y1={capY} x2={BAR_W} y2={capY} stroke="var(--color-text)" strokeWidth={1} strokeDasharray="3 3" />
-                    <line x1={0} y1={BASELINE} x2={BAR_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} />
+                    <line
+                      x1={0}
+                      y1={lineY(p.person.capacity, p.peak)}
+                      x2={VB_W}
+                      y2={lineY(p.person.capacity, p.peak)}
+                      stroke="var(--color-text)"
+                      strokeWidth={0.6}
+                      strokeDasharray="3 3"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
                     {p.loads.map((work, i) => {
                       const total = p.committed[i];
-                      const hTotal = barHeight(total);
-                      const hWork = barHeight(work);
+                      const full = p.person.capacity;
+                      const hTotal = barHeight(total, p.peak);
+                      const hWork = barHeight(work, p.peak);
                       return (
                         <g key={i}>
                           <rect
@@ -224,9 +281,9 @@ export function Resourcing({
                             width={barW(p.loads.length)}
                             height={hWork}
                             fill={
-                              total > 100
+                              total > full
                                 ? 'var(--color-accent-2)'
-                                : total > view.threshold
+                                : total > (full * view.threshold) / 100
                                   ? 'var(--color-warning)'
                                   : 'var(--color-neutral-400)'
                             }
@@ -246,9 +303,9 @@ export function Resourcing({
                     {p.loads.map((_, i) => (
                       <rect
                         key={`hit-${i}`}
-                        x={barX(i, p.loads.length)}
+                        x={i * slotW(p.loads.length)}
                         y={0}
-                        width={barW(p.loads.length)}
+                        width={slotW(p.loads.length)}
                         height={BASELINE}
                         fill="transparent"
                         style={{ cursor: 'pointer', pointerEvents: 'all' }}
@@ -259,14 +316,14 @@ export function Resourcing({
                   </svg>
                   {p.loads.map((work, i) => {
                     if (hoverBar !== `${p.person.id}-${i}`) return null;
-                    const h = barHeight(p.committed[i]);
+                    const h = barHeight(p.committed[i], p.peak);
                     return (
                       <span
                         key={`tip-${i}`}
                         style={{
                           position: 'absolute',
-                          left: barX(i, p.loads.length) + barW(p.loads.length) / 2,
-                          top: BASELINE - h - 21,
+                          left: `${((i + 0.5) / p.loads.length) * 100}%`,
+                          top: ((BASELINE - h) / VB_H) * 104 - 21,
                           transform: 'translateX(-50%)',
                           fontFamily: 'var(--font-heading)',
                           fontWeight: 600,
@@ -284,20 +341,16 @@ export function Resourcing({
                       </span>
                     );
                   })}
-                  <div style={{ display: 'flex', paddingLeft: 4, marginTop: 5 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${view.monthLabels.length}, 1fr)`, marginTop: 5 }}>
                     {view.monthLabels.map((m) => (
-                      <span
-                        key={m}
-                        style={{
-                          width: slotW(view.monthLabels.length),
-                          textAlign: 'center',
-                          fontSize: 12,
-                          color: 'var(--color-neutral-700)',
-                        }}
-                      >
+                      <span key={m} style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)' }}>
                         {m}
                       </span>
                     ))}
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 2 }}>
+                    top of chart = {scaleFor(p.peak)}%
+                    {p.person.capacity !== 100 && ` · full month for them = ${p.person.capacity}%`}
                   </div>
                 </div>
               </div>
@@ -306,9 +359,13 @@ export function Resourcing({
         </div>
       )}
 
-      <DemandChart view={view} />
+      </>) },
+          { id: 'demand', label: 'People the work needs', count: `${Math.max(0, ...view.demand).toFixed(1)} peak`, render: () => (
+            <DemandChart view={view} />
+          ) },
+          { id: 'roles', label: 'Job titles with no cover', count: view.roleShortages.length, render: () => (<>
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Job titles with no cover</h3>
+      <h3 style={{ margin: '0 0 4px' }}>Job titles with no cover</h3>
       <p className="lede">
         A title is short when everyone holding it is booked past their available time, so the overspill cannot be handed
         to a colleague who does the same job. Three months running makes it a hiring problem, not a scheduling one.
@@ -350,7 +407,9 @@ export function Resourcing({
         </table>
       )}
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Where the overspill comes from</h3>
+      </>) },
+          { id: 'overspill', label: 'Where the overspill comes from', count: overMonths.length, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>Where the overspill comes from</h3>
       <p className="lede">The oversold months, and the projects driving them.</p>
       {overMonths.length === 0 ? (
         <p className="empty" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
@@ -387,6 +446,9 @@ export function Resourcing({
           </tbody>
         </table>
       )}
+      </>) },
+        ]}
+      />
     </div>
   );
 }

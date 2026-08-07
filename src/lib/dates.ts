@@ -48,6 +48,31 @@ export function planningMonths(today: Date, count = 6): string[] {
   return Array.from({ length: count }, (_, i) => monthKey(addMonths(start, i)));
 }
 
+/** `count` month keys running from a `YYYY-MM` start. */
+export function monthsFrom(startMonth: string, count: number): string[] {
+  const [y, m] = startMonth.split('-').map(Number);
+  const start = new Date(y, (m || 1) - 1, 1);
+  return Array.from({ length: count }, (_, i) => monthKey(addMonths(start, i)));
+}
+
+/** Every month between two `YYYY-MM` keys, for a window picker. */
+export function monthOptions(fromYear: number, toYear: number): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  for (let y = fromYear; y <= toYear; y += 1) {
+    for (let m = 0; m < 12; m += 1) {
+      const d = new Date(y, m, 1);
+      out.push({ value: monthKey(d), label: monthLabel(d) });
+    }
+  }
+  return out;
+}
+
+/** `Aug '26` for a `YYYY-MM` key. */
+export function monthKeyLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return monthLabel(new Date(y, (m || 1) - 1, 1));
+}
+
 /** ISO-8601 week number, for the sidebar's "Week 32" line. */
 export function weekNumber(d: Date): number {
   const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());

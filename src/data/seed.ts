@@ -1,4 +1,5 @@
 import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
+import { WORKING_DAYS_PER_MONTH } from '../types';
 import { PHASE_MILESTONES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
 
@@ -49,7 +50,7 @@ const PROJECT_SEED: ProjectSeed[] = [
   ['Ligier', 'Procurement', 'CS', 'I', 1, 38, 'A', 150, 70, 0, 0, 81],
 ];
 
-type PersonSeed = [name: string, role: string, discipline: string, loads: number[], projects: string[]];
+type PersonSeed = [name: string, role: string, discipline: string, loads: number[], projects: string[], workingDays?: number];
 
 /** Monthly loads are the mockup's tuned figures; they become allocations spread over each
     person's projects, so the resourcing screens still read the same. */
@@ -61,11 +62,11 @@ const PEOPLE_SEED: PersonSeed[] = [
   ['Neil', 'Project manager', 'CS', [104, 120, 150, 138, 118, 98],
     ['McLaren', 'Red Bull', 'Haas', 'Lotus', 'Benetton', 'Toro Rosso', 'Arrows']],
   ['Toby', 'Project manager', 'CS', [66, 72, 78, 75, 71, 64],
-    ['Williams', 'Alpine', 'Sauber', 'Brabham', 'Jordan', 'Force India', 'March']],
+    ['Williams', 'Alpine', 'Sauber', 'Brabham', 'Jordan', 'Force India', 'March'], 16],
   ['Josh', 'Process engineer', '', [98, 114, 142, 132, 112, 96],
     ['Patek', 'Rolex', 'Seiko', 'Toro Rosso', 'Red Bull']],
   ['Anna', 'Design engineer', '', [88, 94, 99, 96, 92, 86],
-    ['Red Bull', 'Benetton', 'Ferrari', 'March', 'Cartier']],
+    ['Red Bull', 'Benetton', 'Ferrari', 'March', 'Cartier'], 17],
   ['Carrie', 'Regulatory support', '', [102, 118, 148, 136, 116, 100],
     ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek']],
 ];
@@ -116,13 +117,17 @@ function splitWhole(total: number, weights: number[]): number[] {
 export function buildSeedPortfolio(today = new Date()): Portfolio {
   const anchor = startOfMonth(today);
 
-  const people: Person[] = PEOPLE_SEED.map(([name, role, discipline]) => ({
-    id: `person-${name.toLowerCase()}`,
-    name,
-    role,
-    discipline,
-    capacity: 100,
-  }));
+  const people: Person[] = PEOPLE_SEED.map(([name, role, discipline, , , workingDays]) => {
+    const days = workingDays ?? WORKING_DAYS_PER_MONTH;
+    return {
+      id: `person-${name.toLowerCase()}`,
+      name,
+      role,
+      discipline,
+      workingDays: days,
+      capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
+    };
+  });
 
   const pmByProject = new Map<string, string>();
   PEOPLE_SEED.forEach(([name, role, , , projects]) => {
@@ -154,6 +159,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       endDate: toISO(addMonths(start, duration)),
       milestone: PHASE_MILESTONES[type][phase],
       milestoneDate: milestoneDate(anchor, i),
+      priority: rag === 'R' ? 1 : budget >= 1000 ? 2 : rag === 'A' ? 3 : facing === 'I' ? 4 : 3,
     };
   });
 
@@ -180,5 +186,13 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     });
   });
 
-  return { projects, people, allocations, leave, roles: [...ROLES], threshold: 85 };
+  return {
+    projects,
+    people,
+    allocations,
+    leave,
+    roles: [...ROLES],
+    threshold: 85,
+    window: { startMonth: months[0], months: months.length },
+  };
 }

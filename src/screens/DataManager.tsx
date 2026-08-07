@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import type { Person, Portfolio, Project } from '../types';
 import type { PortfolioView } from '../lib/derive';
 import { usePortfolio } from '../store/portfolio';
+import { applyCsv, portfolioCsvFiles } from '../lib/csv';
+import { Tabs } from '../components/Tabs';
 
 export function DataManager({
   view,
@@ -22,8 +24,36 @@ export function DataManager({
 }) {
   const { replaceAll, resetToSeed, portfolio, addRole, removeRole } = usePortfolio();
   const fileRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [newRole, setNewRole] = useState('');
+
+  const download = (name: string, content: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCsv = () => {
+    const files = portfolioCsvFiles(portfolio, view.months);
+    // Browsers throttle back-to-back downloads, so they are spaced out a little.
+    files.forEach((f, i) => setTimeout(() => download(f.name, f.content, 'text/csv;charset=utf-8'), i * 250));
+    setMessage({ tone: 'ok', text: `Exported ${files.length} CSVs: projects, people, allocations and leave.` });
+  };
+
+  const importCsv = async (file: File) => {
+    try {
+      const result = applyCsv(portfolio, await file.text(), view.months);
+      replaceAll(result.portfolio);
+      const skipped = result.skipped.length ? ` ${result.skipped.length} row(s) skipped: ${result.skipped.slice(0, 3).join('; ')}` : '';
+      setMessage({ tone: result.skipped.length ? 'bad' : 'ok', text: `Imported ${result.applied} ${result.kind} row(s).${skipped}` });
+    } catch (e) {
+      setMessage({ tone: 'bad', text: `That CSV could not be read — ${e instanceof Error ? e.message : 'unknown error'}.` });
+    }
+  };
 
   const importFile = async (file: File) => {
     try {
@@ -54,6 +84,23 @@ export function DataManager({
         <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
           Import JSON
         </button>
+        <button type="button" className="btn btn-secondary" onClick={exportCsv}>
+          Export CSV
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => csvRef.current?.click()}>
+          Import CSV
+        </button>
+        <input
+          ref={csvRef}
+          type="file"
+          accept=".csv,text/csv"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void importCsv(file);
+            e.target.value = '';
+          }}
+        />
         <input
           ref={fileRef}
           type="file"
@@ -84,6 +131,10 @@ export function DataManager({
         <p style={{ color: message.tone === 'ok' ? 'var(--color-accent-700)' : 'var(--color-accent-2-700)', fontSize: 14 }}>{message.text}</p>
       )}
 
+      <Tabs
+        storageKey="data"
+        tabs={[
+          { id: 'projects', label: 'Projects', count: view.projects.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Projects</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Everything the screens are built from. Editing a project also books people onto it.
@@ -96,6 +147,7 @@ export function DataManager({
               <th style={{ width: 70 }}>Type</th>
               <th style={{ width: 120 }}>For</th>
               <th style={{ width: 110 }}>Owner</th>
+              <th style={{ width: 90 }}>Priority</th>
               <th style={{ width: 150 }}>Phase</th>
               <th style={{ textAlign: 'right', width: 70 }}>Done</th>
               <th style={{ textAlign: 'right', width: 90 }}>Budget</th>
@@ -121,6 +173,9 @@ export function DataManager({
                 <td style={{ fontSize: 12 }}>{p.typeShort}</td>
                 <td style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{p.facingLabel}</td>
                 <td style={{ fontSize: 12 }}>{p.pmName}</td>
+                <td style={{ fontSize: 12, color: p.priority <= 2 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
+                  P{p.priority} {p.priorityLabel}
+                </td>
                 <td style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{p.phaseName}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.pct}%</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.budgetLabel}</td>
@@ -145,7 +200,9 @@ export function DataManager({
         </table>
       </div>
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Job titles</h3>
+      </>) },
+          { id: 'titles', label: 'Job titles', count: view.roles.length, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>Job titles</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         The titles offered when adding someone. A title in use cannot be removed — change the person&rsquo;s title first.
       </p>
@@ -217,7 +274,9 @@ export function DataManager({
         </span>
       </div>
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>People</h3>
+      </>) },
+          { id: 'people', label: 'People', count: view.people.length, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>People</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Removing someone also removes their bookings from every project.
       </p>
@@ -263,6 +322,9 @@ export function DataManager({
           ))}
         </tbody>
       </table>
+      </>) },
+        ]}
+      />
     </div>
   );
 }

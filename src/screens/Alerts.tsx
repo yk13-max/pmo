@@ -1,6 +1,7 @@
 import type { PortfolioView } from '../lib/derive';
 import { money } from '../lib/derive';
 import { Stat } from '../components/Stat';
+import { Tabs } from '../components/Tabs';
 
 const BAR_W = 200;
 const BAR_H = 60;
@@ -10,7 +11,7 @@ const CEILING = 150;
 
 export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const atRisk = view.projects.filter((p) => p.rag === 'R');
-  const overbooked = view.peopleViews.filter((p) => p.committed.some((v) => v > 100));
+  const overbooked = view.peopleViews.filter((p) => p.committed.some((v) => v > p.person.capacity));
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
   const unbilled = view.projects
     .filter((p) => p.cust && p.value > p.billed)
@@ -30,6 +31,10 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         <Stat value={money(view.totals.toBill)} label="Waiting to be invoiced" sub="Agreed work not yet billed" />
       </div>
 
+      <Tabs
+        storageKey="alerts"
+        tabs={[
+          { id: 'risk', label: 'Projects at risk', count: atRisk.length, render: () => (<>
       <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="Filled squares are phases finished, the navy square is where the project is now." />
       {atRisk.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nothing flagged at risk.</p>
@@ -70,6 +75,8 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         </div>
       )}
 
+      </>) },
+          { id: 'people', label: 'People overbooked', count: overbooked.length, render: () => (<>
       <SectionHeading
         dot="var(--color-accent-2)"
         title="People booked past a full week"
@@ -80,7 +87,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(420px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
           {overbooked.map((p) => {
-            const months = p.committed.map((v, i) => (v > 100 ? view.monthLabels[i] : null)).filter(Boolean);
+            const months = p.committed.map((v, i) => (v > p.person.capacity ? view.monthLabels[i] : null)).filter(Boolean);
             return (
               <div key={p.person.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)', position: 'relative', paddingLeft: 'var(--space-4)' }}>
                 <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 3, background: 'var(--color-accent-2)', display: 'block' }} />
@@ -114,7 +121,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                           y={BASELINE - h}
                           width={barWidth}
                           height={h}
-                          fill={v > 100 ? 'var(--color-accent-2)' : v > view.threshold ? 'var(--color-warning)' : 'var(--color-neutral-400)'}
+                          fill={v > p.person.capacity ? 'var(--color-accent-2)' : v > (p.person.capacity * view.threshold) / 100 ? 'var(--color-warning)' : 'var(--color-neutral-400)'}
                         >
                           <title>{`${view.monthLabels[i]}: ${v}%`}</title>
                         </rect>
@@ -135,6 +142,8 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         </div>
       )}
 
+      </>) },
+          { id: 'budgets', label: 'Budgets nearly gone', count: nearlySpent.length, render: () => (<>
       <SectionHeading dot="var(--color-accent)" title="Budgets nearly gone" note="The bar is the approved budget; the dark part has been spent." />
       {nearlySpent.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>No budget is above 95% spent.</p>
@@ -164,6 +173,8 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         </div>
       )}
 
+      </>) },
+          { id: 'invoice', label: 'Waiting to be invoiced', count: unbilled.length, render: () => (<>
       <SectionHeading dot="var(--color-accent)" title="Money waiting to be invoiced" note="The bar is what the client agreed; the dark part has been invoiced. The pale remainder is money still to ask for." />
       {unbilled.length === 0 ? (
         <p className="empty">Everything agreed has been invoiced.</p>
@@ -190,6 +201,9 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
           ))}
         </div>
       )}
+      </>) },
+        ]}
+      />
     </div>
   );
 }

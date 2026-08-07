@@ -1,6 +1,7 @@
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money } from '../lib/derive';
 import { Stat } from '../components/Stat';
+import { Tabs } from '../components/Tabs';
 
 export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const customer = view.projects.filter((p) => p.cust);
@@ -39,6 +40,15 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         />
       </div>
 
+      <Tabs
+        storageKey="financials"
+        tabs={[
+          {
+            id: 'invoiced',
+            label: 'Invoicing',
+            count: money(view.totals.toBill),
+            render: () => (
+              <>
       <h3 style={{ margin: '0 0 4px' }}>How much we have invoiced</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         The full bar is what the client agreed to pay. The dark part is what we have invoiced. The projects with the most
@@ -77,7 +87,16 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         </div>
       )}
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Customer-facing detail</h3>
+              </>
+            ),
+          },
+          {
+            id: 'detail',
+            label: 'Customer-facing detail',
+            count: customer.length,
+            render: () => (
+              <>
+      <h3 style={{ margin: '0 0 4px' }}>Customer-facing detail</h3>
       <div style={{ overflowX: 'auto' }}>
         <table className="table" style={{ marginTop: 'var(--space-4)' }}>
           <thead>
@@ -123,7 +142,16 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
         </table>
       </div>
 
-      <h3 style={{ margin: 'var(--space-8) 0 4px' }}>Internal draw-down</h3>
+              </>
+            ),
+          },
+          {
+            id: 'internal',
+            label: 'Internal draw-down',
+            count: internal.length,
+            render: () => (
+              <>
+      <h3 style={{ margin: '0 0 4px' }}>Internal draw-down</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
         Cost-tracked only. Each calls against an approved pool; there is no invoice side.
       </p>
@@ -149,6 +177,11 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
           ))}
         </div>
       )}
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

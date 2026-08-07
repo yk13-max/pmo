@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import type { Person, Portfolio, Project, Rag } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { PHASES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
-import { fromISO, monthLabel, monthSpan, planningMonths, shortDate, shortMonth } from './dates';
+import { PRIORITY_LABEL } from '../types';
+import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsFrom, shortDate, shortMonth } from './dates';
 
 export function money(k: number): string {
   if (!k) return '—';
@@ -49,6 +50,7 @@ export interface ProjectView extends Project {
   moneyMain: string;
   moneySub: string;
   msDateLabel: string;
+  priorityLabel: string;
   startLabel: string;
   endLabel: string;
   durationMonths: number;
@@ -105,13 +107,15 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
     moneyMain: cust ? moneyOrZero(project.billed) : money(project.actual),
     moneySub: cust ? `of ${money(project.value)} value` : `of ${money(project.budget)} pool`,
     msDateLabel: shortDate(project.milestoneDate),
+    priorityLabel: PRIORITY_LABEL[project.priority] ?? 'Normal',
     startLabel: monthLabel(start),
     endLabel: monthLabel(end),
     durationMonths: monthSpan(start, end),
   };
 }
 
-/** Annual leave expressed as the share of a working month it consumes. */
+/** Annual leave as a share of a full-time month, so it is comparable with booked work.
+    A part-timer's day off costs the same slice of the calendar as anyone else's. */
 export function leavePct(days: number): number {
   return Math.round((days / WORKING_DAYS_PER_MONTH) * 100);
 }
@@ -183,8 +187,9 @@ export interface PortfolioView {
 export function usePortfolioView(portfolio: Portfolio): PortfolioView {
   return useMemo(() => {
     const today = new Date();
-    const months = planningMonths(today);
-    const monthLabels = months.map(shortMonth);
+    const months = monthsFrom(portfolio.window.startMonth, portfolio.window.months);
+    // Long windows repeat month names across years, so they carry the year too.
+    const monthLabels = months.map((m) => (portfolio.window.months > 12 ? monthKeyLabel(m) : shortMonth(m)));
     const { threshold, people, allocations } = portfolio;
     const projects = portfolio.projects.map((p) => viewProject(p, people, threshold));
 

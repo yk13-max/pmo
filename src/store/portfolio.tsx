@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Allocations, Person, Portfolio, Project } from '../types';
+import { WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { ROLES } from '../data/phases';
+import { planningMonths } from '../lib/dates';
 
 const STORAGE_KEY = 'pmo-tracker:portfolio:v1';
 
@@ -18,6 +20,8 @@ interface PortfolioStore {
   addRole: (role: string) => void;
   removeRole: (role: string) => void;
   setThreshold: (pct: number) => void;
+  /** The months resourcing plans across. */
+  setWindow: (startMonth: string, months: number) => void;
   replaceAll: (portfolio: Portfolio) => void;
   resetToSeed: () => void;
 }
@@ -38,6 +42,14 @@ export function normalise(p: Portfolio): Portfolio {
     leave: p.leave ?? {},
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
+    window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
+    projects: p.projects.map((project) => ({ ...project, priority: project.priority ?? 3 })),
+    people: p.people.map((person) => ({
+      ...person,
+      capacity: person.capacity ?? 100,
+      workingDays:
+        person.workingDays ?? Math.round(((person.capacity ?? 100) / 100) * WORKING_DAYS_PER_MONTH),
+    })),
   };
 }
 
@@ -151,6 +163,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setPortfolio((prev) => ({ ...prev, threshold: pct }));
   }, []);
 
+  const setWindow = useCallback((startMonth: string, months: number) => {
+    setPortfolio((prev) => ({ ...prev, window: { startMonth, months } }));
+  }, []);
+
   const replaceAll = useCallback((next: Portfolio) => setPortfolio(normalise(next)), []);
   const resetToSeed = useCallback(() => setPortfolio(buildSeedPortfolio()), []);
 
@@ -166,6 +182,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addRole,
       removeRole,
       setThreshold,
+      setWindow,
       replaceAll,
       resetToSeed,
     }),
@@ -180,6 +197,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addRole,
       removeRole,
       setThreshold,
+      setWindow,
       replaceAll,
       resetToSeed,
     ],

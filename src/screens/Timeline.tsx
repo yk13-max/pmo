@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { addMonths, fromISO, quarterLabel, startOfMonth } from '../lib/dates';
+import { Tabs } from '../components/Tabs';
 
 const WINDOW_BEFORE = 6;
 const WINDOW_MONTHS = 24;
@@ -109,18 +110,29 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
         </div>
       </div>
 
-      {cdmo.length > 0 && (
-        <>
-          <div className="kicker" style={{ margin: 'var(--space-6) 0 var(--space-2)' }}>CDMO</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>{cdmo.map(row)}</div>
-        </>
-      )}
-      {cs.length > 0 && (
-        <>
-          <div className="kicker" style={{ margin: 'var(--space-8) 0 var(--space-2)' }}>Client Solutions</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>{cs.map(row)}</div>
-        </>
-      )}
+      <Tabs
+        storageKey="timeline"
+        tabs={[
+          {
+            id: 'all',
+            label: 'All projects',
+            count: view.projects.length,
+            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{[...cdmo, ...cs].map(row)}</div>,
+          },
+          {
+            id: 'cdmo',
+            label: 'CDMO',
+            count: cdmo.length,
+            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{cdmo.map(row)}</div>,
+          },
+          {
+            id: 'cs',
+            label: 'Client Solutions',
+            count: cs.length,
+            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{cs.map(row)}</div>,
+          },
+        ]}
+      />
     </div>
   );
 }

@@ -172,6 +172,7 @@ export function App() {
             onAddPerson={() => setEditing({ kind: 'person', person: null })}
             onOpenPerson={(person) => setEditing({ kind: 'person-detail', person })}
             onSetThreshold={store.setThreshold}
+            onSetWindow={store.setWindow}
           />
         )}
         {screen === 'financials' && <Financials view={view} onOpenProject={openProject} />}

@@ -1,6 +1,8 @@
 import type { Project } from '../types';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money } from '../lib/derive';
+import { Tabs } from '../components/Tabs';
+import { PRIORITY_LABEL } from '../types';
 
 const INVOICE_STAGES: [label: string, share: number][] = [
   ['On kick-off', 0.3],
@@ -84,6 +86,19 @@ export function ProjectDetail({
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', fontSize: 14, color: 'var(--color-neutral-700)', marginTop: 'var(--space-3)' }}>
           <span>{project.typeLabel}</span>
+          <span
+            style={{
+              fontSize: 11,
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              padding: '2px 8px',
+              borderRadius: 3,
+              background: project.priority <= 2 ? 'var(--color-accent-2-100)' : 'var(--color-neutral-200)',
+              color: project.priority <= 2 ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)',
+            }}
+          >
+            P{project.priority} {PRIORITY_LABEL[project.priority]}
+          </span>
           <span>{project.facingLabel}</span>
           <span>Run by {project.pmName}</span>
           <span>
@@ -96,6 +111,10 @@ export function ProjectDetail({
         </div>
       </div>
 
+      <Tabs
+        storageKey="detail"
+        tabs={[
+          { id: 'progress', label: 'Progress & money', render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where it has got to</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Currently in {project.phaseName} — phase {project.phaseStep}. Next due: {project.milestone} on {project.msDateLabel}.
@@ -161,7 +180,9 @@ export function ProjectDetail({
         </div>
       </div>
 
-      {project.cust && (
+      </>) },
+          ...(project.cust
+            ? [{ id: 'invoicing', label: 'When the client pays', count: project.toBillLabel, render: () => (
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <h3 style={{ margin: '0 0 4px' }}>When the client pays</h3>
           <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
@@ -179,8 +200,9 @@ export function ProjectDetail({
             ))}
           </div>
         </div>
-      )}
-
+      ) }]
+            : []),
+          { id: 'team', label: 'Who is working on it', count: team.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Share of each person&rsquo;s working week committed to this project, month by month.
@@ -223,6 +245,8 @@ export function ProjectDetail({
         </div>
       )}
 
+      </>) },
+          { id: 'watch', label: 'What to watch', count: notes.length, render: () => (<>
       <h3 style={{ margin: '0 0 var(--space-3)' }}>What to watch</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxWidth: '64ch' }}>
         {notes.map((n) => (
@@ -231,6 +255,9 @@ export function ProjectDetail({
           </p>
         ))}
       </div>
+      </>) },
+        ]}
+      />
     </div>
   );
 }

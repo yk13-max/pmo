@@ -19,7 +19,9 @@ export function PersonDetail({
   if (!row) return <p className="empty">This person is no longer in the portfolio.</p>;
 
   const cols = `minmax(160px, 1fr) repeat(${view.months.length}, 56px) 64px`;
-  const ink = (v: number) => (v > 100 ? 'var(--color-accent-2-700)' : v > view.threshold ? 'var(--color-accent-700)' : 'var(--color-text)');
+  const full = person.capacity;
+  const ink = (v: number) =>
+    v > full ? 'var(--color-accent-2-700)' : v > (full * view.threshold) / 100 ? 'var(--color-accent-700)' : 'var(--color-text)';
 
   return (
     <div>
@@ -127,8 +129,8 @@ export function PersonDetail({
       )}
 
       <p className="field-hint" style={{ marginTop: 'var(--space-4)' }}>
-        Percentages are of a working week. &ldquo;Committed&rdquo; adds annual leave to project work, so anything above
-        100% is more than the month holds.
+        Percentages are of a full-time working month. &ldquo;Committed&rdquo; adds annual leave to project work; a full
+        month for {person.name} is {full}%, so anything above that is more than the month holds.
       </p>
 
       <div className="drawer-actions">
