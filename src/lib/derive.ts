@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import type { Person, Portfolio, Project, Rag } from '../types';
+import type { Person, Portfolio, Project, ProjectTypeDef, Rag } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
-import { PHASES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
+import { RAG_LABEL } from '../data/phases';
 import { PRIORITY_LABEL } from '../types';
 import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsFrom, shortDate, shortMonth } from './dates';
 
@@ -38,6 +38,8 @@ export interface ProjectView extends Project {
   burnInk: string;
   burnInk2: string;
   loadLabel: string;
+  /** The same figure read as headcount — "1.35 people". */
+  loadPeopleLabel: string;
   loadColor: string;
   loadInk: string;
   budgetLabel: string;
@@ -56,8 +58,17 @@ export interface ProjectView extends Project {
   durationMonths: number;
 }
 
-export function viewProject(project: Project, people: Person[], threshold: number): ProjectView {
-  const phases = PHASES[project.type];
+/** Total resource a project draws from the whole team in a month, as a share of one
+    full-time month. 150% means the project consumes one and a half people. */
+export function viewProject(
+  project: Project,
+  people: Person[],
+  threshold: number,
+  types: ProjectTypeDef[],
+  load = project.load,
+): ProjectView {
+  const typeDef = types.find((t) => t.id === project.type) ?? types[0];
+  const phases = typeDef?.phases ?? [];
   const cust = project.facing === 'C';
   const burn = project.budget ? Math.round((project.actual / project.budget) * 100) : 0;
   const pm = people.find((p) => p.id === project.pmId);
@@ -66,7 +77,7 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
   return {
     ...project,
     phases,
-    phaseName: phases[project.phase] ?? phases[0],
+    phaseName: phases[project.phase] ?? phases[0] ?? '—',
     phaseStep: `${project.phase + 1} of ${phases.length}`,
     pips: phases.map((_, i) => ({
       bg:
@@ -77,8 +88,8 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
             : 'var(--color-neutral-300)',
     })),
     cust,
-    typeShort: project.type,
-    typeLabel: TYPE_LABEL[project.type],
+    typeShort: typeDef?.id ?? project.type,
+    typeLabel: typeDef?.label ?? project.type,
     facingLabel: cust ? 'Customer-facing' : 'Internal',
     stripe: cust ? 'var(--color-accent)' : 'var(--color-neutral-400)',
     ragLabel: RAG_LABEL[project.rag],
@@ -89,14 +100,12 @@ export function viewProject(project: Project, people: Person[], threshold: numbe
     burnInk:
       burn > 95 ? 'var(--color-accent-2-700)' : burn > threshold ? 'var(--color-accent-700)' : 'var(--color-text)',
     burnInk2: burn > 95 ? 'var(--color-accent-2)' : 'var(--color-text)',
-    loadLabel: `${project.load}%`,
+    load,
+    loadLabel: `${load}%`,
+    loadPeopleLabel: `${(load / 100).toFixed(2)} people`,
     loadColor:
-      project.load > 100
-        ? 'var(--color-accent-2)'
-        : project.load > threshold
-          ? 'var(--color-warning)'
-          : 'var(--color-neutral-500)',
-    loadInk: project.load > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
+      load >= 200 ? 'var(--color-accent-2)' : load >= 100 ? 'var(--color-warning)' : 'var(--color-neutral-500)',
+    loadInk: load >= 200 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
     budgetLabel: money(project.budget),
     actualLabel: money(project.actual),
     remainLabel: money(project.budget - project.actual),
@@ -160,6 +169,7 @@ export interface PortfolioView {
   /** Capacity actually available each month once leave is taken out. */
   capacityByMonth: number[];
   roles: string[];
+  projectTypes: ProjectTypeDef[];
   /** Roles oversubscribed for 3+ months running, where no colleague of the same
       title has room to absorb the overspill. */
   roleShortages: RoleShortage[];
@@ -188,10 +198,29 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
   return useMemo(() => {
     const today = new Date();
     const months = monthsFrom(portfolio.window.startMonth, portfolio.window.months);
+    const loadPerMonth = new Map<string, number[]>();
     // Long windows repeat month names across years, so they carry the year too.
     const monthLabels = months.map((m) => (portfolio.window.months > 12 ? monthKeyLabel(m) : shortMonth(m)));
     const { threshold, people, allocations } = portfolio;
-    const projects = portfolio.projects.map((p) => viewProject(p, people, threshold));
+
+    /* Project load is the sum of everyone's booking on it. Reported for the busiest month
+       in the window, since that is the month that needs the people. */
+    const loadByProject = new Map<string, number>();
+    Object.entries(allocations).forEach(([key, pct]) => {
+      const [projectId, , month] = key.split('|');
+      const monthIndex = months.indexOf(month);
+      if (monthIndex < 0) return;
+      const perMonth = loadPerMonth.get(projectId) ?? months.map(() => 0);
+      perMonth[monthIndex] += pct;
+      loadPerMonth.set(projectId, perMonth);
+    });
+    loadPerMonth.forEach((perMonth, projectId) => {
+      loadByProject.set(projectId, Math.max(0, ...perMonth));
+    });
+
+    const projects = portfolio.projects.map((p) =>
+      viewProject(p, people, threshold, portfolio.projectTypes, loadByProject.get(p.id) ?? 0),
+    );
 
     const projectById = new Map(portfolio.projects.map((p) => [p.id, p]));
     const loadIndex = new Map<string, number[]>();
@@ -322,6 +351,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       capacity,
       capacityByMonth,
       roles: portfolio.roles,
+      projectTypes: portfolio.projectTypes,
       roleShortages,
       totals: {
         value,
@@ -332,7 +362,12 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         customerCount: customer.length,
         internalCount: internal.length,
         atRisk: projects.filter((p) => p.rag === 'R').length,
-        shortOfPeople: projects.filter((p) => p.load > threshold).length,
+        shortOfPeople: projects.filter((project) =>
+          peopleViews.some(
+            (pv) =>
+              pv.committed.some((v, i) => v > (pv.person.capacity * threshold) / 100 && (allocations[`${project.id}|${pv.person.id}|${months[i]}`] ?? 0) > 0),
+          ),
+        ).length,
       },
       allocationsFor,
       allocationsOf,

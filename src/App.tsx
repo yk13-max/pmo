@@ -109,8 +109,8 @@ export function App() {
     <div className="shell">
       <aside className="sidebar">
         <div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.1 }}>
-            Delivery Office
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15 }}>
+            Project Management Office
           </div>
           <div className="eyebrow" style={{ marginTop: 6 }}>Portfolio tracker</div>
         </div>
@@ -212,6 +212,7 @@ export function App() {
             months={view.months}
             monthLabels={view.monthLabels}
             threshold={view.threshold}
+            projectTypes={view.projectTypes}
             allocations={editing.project ? view.allocationsOf(editing.project.id) : {}}
             otherLoads={view.loadsExcluding(editing.project?.id ?? '')}
             onSave={(project, allocations) => {
@@ -238,6 +239,7 @@ export function App() {
           <PersonForm
             person={editing.person}
             roles={view.roles}
+            projectTypes={view.projectTypes}
             months={view.months}
             monthLabels={view.monthLabels}
             leaveDays={

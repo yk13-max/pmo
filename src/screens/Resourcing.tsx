@@ -4,7 +4,7 @@ import type { PortfolioView } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 import { monthOptions } from '../lib/dates';
-import { MAX_YEAR } from '../types';
+import { MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
 
 /* The mini graphs are drawn in a 0-100 user space and stretched to whatever room the
    person's card gives them, so they fill their area on any screen width. Each person's
@@ -22,6 +22,9 @@ const scaleFor = (peak: number) => Math.max(peak, 100);
 const barHeight = (pct: number, peak: number) => (Math.min(pct, scaleFor(peak)) / scaleFor(peak)) * (BASELINE - PLOT_TOP);
 const lineY = (pct: number, peak: number) => BASELINE - barHeight(pct, peak);
 
+/** A share of a full-time month expressed in working days, to one decimal. */
+const daysOver = (pct: number) => ((pct / 100) * WORKING_DAYS_PER_MONTH).toFixed(1);
+
 export function Resourcing({
   view,
   onAddPerson,
@@ -36,6 +39,8 @@ export function Resourcing({
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
   const [hoverBar, setHoverBar] = useState<string | null>(null);
+  const [showPct, setShowPct] = useState(false);
+  const [hoverDriver, setHoverDriver] = useState<string | null>(null);
 
   const peak = Math.max(0, ...view.demand);
   const peakIndex = view.demand.indexOf(peak);
@@ -154,6 +159,15 @@ export function Resourcing({
               onChange={(e) => onSetThreshold(Number(e.target.value))}
             />
           </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, paddingBottom: 6, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showPct}
+              onChange={(e) => setShowPct(e.target.checked)}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Show %
+          </label>
           <label className="field" style={{ margin: 0 }}>
             <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
               Plan from
@@ -213,7 +227,9 @@ export function Resourcing({
                   </button>
                   <div style={{ fontSize: 12, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4 }}>
                     {p.person.role}
-                    {p.person.discipline ? ` · ${p.person.discipline}` : ''}
+                    {p.person.types.length
+                      ? ` · ${p.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ')}`
+                      : ''}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
                     {p.projectNames.length ? p.projectNames.join(', ') : 'Not booked on anything yet'}
@@ -247,26 +263,6 @@ export function Resourcing({
                     role="img"
                     aria-label={`How much of ${p.person.name}'s time is promised each month, peaking at ${p.peak}%`}
                   >
-                    <line
-                      x1={0}
-                      y1={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
-                      x2={VB_W}
-                      y2={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
-                      stroke="var(--color-warning)"
-                      strokeWidth={0.6}
-                      strokeDasharray="1 2"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <line
-                      x1={0}
-                      y1={lineY(p.person.capacity, p.peak)}
-                      x2={VB_W}
-                      y2={lineY(p.person.capacity, p.peak)}
-                      stroke="var(--color-text)"
-                      strokeWidth={0.6}
-                      strokeDasharray="3 3"
-                      vectorEffect="non-scaling-stroke"
-                    />
                     <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
                     {p.loads.map((work, i) => {
                       const total = p.committed[i];
@@ -313,9 +309,33 @@ export function Resourcing({
                         onMouseLeave={() => setHoverBar(null)}
                       />
                     ))}
+                    {/* Drawn last so the guides read over the bars rather than behind them. */}
+                    <line
+                      x1={0}
+                      y1={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
+                      x2={VB_W}
+                      y2={lineY((p.person.capacity * view.threshold) / 100, p.peak)}
+                      stroke="var(--color-warning)"
+                      strokeWidth={2}
+                      strokeDasharray="3 3"
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={0}
+                      y1={lineY(p.person.capacity, p.peak)}
+                      x2={VB_W}
+                      y2={lineY(p.person.capacity, p.peak)}
+                      stroke="var(--color-text)"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
                   </svg>
                   {p.loads.map((work, i) => {
-                    if (hoverBar !== `${p.person.id}-${i}`) return null;
+                    if (!showPct && hoverBar !== `${p.person.id}-${i}`) return null;
+                    const isHover = hoverBar === `${p.person.id}-${i}`;
                     const h = barHeight(p.committed[i], p.peak);
                     return (
                       <span
@@ -327,17 +347,18 @@ export function Resourcing({
                           transform: 'translateX(-50%)',
                           fontFamily: 'var(--font-heading)',
                           fontWeight: 600,
-                          fontSize: 13,
-                          background: 'var(--color-bg)',
-                          boxShadow: 'var(--shadow-sm)',
-                          padding: '1px 5px',
+                          fontSize: isHover ? 13 : 11,
+                          background: isHover ? 'var(--color-bg)' : 'transparent',
+                          boxShadow: isHover ? 'var(--shadow-sm)' : 'none',
+                          padding: isHover ? '1px 5px' : 0,
                           borderRadius: 'var(--radius-md)',
                           whiteSpace: 'nowrap',
                           pointerEvents: 'none',
+                          color: isHover ? 'var(--color-text)' : 'var(--color-neutral-700)',
                           zIndex: 2,
                         }}
                       >
-                        {p.committed[i]}%{p.leaveDays[i] ? ` · ${work}% work + ${p.leaveDays[i]}d leave` : ''}
+                        {p.committed[i]}%{isHover && p.leaveDays[i] ? ` · ${work}% work + ${p.leaveDays[i]}d leave` : ''}
                       </span>
                     );
                   })}
@@ -410,41 +431,143 @@ export function Resourcing({
       </>) },
           { id: 'overspill', label: 'Where the overspill comes from', count: overMonths.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where the overspill comes from</h3>
-      <p className="lede">The oversold months, and the projects driving them.</p>
+      <p className="lede">
+        The oversold months, rolled up under each person. Hover a month&rsquo;s drivers for the project-by-project split.
+      </p>
       {overMonths.length === 0 ? (
         <p className="empty" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
-          Nobody is booked past a full week in the next {view.months.length} months.
+          Nobody is booked past their available time in the next {view.months.length} months.
         </p>
       ) : (
-        <table className="table" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
-          <thead>
-            <tr>
-              <th style={{ width: 200 }}>Person</th>
-              <th style={{ width: 96 }}>Month</th>
-              <th style={{ textAlign: 'right', width: 130 }}>Over capacity</th>
-              <th>Driven by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {overMonths.map((row, i) => (
-              <tr key={i}>
-                <td>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>
-                </td>
-                <td>{row.month}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
-                  +{row.over}% · {(row.over / 100).toFixed(2)} FTE
-                </td>
-                <td style={{ color: 'var(--color-neutral-700)' }}>
-                  {row.projects.join(', ')}
-                  {row.leaveDays > 0 && (
-                    <span style={{ color: 'var(--color-accent-700)' }}> · {row.leaveDays}d leave</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', marginTop: 'var(--space-4)', maxWidth: 1040 }}>
+          {view.peopleViews
+            .filter((p) => p.committed.some((v, i) => v > p.person.capacity && view.months[i]))
+            .map((p) => {
+              const spread = view.spreadFor(p.person.id);
+              const rows = p.committed
+                .map((v, i) => ({ i, over: v - p.person.capacity }))
+                .filter((r) => r.over > 0);
+              const worst = Math.max(...rows.map((r) => r.over));
+              return (
+                <div key={p.person.id}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', marginBottom: 6 }}>
+                    <button
+                      type="button"
+                      className="card-link"
+                      onClick={() => onOpenPerson(p.person)}
+                      style={{ width: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 18 }}
+                    >
+                      <span className="project-name">{p.person.name}</span>
+                    </button>
+                    <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{p.person.role}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-accent-2-700)' }}>
+                      {rows.length} month{rows.length === 1 ? '' : 's'} over · worst +{daysOver(worst)} days
+                    </span>
+                  </div>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 110 }}>Month</th>
+                        <th style={{ textAlign: 'right', width: 90 }}>Over by</th>
+                        <th style={{ textAlign: 'right', width: 110 }}>Days over</th>
+                        <th style={{ textAlign: 'right', width: 90 }}>FTE</th>
+                        <th>Driven by</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(({ i, over }) => {
+                        const key = `${p.person.id}-${i}`;
+                        const drivers = spread.filter((row) => row.loads[i] > 0);
+                        return (
+                          <tr key={i}>
+                            <td>{view.monthLabels[i]}</td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
+                              +{over}%
+                            </td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
+                              {daysOver(over)} days
+                            </td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+                              {(over / 100).toFixed(2)}
+                            </td>
+                            <td
+                              style={{ position: 'relative', color: 'var(--color-neutral-700)', cursor: 'help' }}
+                              onMouseEnter={() => setHoverDriver(key)}
+                              onMouseLeave={() => setHoverDriver(null)}
+                            >
+                              {drivers.map((d) => d.project.name).join(', ') || '—'}
+                              {p.leaveDays[i] > 0 && (
+                                <span style={{ color: 'var(--color-accent-700)' }}> · {p.leaveDays[i]}d leave</span>
+                              )}
+                              {hoverDriver === key && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: '100%',
+                                    marginTop: 4,
+                                    minWidth: 280,
+                                    padding: 'var(--space-3)',
+                                    background: 'var(--color-bg)',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    borderRadius: 'var(--radius-md)',
+                                    zIndex: 6,
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  <div className="eyebrow" style={{ marginBottom: 6 }}>
+                                    {p.person.name} · {view.monthLabels[i]}
+                                  </div>
+                                  {drivers.map((d) => (
+                                    <div
+                                      key={d.project.id}
+                                      style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', fontSize: 13, padding: '2px 0' }}
+                                    >
+                                      <span>
+                                        {d.project.name}
+                                        <span style={{ color: 'var(--color-neutral-600)' }}> · {d.project.client}</span>
+                                      </span>
+                                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                        {d.loads[i]}% · {daysOver(d.loads[i])}d
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {p.leaveDays[i] > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--color-accent-700)' }}>
+                                      <span>Annual leave</span>
+                                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                        {p.leaveLoads[i]}% · {p.leaveDays[i]}d
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      paddingTop: 6,
+                                      marginTop: 4,
+                                      borderTop: '1px solid var(--color-divider)',
+                                    }}
+                                  >
+                                    <span>Committed vs their {p.person.capacity}%</span>
+                                    <span style={{ color: 'var(--color-accent-2-700)', fontVariantNumeric: 'tabular-nums' }}>
+                                      {p.committed[i]}% · +{daysOver(over)}d
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+        </div>
       )}
       </>) },
         ]}

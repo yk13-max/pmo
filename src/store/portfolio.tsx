@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Person, Portfolio, Project } from '../types';
+import type { Allocations, Person, Portfolio, Project, ProjectTypeDef } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
-import { ROLES } from '../data/phases';
+import { DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
 import { planningMonths } from '../lib/dates';
 
 const STORAGE_KEY = 'pmo-tracker:portfolio:v1';
@@ -22,6 +22,8 @@ interface PortfolioStore {
   setThreshold: (pct: number) => void;
   /** The months resourcing plans across. */
   setWindow: (startMonth: string, months: number) => void;
+  saveProjectType: (def: ProjectTypeDef) => void;
+  removeProjectType: (id: string) => void;
   replaceAll: (portfolio: Portfolio) => void;
   resetToSeed: () => void;
 }
@@ -43,10 +45,12 @@ export function normalise(p: Portfolio): Portfolio {
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
+    projectTypes: p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
     projects: p.projects.map((project) => ({ ...project, priority: project.priority ?? 3 })),
     people: p.people.map((person) => ({
       ...person,
       capacity: person.capacity ?? 100,
+      types: person.types ?? ((person as Person & { discipline?: string }).discipline ? [(person as Person & { discipline?: string }).discipline as string] : []),
       workingDays:
         person.workingDays ?? Math.round(((person.capacity ?? 100) / 100) * WORKING_DAYS_PER_MONTH),
     })),
@@ -163,6 +167,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setPortfolio((prev) => ({ ...prev, threshold: pct }));
   }, []);
 
+  const saveProjectType = useCallback((def: ProjectTypeDef) => {
+    setPortfolio((prev) => {
+      const exists = prev.projectTypes.some((t) => t.id === def.id);
+      return {
+        ...prev,
+        projectTypes: exists ? prev.projectTypes.map((t) => (t.id === def.id ? def : t)) : [...prev.projectTypes, def],
+      };
+    });
+  }, []);
+
+  /** Refuses while projects still use the type, so none is left without phases. */
+  const removeProjectType = useCallback((id: string) => {
+    setPortfolio((prev) =>
+      prev.projects.some((p) => p.type === id) || prev.projectTypes.length <= 1
+        ? prev
+        : {
+            ...prev,
+            projectTypes: prev.projectTypes.filter((t) => t.id !== id),
+            people: prev.people.map((p) => ({ ...p, types: p.types.filter((t) => t !== id) })),
+          },
+    );
+  }, []);
+
   const setWindow = useCallback((startMonth: string, months: number) => {
     setPortfolio((prev) => ({ ...prev, window: { startMonth, months } }));
   }, []);
@@ -183,6 +210,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeRole,
       setThreshold,
       setWindow,
+      saveProjectType,
+      removeProjectType,
       replaceAll,
       resetToSeed,
     }),
@@ -198,6 +227,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeRole,
       setThreshold,
       setWindow,
+      saveProjectType,
+      removeProjectType,
       replaceAll,
       resetToSeed,
     ],

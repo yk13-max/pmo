@@ -60,7 +60,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
               <div style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-3)' }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, color: p.loadInk }}>{p.loadLabel}</div>
-                  <div className="eyebrow">of team time</div>
+                  <div className="eyebrow">team draw</div>
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20 }}>{p.burnLabel}</div>

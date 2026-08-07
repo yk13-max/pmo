@@ -47,7 +47,8 @@ export function ProjectDetail({
   const notes: string[] = [];
   if (project.rag === 'R') notes.push('The project manager has flagged this at risk. It needs a decision this week.');
   if (project.burn > 95) notes.push(`Nearly all of the budget is spent — ${project.burnLabel} of it. More work means a new approval.`);
-  if (project.load > view.threshold) notes.push(`The people on this project are booked at ${project.loadLabel} of their time. Something has to give.`);
+  if (team.some((t) => Math.max(...t.loads) > 0 && view.peopleViews.find((pv) => pv.person.id === t.person.id)?.committed.some((v, i) => v > t.person.capacity && t.loads[i] > 0)))
+    notes.push('Someone booked on this project is over their available time in a month it needs them. Something has to give.');
   if (!team.length) notes.push('Nobody is booked on this project yet. Add allocations so it shows up in resourcing.');
   if (!notes.length) notes.push('Nothing outstanding. On plan, inside budget, and fully staffed.');
 
@@ -163,8 +164,10 @@ export function ProjectDetail({
           <div className="stat-value" style={{ color: project.loadInk }}>
             {project.loadLabel}
           </div>
-          <div className="stat-label">Of the team&rsquo;s time</div>
-          <div className="stat-sub">Across the {team.length || 'no'} people below</div>
+          <div className="stat-label">Team draw at its peak</div>
+          <div className="stat-sub">
+            {project.loadPeopleLabel} across the {team.length || 'no'} people below
+          </div>
         </div>
       </div>
 

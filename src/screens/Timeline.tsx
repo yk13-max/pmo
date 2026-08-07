@@ -29,8 +29,6 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
 
   const pos = (iso: string) => ((fromISO(iso).getTime() - windowStart.getTime()) / span) * 100;
 
-  const cdmo = view.projects.filter((p) => p.type === 'CDMO');
-  const cs = view.projects.filter((p) => p.type === 'CS');
 
   const row = (p: ProjectView) => (
     <TimelineRow
@@ -117,20 +115,18 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
             id: 'all',
             label: 'All projects',
             count: view.projects.length,
-            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{[...cdmo, ...cs].map(row)}</div>,
+            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{view.projects.map(row)}</div>,
           },
-          {
-            id: 'cdmo',
-            label: 'CDMO',
-            count: cdmo.length,
-            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{cdmo.map(row)}</div>,
-          },
-          {
-            id: 'cs',
-            label: 'Client Solutions',
-            count: cs.length,
-            render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{cs.map(row)}</div>,
-          },
+          ...view.projectTypes.map((t) => ({
+            id: t.id,
+            label: t.label,
+            count: view.projects.filter((p) => p.type === t.id).length,
+            render: () => (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {view.projects.filter((p) => p.type === t.id).map(row)}
+              </div>
+            ),
+          })),
         ]}
       />
     </div>

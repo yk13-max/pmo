@@ -4,7 +4,6 @@ import { money, ragColor } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
 
 const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
-const TYPE_FILTERS = ['All', 'Client Solutions', 'CDMO'] as const;
 const RAG_FILTERS = ['All', 'On track', 'Watch', 'At risk'] as const;
 
 export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
@@ -79,7 +78,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
         <Stat
           value={view.totals.shortOfPeople}
           label="Short of people"
-          sub={`Need someone already booked past ${view.threshold}%`}
+          sub={`Depend on someone already booked past ${view.threshold}% of their month`}
           color="var(--color-accent-700)"
           spark={<ShortfallSpark view={view} />}
         />
@@ -96,7 +95,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           marginBottom: 'var(--space-6)',
         }}
       >
-        <FilterChips label="Type" options={TYPE_FILTERS} value={type} onChange={setType} />
+        <FilterChips label="Type" options={['All', ...view.projectTypes.map((t) => t.label)]} value={type} onChange={setType} />
         <FilterChips label="Status" options={RAG_FILTERS} value={rag} onChange={setRag} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Rank by</span>
@@ -201,7 +200,9 @@ function Scatter({
   const maxBudget = Math.max(1, ...projects.map((p) => p.budget));
   const x = (pct: number) => 70 + (pct / 100) * 950;
   const y = (budget: number) => 300 - Math.sqrt(budget / maxBudget) * 266;
-  const radius = (load: number) => 5 + (load / 100) * 7;
+  // Sized against the heaviest project in view so bubbles stay legible whatever the range.
+  const maxLoad = Math.max(1, ...projects.map((p) => p.load));
+  const radius = (load: number) => 5 + (load / maxLoad) * 8;
 
   const xTicks = [0, 25, 50, 75, 100];
   const xMinor = [12.5, 37.5, 62.5, 87.5];
@@ -379,7 +380,7 @@ function Scatter({
                   {hovered.phaseName} · {hovered.phaseStep}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                  {hovered.loadLabel} of the team’s time · {hovered.ragLabel}
+                  {hovered.loadPeopleLabel} of team time · {hovered.ragLabel}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginTop: 6 }}>
                   {hovered.typeLabel} · {hovered.facingLabel} · {hovered.pmName}
@@ -407,7 +408,7 @@ function Scatter({
           <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'var(--color-warning)', display: 'block' }} />
           Watch
         </span>
-        <span>Bigger circle = takes more of the team&rsquo;s time</span>
+        <span>Bigger circle = draws more of the team</span>
         <span>Labels mark at-risk and priority 1&ndash;2 work</span>
         <span>Hover a circle for the project&rsquo;s details</span>
       </div>
@@ -468,13 +469,14 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
             <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.moneySub}</div>
           </div>
           <div style={{ textAlign: 'right', flex: 'none' }}>
-            <div className="eyebrow">Team load</div>
+            <div className="eyebrow">Team draw</div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 3 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: project.loadColor }} />
               <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, color: project.loadInk }}>
                 {project.loadLabel}
               </span>
             </div>
+            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.loadPeopleLabel}</div>
             <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.pmName}</div>
           </div>
         </div>

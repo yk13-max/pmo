@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import type { Facing, Person, Project, ProjectType, Rag } from '../types';
+import type { Facing, Person, Project, ProjectTypeDef, Rag } from '../types';
 import { MAX_DATE, PRIORITY_LABEL, PRIORITY_LEVELS } from '../types';
-import { PHASES, PHASE_MILESTONES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
+import { RAG_LABEL } from '../data/phases';
 import { addMonths, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 
@@ -15,13 +15,13 @@ type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'bi
   load: string;
 };
 
-function emptyProject(pmId: string): Project {
+function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
   const today = new Date();
   return {
     id: `project-${crypto.randomUUID().slice(0, 8)}`,
     name: '',
     client: '',
-    type: 'CS',
+    type: type?.id ?? '',
     facing: 'C',
     phase: 0,
     pct: 0,
@@ -34,7 +34,7 @@ function emptyProject(pmId: string): Project {
     load: 0,
     startDate: toISO(today),
     endDate: toISO(addMonths(today, 9)),
-    milestone: PHASE_MILESTONES.CS[0],
+    milestone: type?.milestones[0] ?? '',
     milestoneDate: toISO(addMonths(today, 1)),
     priority: 3,
   };
@@ -63,6 +63,7 @@ export function ProjectForm({
   months,
   monthLabels,
   threshold,
+  projectTypes,
   allocations,
   otherLoads,
   onSave,
@@ -74,6 +75,7 @@ export function ProjectForm({
   months: string[];
   monthLabels: string[];
   threshold: number;
+  projectTypes: ProjectTypeDef[];
   /** `${personId}|${month}` → % for this project. */
   allocations: Record<string, number>;
   /** Each person's load from every other project, for the over-booking warning. */
@@ -84,14 +86,21 @@ export function ProjectForm({
 }) {
   const managers = useMemo(() => people.filter((p) => p.role === 'Project manager'), [people]);
   const [draft, setDraft] = useState<Draft>(() =>
-    toDraft(project ?? emptyProject((managers[0] ?? people[0])?.id ?? '')),
+    toDraft(project ?? emptyProject((managers[0] ?? people[0])?.id ?? '', projectTypes[0])),
   );
   const [alloc, setAlloc] = useState<Record<string, number>>(allocations);
   const [touched, setTouched] = useState(false);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const phases = PHASES[draft.type];
+  // Mirrors the derived figure so it updates as bookings are edited.
+  const derivedLoad = Math.max(
+    0,
+    ...months.map((m) => people.reduce((n, person) => n + (alloc[`${person.id}|${m}`] ?? 0), 0)),
+  );
+
+  const typeDef = projectTypes.find((t) => t.id === draft.type) ?? projectTypes[0];
+  const phases = typeDef?.phases ?? [];
   const internal = draft.facing === 'I';
   const errors: Record<string, string> = {};
   if (!draft.name.trim()) errors.name = 'Give the project a name.';
@@ -109,13 +118,13 @@ export function ProjectForm({
         ...draft,
         name: draft.name.trim(),
         client: draft.client.trim(),
-        milestone: draft.milestone.trim() || PHASE_MILESTONES[draft.type][draft.phase],
+        milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
         pct: Math.min(100, num(draft.pct)),
         budget: num(draft.budget),
         actual: num(draft.actual),
         value: internal ? 0 : num(draft.value),
         billed: internal ? 0 : num(draft.billed),
-        load: num(draft.load),
+        load: derivedLoad,
       },
       alloc,
     );
@@ -160,18 +169,17 @@ export function ProjectForm({
               className="input"
               value={draft.type}
               onChange={(e) => {
-                const type = e.target.value as ProjectType;
-                setDraft((d) => ({
-                  ...d,
-                  type,
-                  phase: Math.min(d.phase, PHASES[type].length - 1),
-                  milestone: PHASE_MILESTONES[type][Math.min(d.phase, PHASES[type].length - 1)],
-                }));
+                const next = projectTypes.find((t) => t.id === e.target.value);
+                if (!next) return;
+                setDraft((d) => {
+                  const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
+                  return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
+                });
               }}
             >
-              {(Object.keys(TYPE_LABEL) as ProjectType[]).map((t) => (
-                <option key={t} value={t}>
-                  {TYPE_LABEL[t]}
+              {projectTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
                 </option>
               ))}
             </select>
@@ -248,10 +256,10 @@ export function ProjectForm({
               value={draft.phase}
               onChange={(e) => {
                 const phase = Number(e.target.value);
-                setDraft((d) => ({ ...d, phase, milestone: PHASE_MILESTONES[d.type][phase] }));
+                setDraft((d) => ({ ...d, phase, milestone: typeDef?.milestones[phase] ?? d.milestone }));
               }}
             >
-              {phases.map((p, i) => (
+              {phases.map((p: string, i: number) => (
                 <option key={p} value={i}>
                   {i + 1}. {p}
                 </option>
@@ -293,7 +301,7 @@ export function ProjectForm({
               id="pf-ms"
               className="input"
               value={draft.milestone}
-              placeholder={PHASE_MILESTONES[draft.type][draft.phase]}
+              placeholder={typeDef?.milestones[draft.phase] ?? ''}
               onChange={(e) => set('milestone', e.target.value)}
             />
           </div>
@@ -346,9 +354,23 @@ export function ProjectForm({
             </>
           )}
           <div className="field">
-            <label htmlFor="pf-load">Team load (%)</label>
-            <input id="pf-load" className="input" type="number" min={0} value={draft.load} onChange={(e) => set('load', e.target.value)} />
-            <div className="field-hint">Share of the assigned team&rsquo;s week this project takes. Above {threshold}% it is flagged as short of people.</div>
+            <label>Team draw</label>
+            <div
+              style={{
+                minHeight: 36,
+                display: 'flex',
+                alignItems: 'center',
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 600,
+                fontSize: 16,
+              }}
+            >
+              {derivedLoad}% · {(derivedLoad / 100).toFixed(2)} people
+            </div>
+            <div className="field-hint">
+              Calculated from the bookings below — the total resource this project draws across the whole team in its
+              busiest month. Not typed in.
+            </div>
           </div>
         </div>
       </fieldset>

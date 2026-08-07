@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Person } from '../types';
+import type { Person, ProjectTypeDef } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { leavePct } from '../lib/derive';
 
@@ -13,7 +13,7 @@ function emptyPerson(role: string): Person {
     id: `person-${crypto.randomUUID().slice(0, 8)}`,
     name: '',
     role,
-    discipline: '',
+    types: [],
     capacity: 100,
     workingDays: WORKING_DAYS_PER_MONTH,
   };
@@ -22,6 +22,7 @@ function emptyPerson(role: string): Person {
 export function PersonForm({
   person,
   roles,
+  projectTypes,
   months,
   monthLabels,
   leaveDays,
@@ -33,6 +34,7 @@ export function PersonForm({
 }: {
   person: Person | null;
   roles: string[];
+  projectTypes: ProjectTypeDef[];
   months: string[];
   monthLabels: string[];
   /** Days of leave already booked, one per planning month. */
@@ -136,12 +138,33 @@ export function PersonForm({
           )}
         </div>
         <div className="field">
-          <label htmlFor="pn-disc">Works across</label>
-          <select id="pn-disc" className="input" value={draft.discipline} onChange={(e) => setDraft({ ...draft, discipline: e.target.value })}>
-            <option value="">Both delivery types</option>
-            <option value="CS">Client Solutions</option>
-            <option value="CDMO">CDMO</option>
-          </select>
+          <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+            Project types they work on
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+            {projectTypes.map((t) => {
+              const on = draft.types.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="chip"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setDraft((d) => ({
+                      ...d,
+                      types: on ? d.types.filter((x) => x !== t.id) : [...d.types, t.id],
+                    }))
+                  }
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="field-hint">
+            {draft.types.length ? 'Only these types.' : 'None selected — treated as available to every type.'}
+          </div>
         </div>
         <div className="field">
           <label htmlFor="pn-cap">Working days a month</label>

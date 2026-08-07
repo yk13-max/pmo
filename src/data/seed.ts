@@ -1,6 +1,6 @@
 import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
-import { PHASE_MILESTONES, ROLES } from './phases';
+import { DEFAULT_PROJECT_TYPES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
 
 type ProjectSeed = [
@@ -123,7 +123,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       id: `person-${name.toLowerCase()}`,
       name,
       role,
-      discipline,
+      types: discipline ? [discipline] : [],
       workingDays: days,
       capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
     };
@@ -157,7 +157,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       load,
       startDate: toISO(start),
       endDate: toISO(addMonths(start, duration)),
-      milestone: PHASE_MILESTONES[type][phase],
+      milestone: (DEFAULT_PROJECT_TYPES.find((t) => t.id === type)?.milestones ?? [])[phase] ?? '',
       milestoneDate: milestoneDate(anchor, i),
       priority: rag === 'R' ? 1 : budget >= 1000 ? 2 : rag === 'A' ? 3 : facing === 'I' ? 4 : 3,
     };
@@ -192,6 +192,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     allocations,
     leave,
     roles: [...ROLES],
+    projectTypes: DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
     threshold: 85,
     window: { startMonth: months[0], months: months.length },
   };

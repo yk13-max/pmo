@@ -1,6 +1,6 @@
 import type { Portfolio } from '../types';
 import { PRIORITY_LABEL, WORKING_DAYS_PER_MONTH } from '../types';
-import { PHASES, RAG_LABEL, TYPE_LABEL } from '../data/phases';
+import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 
 /* CSVs are written to be read by a person, not just re-imported: words rather than codes
@@ -79,7 +79,7 @@ export function projectsCsv(p: Portfolio): string {
       'Spent £k',
       'Agreed £k',
       'Invoiced £k',
-      'Team load %',
+      'Team draw % (calculated)',
       'Start date',
       'End date',
       'Next milestone',
@@ -88,12 +88,12 @@ export function projectsCsv(p: Portfolio): string {
     p.projects.map((x) => [
       x.name,
       x.client,
-      TYPE_LABEL[x.type],
+      p.projectTypes.find((t) => t.id === x.type)?.label ?? x.type,
       x.facing === 'C' ? 'Customer-facing' : 'Internal',
       x.priority,
       PRIORITY_LABEL[x.priority] ?? '',
       RAG_LABEL[x.rag],
-      PHASES[x.type][x.phase] ?? '',
+      (p.projectTypes.find((t) => t.id === x.type)?.phases ?? [])[x.phase] ?? '',
       x.pct,
       person(x.pmId),
       x.budget,
@@ -111,11 +111,11 @@ export function projectsCsv(p: Portfolio): string {
 
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
-    ['Name', 'Job title', 'Works across', 'Working days per month', 'Capacity %'],
+    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %'],
     p.people.map((x) => [
       x.name,
       x.role,
-      x.discipline === 'CS' ? 'Client Solutions' : x.discipline === 'CDMO' ? 'CDMO' : 'Both',
+      x.types.map((id) => p.projectTypes.find((t) => t.id === id)?.label ?? id).join('; ') || 'All',
       x.workingDays,
       x.capacity,
     ]),
@@ -198,9 +198,13 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
     body.forEach((r) => {
       const name = col(r, 'Project');
       if (!name) return;
-      const type = col(r, 'Delivery type').toLowerCase().startsWith('cdmo') ? 'CDMO' : 'CS';
+      const typeLabel = col(r, 'Delivery type');
+      const typeDef =
+        portfolio.projectTypes.find((t) => t.label.toLowerCase() === typeLabel.toLowerCase()) ??
+        portfolio.projectTypes.find((t) => t.id.toLowerCase() === typeLabel.toLowerCase()) ??
+        portfolio.projectTypes[0];
       const phaseName = col(r, 'Phase');
-      const phaseIndex = Math.max(0, PHASES[type].findIndex((x) => x.toLowerCase() === phaseName.toLowerCase()));
+      const phaseIndex = Math.max(0, typeDef.phases.findIndex((x: string) => x.toLowerCase() === phaseName.toLowerCase()));
       const pmName = col(r, 'Project manager');
       const pm = portfolio.people.find((x) => x.name.toLowerCase() === pmName.toLowerCase());
       const existing = projects.findIndex((x) => x.name.toLowerCase() === name.toLowerCase());
@@ -209,7 +213,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         id: base?.id ?? `project-${name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).slice(2, 6)}`,
         name,
         client: col(r, 'Client or function') || base?.client || '',
-        type: type as 'CS' | 'CDMO',
+        type: typeDef.id,
         facing: (col(r, 'For').toLowerCase().startsWith('internal') ? 'I' : 'C') as 'C' | 'I',
         priority: num(col(r, 'Priority')) || base?.priority || 3,
         rag: RAG_FROM_LABEL[col(r, 'Status').toLowerCase()] ?? base?.rag ?? 'G',
@@ -220,7 +224,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         actual: num(col(r, 'Spent £k')),
         value: num(col(r, 'Agreed £k')),
         billed: num(col(r, 'Invoiced £k')),
-        load: num(col(r, 'Team load %')),
+        load: num(col(r, 'Team draw % (calculated)')),
         startDate: col(r, 'Start date') || base?.startDate || '',
         endDate: col(r, 'End date') || base?.endDate || '',
         milestone: col(r, 'Next milestone') || base?.milestone || '',
@@ -245,14 +249,21 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       if (!name) return;
       const role = col(r, 'Job title') || 'Project manager';
       roles.add(role);
-      const across = col(r, 'Works across').toLowerCase();
+      const typeNames = col(r, 'Project types');
       const days = num(col(r, 'Working days per month')) || WORKING_DAYS_PER_MONTH;
       const existing = people.findIndex((x) => x.name.toLowerCase() === name.toLowerCase());
       const merged = {
         id: existing >= 0 ? people[existing].id : `person-${name.toLowerCase().replace(/\s+/g, '-')}`,
         name,
         role,
-        discipline: across.startsWith('client') ? 'CS' : across.startsWith('cdmo') ? 'CDMO' : '',
+        types:
+          !typeNames || typeNames.toLowerCase() === 'all'
+            ? []
+            : typeNames
+                .split(';')
+                .map((n) => n.trim())
+                .map((n) => portfolio.projectTypes.find((t) => t.label.toLowerCase() === n.toLowerCase())?.id)
+                .filter((x): x is string => Boolean(x)),
         workingDays: days,
         capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
       };

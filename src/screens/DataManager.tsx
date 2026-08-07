@@ -4,6 +4,7 @@ import type { PortfolioView } from '../lib/derive';
 import { usePortfolio } from '../store/portfolio';
 import { applyCsv, portfolioCsvFiles } from '../lib/csv';
 import { Tabs } from '../components/Tabs';
+import { ProjectTypeEditor } from '../components/ProjectTypeEditor';
 
 export function DataManager({
   view,
@@ -154,7 +155,7 @@ export function DataManager({
               <th style={{ textAlign: 'right', width: 90 }}>Spent</th>
               <th style={{ textAlign: 'right', width: 90 }}>Agreed</th>
               <th style={{ textAlign: 'right', width: 90 }}>Invoiced</th>
-              <th style={{ textAlign: 'right', width: 70 }}>Load</th>
+              <th style={{ textAlign: 'right', width: 80 }}>Draw</th>
               <th style={{ width: 100 }}>Status</th>
               <th style={{ width: 120 }} />
             </tr>
@@ -201,6 +202,7 @@ export function DataManager({
       </div>
 
       </>) },
+          { id: 'types', label: 'Project types', count: view.projectTypes.length, render: () => <ProjectTypeEditor view={view} /> },
           { id: 'titles', label: 'Job titles', count: view.roles.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Job titles</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
@@ -285,7 +287,7 @@ export function DataManager({
           <tr>
             <th>Name</th>
             <th style={{ width: 180 }}>Role</th>
-            <th style={{ width: 150 }}>Works across</th>
+            <th style={{ width: 170 }}>Project types</th>
             <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
             <th style={{ textAlign: 'right', width: 90 }}>Leave</th>
             <th style={{ textAlign: 'right', width: 100 }}>Peak load</th>
@@ -299,7 +301,7 @@ export function DataManager({
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>
               </td>
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
-              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.discipline || 'Both'}</td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ') || 'All'}</td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
                 {row.leaveDays.reduce((n, d) => n + d, 0)}d

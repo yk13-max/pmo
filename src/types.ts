@@ -1,4 +1,14 @@
-export type ProjectType = 'CS' | 'CDMO';
+/** A project type's id. Types are user-defined, so this is a plain string. */
+export type ProjectType = string;
+
+export interface ProjectTypeDef {
+  id: string;
+  label: string;
+  /** Ordered phases a project of this type passes through. */
+  phases: string[];
+  /** The milestone that closes each phase, offered as the default. */
+  milestones: string[];
+}
 export type Facing = 'C' | 'I';
 export type Rag = 'G' | 'A' | 'R';
 
@@ -43,8 +53,8 @@ export interface Person {
   id: string;
   name: string;
   role: string;
-  /** Which delivery type a project manager works across; blank for specialists. */
-  discipline: string;
+  /** Project types this person works across. Empty means all of them. */
+  types: string[];
   /** Share of a full-time month available to projects, %. Derived from workingDays. */
   capacity: number;
   /** Normal working days per month. Below full time means part time. */
@@ -64,6 +74,8 @@ export interface Portfolio {
   leave: Leave;
   /** Job titles available when adding someone. Editable on the Data screen. */
   roles: string[];
+  /** Delivery types and their phase lists. Editable on the Data screen. */
+  projectTypes: ProjectTypeDef[];
   /** Load above which a person counts as over-allocated, %. */
   threshold: number;
   /** The months resourcing plans across. */
