@@ -43,6 +43,13 @@ export function PersonDetail({
           <div className="stat-label">Days off</div>
           <div className="stat-sub">Own leave plus public holidays</div>
         </div>
+        <div>
+          <div className="stat-value" style={{ fontSize: 34 }}>{row.person.overheadPct ?? 0}%</div>
+          <div className="stat-label">Non-project work</div>
+          <div className="stat-sub">
+            Meetings and admin · {row.overheadLoad}% of a full month
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 'var(--space-6)' }}>

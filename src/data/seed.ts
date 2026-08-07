@@ -50,25 +50,34 @@ const PROJECT_SEED: ProjectSeed[] = [
   ['Ligier', 'Procurement', 'CS', 'I', 1, 38, 'A', 150, 70, 0, 0, 81],
 ];
 
-type PersonSeed = [name: string, role: string, discipline: string, loads: number[], projects: string[], workingDays?: number];
+type PersonSeed = [
+  name: string,
+  role: string,
+  discipline: string,
+  loads: number[],
+  projects: string[],
+  workingDays?: number,
+  /** Share of their working time on meetings, admin and line management. */
+  overheadPct?: number,
+];
 
 /** Monthly loads are the mockup's tuned figures; they become allocations spread over each
     person's projects, so the resourcing screens still read the same. */
 const PEOPLE_SEED: PersonSeed[] = [
   ['Saranan', 'Project manager', 'CDMO', [72, 78, 82, 80, 76, 70],
-    ['Rolex', 'Omega', 'Patek', 'Cartier', 'Seiko', 'Breitling']],
+    ['Rolex', 'Omega', 'Patek', 'Cartier', 'Seiko', 'Breitling'], undefined, 15],
   ['Andy', 'Project manager', 'CS', [84, 90, 96, 93, 88, 82],
-    ['Ferrari', 'Mercedes', 'Aston Martin', 'Racing Bulls', 'Tyrrell', 'Renault', 'Minardi', 'Ligier']],
+    ['Ferrari', 'Mercedes', 'Aston Martin', 'Racing Bulls', 'Tyrrell', 'Renault', 'Minardi', 'Ligier'], undefined, 15],
   ['Neil', 'Project manager', 'CS', [104, 120, 150, 138, 118, 98],
-    ['McLaren', 'Red Bull', 'Haas', 'Lotus', 'Benetton', 'Toro Rosso', 'Arrows']],
+    ['McLaren', 'Red Bull', 'Haas', 'Lotus', 'Benetton', 'Toro Rosso', 'Arrows'], undefined, 20],
   ['Toby', 'Project manager', 'CS', [66, 72, 78, 75, 71, 64],
-    ['Williams', 'Alpine', 'Sauber', 'Brabham', 'Jordan', 'Force India', 'March'], 16],
+    ['Williams', 'Alpine', 'Sauber', 'Brabham', 'Jordan', 'Force India', 'March'], 16, 15],
   ['Josh', 'Process engineer', '', [98, 114, 142, 132, 112, 96],
-    ['Patek', 'Rolex', 'Seiko', 'Toro Rosso', 'Red Bull']],
+    ['Patek', 'Rolex', 'Seiko', 'Toro Rosso', 'Red Bull'], undefined, 10],
   ['Anna', 'Design engineer', '', [88, 94, 99, 96, 92, 86],
-    ['Red Bull', 'Benetton', 'Ferrari', 'March', 'Cartier'], 17],
+    ['Red Bull', 'Benetton', 'Ferrari', 'March', 'Cartier'], 17, 10],
   ['Carrie', 'Regulatory support', '', [102, 118, 148, 136, 116, 100],
-    ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek']],
+    ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek'], undefined, 12],
 ];
 
 /** Annual leave in days, per person, across the six planning months. */
@@ -117,7 +126,7 @@ function splitWhole(total: number, weights: number[]): number[] {
 export function buildSeedPortfolio(today = new Date()): Portfolio {
   const anchor = startOfMonth(today);
 
-  const people: Person[] = PEOPLE_SEED.map(([name, role, discipline, , , workingDays]) => {
+  const people: Person[] = PEOPLE_SEED.map(([name, role, discipline, , , workingDays, overheadPct]) => {
     const days = workingDays ?? WORKING_DAYS_PER_MONTH;
     return {
       id: `person-${name.toLowerCase()}`,
@@ -126,6 +135,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       types: discipline ? [discipline] : [],
       workingDays: days,
       capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
+      overheadPct: overheadPct ?? 0,
     };
   });
 

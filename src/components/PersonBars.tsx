@@ -74,23 +74,33 @@ export function PersonBars({
         />
         <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
-        {/* Leave sits at the base — the month starts with the days already gone, and project
-            work stacks on what is left. */}
+        {/* The month starts with the time already gone — days off at the base, then meetings
+            and admin — and project work stacks on whatever is left. */}
         {person.loads.map((_, i) => {
           const total = person.committed[i];
           const hTotal = h(total);
           const hLeave = Math.min(h(person.leaveLoads[i]), hTotal);
+          const hGone = Math.min(h(person.leaveLoads[i] + person.overheadLoad), hTotal);
           return (
             <g key={i}>
               {hLeave > 0 && (
                 <rect x={x(i)} y={BASELINE - hLeave} width={width} height={hLeave} fill="var(--color-accent)" />
               )}
-              {hTotal > hLeave && (
+              {hGone > hLeave && (
+                <rect
+                  x={x(i)}
+                  y={BASELINE - hGone}
+                  width={width}
+                  height={hGone - hLeave}
+                  fill="var(--color-accent-500)"
+                />
+              )}
+              {hTotal > hGone && (
                 <rect
                   x={x(i)}
                   y={BASELINE - hTotal}
                   width={width}
-                  height={hTotal - hLeave}
+                  height={hTotal - hGone}
                   fill={
                     total > full
                       ? 'var(--color-accent-2)'
@@ -151,7 +161,12 @@ export function PersonBars({
               zIndex: 2,
             }}
           >
-            {total}%{isHover && person.leaveDays[i] ? ` · ${work}% work + ${person.leaveDays[i]}d leave` : ''}
+            {total}%
+            {isHover && (person.leaveDays[i] || person.overheadLoad)
+              ? ` · ${work}% work${person.leaveDays[i] ? ` + ${person.leaveDays[i]}d leave` : ''}${
+                  person.overheadLoad ? ` + ${person.overheadLoad}% non-project` : ''
+                }`
+              : ''}
           </span>
         );
       })}

@@ -79,6 +79,8 @@ export function normalise(p: Portfolio): Portfolio {
       types: person.types ?? ((person as Person & { discipline?: string }).discipline ? [(person as Person & { discipline?: string }).discipline as string] : []),
       workingDays:
         person.workingDays ?? Math.round(((person.capacity ?? 100) / 100) * WORKING_DAYS_PER_MONTH),
+      // Stores written before non-project work existed kept none of it, so they start at zero.
+      overheadPct: person.overheadPct ?? 0,
     })),
   };
 }

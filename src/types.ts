@@ -81,6 +81,9 @@ export interface Person {
   capacity: number;
   /** Normal working days per month. Below full time means part time. */
   workingDays: number;
+  /** Share of their own working time that never reaches a project — meetings, admin,
+      training, line management. Comes off what is available to book, %. */
+  overheadPct: number;
 }
 
 /** Keyed `${projectId}|${personId}|${YYYY-MM}` → hours booked that month. */

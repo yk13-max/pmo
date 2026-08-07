@@ -9,7 +9,7 @@ import {
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { PRIORITY_LABEL } from '../types';
-import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsFrom, shortDate, shortMonth } from './dates';
+import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsBetween, monthsFrom, shortDate, shortMonth } from './dates';
 
 /** Money in thousands, in whatever the client is billed in. Costs stay in the base currency. */
 export function money(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
@@ -202,7 +202,9 @@ export interface PersonView {
   ownLeaveDays: number[];
   /** That leave as a share of the month. */
   leaveLoads: number[];
-  /** Work plus leave — what actually consumes the person's month. */
+  /** Meetings, admin and the rest, as a share of a full-time month. The same every month. */
+  overheadLoad: number;
+  /** Project work plus leave plus non-project work — what consumes the person's month. */
   committed: number[];
   peak: number;
   peakMonthIndex: number;
@@ -234,8 +236,14 @@ export interface PortfolioView {
   publicHolidays: number[];
   /** Headcount, ignoring leave. */
   capacity: number;
-  /** Capacity actually available each month once leave is taken out. */
+  /** Capacity actually available each month once leave and non-project work are taken out. */
   capacityByMonth: number[];
+  /** People-worth of time the team spends on meetings, admin and the rest. */
+  overhead: number;
+  /** `YYYY-MM` the last live project finishes in — the soft edge of what is worth planning. */
+  lastEndMonth: string | null;
+  /** Months from the window start to that end, so the window can be stretched to cover it. */
+  monthsToLastEnd: number;
   roles: string[];
   projectTypes: ProjectTypeDef[];
   /** Roles oversubscribed for 3+ months running, where no colleague of the same
@@ -334,7 +342,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         Math.min(person.workingDays, d + publicHolidays[i]),
       );
       const leaveLoads = leaveDays.map(leavePct);
-      const committed = loads.map((v, i) => v + leaveLoads[i]);
+      /* Non-project work is a share of this person's own time, so a part-timer's 20% is
+         20% of their shorter month. Held as a share of a full month like everything else. */
+      const overheadLoad = Math.round((person.capacity * (person.overheadPct ?? 0)) / 100);
+      const committed = loads.map((v, i) => v + leaveLoads[i] + overheadLoad);
       const peak = committed.length ? Math.max(...committed) : 0;
       return {
         person,
@@ -343,6 +354,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         leaveDays,
         ownLeaveDays,
         leaveLoads,
+        overheadLoad,
         committed,
         peak,
         peakMonthIndex: committed.indexOf(peak),
@@ -352,10 +364,13 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const demand = months.map((_, i) => peopleViews.reduce((n, p) => n + p.loads[i], 0) / 100);
     const capacity = people.reduce((n, p) => n + p.capacity, 0) / 100;
-    // Leave comes straight off the capacity available that month.
+    // Leave and non-project work both come straight off what is available to book.
     const capacityByMonth = months.map(
-      (_, i) => peopleViews.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i]), 0) / 100,
+      (_, i) =>
+        peopleViews.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad), 0) / 100,
     );
+    // What the whole team loses to meetings and admin, in people. Constant across the window.
+    const overhead = peopleViews.reduce((n, p) => n + p.overheadLoad, 0) / 100;
 
     /* A role is short when the work booked to everyone holding that title exceeds their
        combined capacity for the month — meaning the overspill cannot be handed to a
@@ -368,7 +383,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       if (!holders.length) return;
       const gaps = months.map((_, i) => {
         const booked = holders.reduce((n, p) => n + p.loads[i], 0);
-        const available = holders.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i]), 0);
+        const available = holders.reduce(
+          (n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad),
+          0,
+        );
         return (booked - available) / 100;
       });
       let run: number[] = [];
@@ -389,6 +407,12 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       });
       flush();
     });
+
+    /* How far out there is anything to look at. Used as a soft limit: the window can be
+       stretched to cover every live project without guessing a number. */
+    const lastEnd = projects.reduce<string>((latest, p) => (p.endDate > latest ? p.endDate : latest), '');
+    const lastEndMonth = lastEnd ? lastEnd.slice(0, 7) : null;
+    const monthsToLastEnd = lastEndMonth ? monthsBetween(months[0], lastEndMonth) + 1 : 0;
 
     const customer = projects.filter((p) => p.cust);
     const internal = projects.filter((p) => !p.cust);
@@ -448,6 +472,9 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       publicHolidays,
       capacity,
       capacityByMonth,
+      overhead,
+      lastEndMonth,
+      monthsToLastEnd,
       roles: portfolio.roles,
       projectTypes: portfolio.projectTypes,
       roleShortages,

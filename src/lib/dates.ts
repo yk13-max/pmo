@@ -54,6 +54,13 @@ export function planningMonths(today: Date, count = 6): string[] {
 }
 
 /** `count` month keys running from a `YYYY-MM` start. */
+/** Whole months from one `YYYY-MM` key to another. Negative if the second is earlier. */
+export function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
+
 export function monthsFrom(startMonth: string, count: number): string[] {
   const [y, m] = startMonth.split('-').map(Number);
   const start = new Date(y, (m || 1) - 1, 1);

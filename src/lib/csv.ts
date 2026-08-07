@@ -124,13 +124,14 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
 
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
-    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %'],
+    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %', 'Non-project work %'],
     p.people.map((x) => [
       x.name,
       x.role,
       x.types.map((id) => p.projectTypes.find((t) => t.id === id)?.label ?? id).join('; ') || 'All',
       x.workingDays,
       x.capacity,
+      x.overheadPct ?? 0,
     ]),
   );
 }
@@ -299,6 +300,10 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
                 .filter((x): x is string => Boolean(x)),
         workingDays: days,
         capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
+        // A file without the column leaves what is already recorded alone.
+        overheadPct: headers.some((h) => h.trim().toLowerCase() === 'non-project work %')
+          ? Math.min(100, Math.max(0, num(col(r, 'Non-project work %'))))
+          : (existing >= 0 ? people[existing].overheadPct : 0) ?? 0,
       };
       if (existing >= 0) people[existing] = merged;
       else people.push(merged);

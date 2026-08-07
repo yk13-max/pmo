@@ -16,6 +16,7 @@ function emptyPerson(role: string): Person {
     types: [],
     capacity: 100,
     workingDays: WORKING_DAYS_PER_MONTH,
+    overheadPct: 0,
   };
 }
 
@@ -47,6 +48,7 @@ export function PersonForm({
 }) {
   const [draft, setDraft] = useState<Person>(() => person ?? emptyPerson(roles[0] ?? 'Project manager'));
   const [workingDays, setWorkingDays] = useState(String(draft.workingDays));
+  const [overhead, setOverhead] = useState(String(draft.overheadPct ?? 0));
   // Held locally so Cancel discards leave edits, like every other field on this form.
   const [leave, setLeave] = useState<number[]>(leaveDays);
   const [newRole, setNewRole] = useState('');
@@ -54,6 +56,8 @@ export function PersonForm({
   const [touched, setTouched] = useState(false);
 
   const nameError = draft.name.trim() ? '' : 'Give this person a name.';
+  const daysNum = Math.min(WORKING_DAYS_PER_MONTH, Math.max(0, Number(workingDays) || 0));
+  const overheadNum = Math.min(100, Math.max(0, Number(overhead) || 0));
 
   const commitRole = () => {
     const clean = newRole.trim();
@@ -78,6 +82,7 @@ export function PersonForm({
       name: draft.name.trim(),
       workingDays: days,
       capacity: capacityFromDays(days),
+      overheadPct: Math.round(overheadNum),
     });
   };
 
@@ -181,6 +186,23 @@ export function PersonForm({
           <div className="field-hint">
             {WORKING_DAYS_PER_MONTH} is full time. Fewer means part time — {capacityFromDays(Number(workingDays) || 0)}% of
             a full-time month.
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="pn-overhead">Non-project work (%)</label>
+          <input
+            id="pn-overhead"
+            className="input"
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={overhead}
+            onChange={(e) => setOverhead(e.target.value)}
+          />
+          <div className="field-hint">
+            Meetings, admin, training and line management — the share of their time that never reaches a project. Leaves{' '}
+            {(((100 - overheadNum) / 100) * daysNum).toFixed(1)} of their {daysNum.toFixed(1)} days a month to book.
           </div>
         </div>
       </div>

@@ -367,6 +367,7 @@ export function DataManager({
             <th style={{ width: 180 }}>Role</th>
             <th style={{ width: 170 }}>Project types</th>
             <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
+            <th style={{ textAlign: 'right', width: 110 }}>Non-project</th>
             <th style={{ textAlign: 'right', width: 90 }}>Leave</th>
             <th style={{ textAlign: 'right', width: 100 }}>Peak load</th>
             <th style={{ width: 100 }} />
@@ -381,6 +382,9 @@ export function DataManager({
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ') || 'All'}</td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+                {row.person.overheadPct ? `${row.person.overheadPct}%` : '—'}
+              </td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
                 {row.leaveDays.reduce((n, d) => n + d, 0)}d
               </td>
