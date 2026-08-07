@@ -31,6 +31,8 @@ export function Resourcing({
 }) {
   const [showPct, setShowPct] = useState(false);
   const [hoverDriver, setHoverDriver] = useState<string | null>(null);
+  // Every person's chart scrolls together, so cards side by side show the same months.
+  const [monthScroll, setMonthScroll] = useState(0);
 
   const peak = Math.max(0, ...view.demand);
   const peakIndex = view.demand.indexOf(peak);
@@ -216,7 +218,14 @@ export function Resourcing({
                     {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
                   </div>
                 </div>
-                <PersonBars person={p} monthLabels={view.monthLabels} threshold={view.threshold} showPct={showPct} />
+                <PersonBars
+                  person={p}
+                  monthLabels={view.monthLabels}
+                  threshold={view.threshold}
+                  showPct={showPct}
+                  scrollLeft={monthScroll}
+                  onScrollLeft={setMonthScroll}
+                />
               </div>
             );
           })}

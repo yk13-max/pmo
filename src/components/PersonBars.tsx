@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PersonView } from '../lib/derive';
 
 /* One shared chart for every place a person's monthly commitment is drawn — the resourcing
@@ -21,6 +21,8 @@ export function PersonBars({
   height = 104,
   showPct = false,
   interactive = true,
+  scrollLeft,
+  onScrollLeft,
 }: {
   person: PersonView;
   monthLabels: string[];
@@ -29,8 +31,19 @@ export function PersonBars({
   /** Pin the monthly figures on rather than showing them only on hover. */
   showPct?: boolean;
   interactive?: boolean;
+  /* Charts shown side by side share one scroll position, so two people read as the same
+     months. Left out, the strip scrolls on its own. */
+  scrollLeft?: number;
+  onScrollLeft?: (left: number) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const strip = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = strip.current;
+    // The tolerance stops the two charts nudging each other back and forth.
+    if (el && scrollLeft !== undefined && Math.abs(el.scrollLeft - scrollLeft) > 1) el.scrollLeft = scrollLeft;
+  }, [scrollLeft]);
 
   const count = Math.max(1, person.loads.length);
   const slot = VB_W / count;
@@ -42,8 +55,16 @@ export function PersonBars({
   const h = (pct: number) => (Math.min(pct, top) / top) * (BASELINE - PLOT_TOP);
   const y = (pct: number) => BASELINE - h(pct);
 
+  /* Below this a month is too narrow to read its own label, so a long window makes the
+     chart wider than its card and the strip scrolls — the same as the demand chart.
+     Windows past a year carry the year in the label, which needs the extra room. */
+  const minSlot = monthLabels.some((m) => m.length > 4) ? 56 : 38;
+  const minWidth = count * minSlot;
+
   return (
-    <div style={{ position: 'relative' }}>
+    <div>
+    <div ref={strip} style={{ overflowX: 'auto' }} onScroll={(e) => onScrollLeft?.(e.currentTarget.scrollLeft)}>
+    <div style={{ position: 'relative', minWidth }}>
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="none"
@@ -173,11 +194,14 @@ export function PersonBars({
 
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, marginTop: 5 }}>
         {monthLabels.map((m) => (
-          <span key={m} style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)' }}>
+          <span key={m} style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
             {m}
           </span>
         ))}
       </div>
+    </div>
+    </div>
+      {/* Outside the scroller, so the note stays put while the months move under it. */}
       <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 2 }}>
         top of chart = {top}%{full !== 100 && ` · full month for them = ${full}%`}
       </div>
