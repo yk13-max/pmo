@@ -3,6 +3,7 @@ import { money } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 import { PersonBars } from '../components/PersonBars';
+import { PhaseBar } from '../components/PhaseBar';
 
 
 export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
@@ -28,7 +29,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
         storageKey="alerts"
         tabs={[
           { id: 'risk', label: 'Projects at risk', count: atRisk.length, render: () => (<>
-      <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="Filled squares are phases finished, the navy square is where the project is now." />
+      <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="One bar per phase: solid where a phase is finished, part-filled for the phase in hand." />
       {atRisk.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nothing flagged at risk.</p>
       ) : (
@@ -42,10 +43,8 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                 </div>
               </button>
               <div className="eyebrow" style={{ color: 'var(--color-accent-700)', marginTop: 3 }}>{p.client}</div>
-              <div style={{ display: 'flex', gap: 4, height: 8, marginTop: 'var(--space-3)' }}>
-                {p.pips.map((q, i) => (
-                  <span key={i} style={{ display: 'block', flex: 1, background: q.bg }} />
-                ))}
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <PhaseBar project={p} height={8} />
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
                 {p.phaseName} · {p.phaseStep}

@@ -61,7 +61,7 @@ export interface ProjectView extends Project {
   /** How far through the whole project it is: phases finished plus progress through this
       one, 0–100. `pct` on its own only measures the current phase. */
   overallPct: number;
-  pips: { bg: string }[];
+  pips: { fill: number; bg: string }[];
   cust: boolean;
   typeShort: string;
   typeLabel: string;
@@ -136,13 +136,12 @@ export function viewProject(
     overallPct: phases.length
       ? Math.max(0, Math.min(100, Math.round(((project.phase + project.pct / 100) / phases.length) * 100)))
       : project.pct,
+    /* One pip per phase, each a track with a fill: full for a phase that is done, empty
+       for one still to come, and part-filled for the phase in hand — so the stepper shows
+       how far through the current phase the work is, not just which phase it is. */
     pips: phases.map((_, i) => ({
-      bg:
-        i < project.phase
-          ? 'var(--color-text)'
-          : i === project.phase
-            ? 'var(--color-accent)'
-            : 'var(--color-neutral-300)',
+      fill: i < project.phase ? 100 : i === project.phase ? Math.max(0, Math.min(100, project.pct)) : 0,
+      bg: i < project.phase ? 'var(--color-text)' : 'var(--color-accent)',
     })),
     cust,
     typeShort: typeDef?.id ?? project.type,

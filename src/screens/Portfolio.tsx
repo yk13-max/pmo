@@ -3,6 +3,7 @@ import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money, ragColor, typeColour } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
 import { Stripe, StripeSwatch } from '../components/Stripe';
+import { PhaseBar } from '../components/PhaseBar';
 import { Drawer } from '../components/Drawer';
 import type { ProjectTypeDef } from '../types';
 
@@ -662,11 +663,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
           {project.name}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          <div style={{ display: 'flex', gap: 4, height: 6 }}>
-            {project.pips.map((q, i) => (
-              <span key={i} style={{ display: 'block', flex: 1, background: q.bg }} />
-            ))}
-          </div>
+          <PhaseBar project={project} />
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--color-neutral-700)' }}>
             <span>{project.phaseName}</span>
             <span style={{ flex: 'none' }}>{project.phaseStep}</span>

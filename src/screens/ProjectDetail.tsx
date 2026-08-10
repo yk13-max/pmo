@@ -131,18 +131,28 @@ export function ProjectDetail({
           { id: 'progress', label: 'Progress & money', render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where it has got to</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Currently in {project.phaseName} — phase {project.phaseStep}. Next due: {project.milestone} on {project.msDateLabel}.
+        Currently in {project.phaseName} — phase {project.phaseStep}, {project.pct}% through it, and {project.overallPct}%
+        through the project overall. Next due: {project.milestone} on {project.msDateLabel}.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch', marginBottom: 'var(--space-8)' }}>
         {project.phases.map((name, i) => (
           <div key={name} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span
-              style={{
-                height: 6,
-                display: 'block',
-                background: i < project.phase ? 'var(--color-text)' : i === project.phase ? 'var(--color-accent)' : 'var(--color-neutral-300)',
-              }}
-            />
+            {/* Each phase's own bar, part-filled for the one in hand. */}
+            <span style={{ position: 'relative', display: 'block', height: 6, background: 'var(--color-neutral-300)' }}>
+              {project.pips[i]?.fill > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${project.pips[i].fill}%`,
+                    background: project.pips[i].bg,
+                    display: 'block',
+                  }}
+                />
+              )}
+            </span>
             <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, lineHeight: 1.2, textWrap: 'pretty' }}>{name}</span>
             {project.phaseDates[i] && (
               <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{shortDate(project.phaseDates[i])}</span>
