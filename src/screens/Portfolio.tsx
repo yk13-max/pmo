@@ -4,6 +4,7 @@ import { money, ragColor, typeColour } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
 import { Stripe, StripeSwatch } from '../components/Stripe';
 import { Drawer } from '../components/Drawer';
+import type { ProjectTypeDef } from '../types';
 
 const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
 const RAG_FILTERS = ['All', 'On track', 'Watch', 'At risk'] as const;
@@ -129,7 +130,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
       {showShortfall && <ShortfallDetail view={view} onClose={() => setShowShortfall(false)} onOpenProject={onOpenProject} />}
 
-      <Scatter projects={shown} hovered={hovered} onHover={setHoverId} />
+      <Scatter projects={shown} types={view.projectTypes} hovered={hovered} onHover={setHoverId} />
 
       <div
         style={{
@@ -337,20 +338,34 @@ function ShortfallSpark({ view }: { view: PortfolioView }) {
 }
 
 const CHART_W = 1040;
-const CHART_H = 340;
+/* The plot box, with a band above and below it for the two phase scales. Everything else
+   is measured from these, so the box can move without hunting for stray numbers. */
+const PLOT_LEFT = 70;
+const PLOT_RIGHT = 1020;
+const PLOT_TOP = 72;
+const PLOT_BOTTOM = 298;
+const CHART_H = 400;
 
 function Scatter({
   projects,
+  types,
   hovered,
   onHover,
 }: {
   projects: ProjectView[];
+  types: ProjectTypeDef[];
   hovered: ProjectView | null;
   onHover: (id: string | null) => void;
 }) {
   const maxBudget = Math.max(1, ...projects.map((p) => p.budget));
-  const x = (pct: number) => 70 + (pct / 100) * 950;
-  const y = (budget: number) => 300 - Math.sqrt(budget / maxBudget) * 266;
+  const x = (pct: number) => PLOT_LEFT + (pct / 100) * (PLOT_RIGHT - PLOT_LEFT);
+  const y = (budget: number) => PLOT_BOTTOM - Math.sqrt(budget / maxBudget) * (PLOT_BOTTOM - PLOT_TOP);
+
+  /* The horizontal scale is progress through a whole project, so each delivery type's
+     phases divide it evenly — which is what turns a bare percentage into "it is in
+     validation". Two types, two scales: one above the plot and one below. */
+  const topType = types[1] ?? types[0];
+  const bottomType = types[0];
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
   const maxLoad = Math.max(1, ...projects.map((p) => p.load));
   const radius = (load: number) => 5 + (load / maxLoad) * 8;
@@ -409,19 +424,49 @@ function Scatter({
               role="img"
               aria-label="Every project by how far through the whole project it is against its approved budget"
             >
-              <rect x={70} y={34} width={950} height={266} fill="none" stroke="var(--color-neutral-200)" strokeWidth={1} />
+              <rect
+                x={PLOT_LEFT}
+                y={PLOT_TOP}
+                width={PLOT_RIGHT - PLOT_LEFT}
+                height={PLOT_BOTTOM - PLOT_TOP}
+                fill="none"
+                stroke="var(--color-neutral-200)"
+                strokeWidth={1}
+              />
               {xMinor.map((t) => (
-                <line key={`xm-${t}`} x1={x(t)} y1={34} x2={x(t)} y2={300} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
+                <line key={`xm-${t}`} x1={x(t)} y1={PLOT_TOP} x2={x(t)} y2={PLOT_BOTTOM} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
               ))}
               {yMinor.map((t) => (
-                <line key={`ym-${t}`} x1={70} y1={y(t)} x2={1020} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
+                <line key={`ym-${t}`} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
               ))}
               {xTicks.map((t) => (
-                <line key={t} x1={x(t)} y1={34} x2={x(t)} y2={300} stroke="var(--color-neutral-300)" strokeWidth={1} />
+                <line key={t} x1={x(t)} y1={PLOT_TOP} x2={x(t)} y2={PLOT_BOTTOM} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
               {yTicks.map((t) => (
-                <line key={t} x1={70} y1={y(t)} x2={1020} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
+                <line key={t} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
+
+              {/* Where one phase gives way to the next, on each type's own scale. */}
+              {[
+                { type: topType, colour: typeColour(types.indexOf(topType)), from: PLOT_TOP - 12, to: PLOT_TOP },
+                { type: bottomType, colour: typeColour(types.indexOf(bottomType)), from: PLOT_BOTTOM, to: PLOT_BOTTOM + 12 },
+              ].map(({ type, colour, from, to }) =>
+                (type?.phases ?? []).slice(1).map((name, i) => {
+                  const at = ((i + 1) / (type?.phases.length ?? 1)) * 100;
+                  return (
+                    <line
+                      key={`${type?.id}-${name}`}
+                      x1={x(at)}
+                      y1={from}
+                      x2={x(at)}
+                      y2={to}
+                      stroke={colour}
+                      strokeWidth={1}
+                      opacity={0.55}
+                    />
+                  );
+                }),
+              )}
               {projects.map((p) => (
                 <circle
                   key={p.id}
@@ -470,13 +515,21 @@ function Scatter({
                   {c.text}
                 </span>
               ))}
+            <PhaseAxis type={topType} colour={typeColour(types.indexOf(topType))} x={x} top={4} height={PLOT_TOP - 18} />
+            <PhaseAxis
+              type={bottomType}
+              colour={typeColour(types.indexOf(bottomType))}
+              x={x}
+              top={PLOT_BOTTOM + 32}
+              height={CHART_H - PLOT_BOTTOM - 36}
+            />
             {xTicks.map((t) => (
               <span
                 key={t}
                 style={{
                   position: 'absolute',
                   left: `${(x(t) / CHART_W) * 100}%`,
-                  top: `${(310 / CHART_H) * 100}%`,
+                  top: `${((PLOT_BOTTOM + 8) / CHART_H) * 100}%`,
                   transform: 'translateX(-50%)',
                   fontSize: 13,
                   color: 'var(--color-neutral-700)',
@@ -490,7 +543,7 @@ function Scatter({
                 key={t}
                 style={{
                   position: 'absolute',
-                  left: `${(62 / CHART_W) * 100}%`,
+                  left: `${((PLOT_LEFT - 8) / CHART_W) * 100}%`,
                   top: `${(y(t) / CHART_H) * 100}%`,
                   transform: 'translate(-100%,-50%)',
                   fontSize: 13,
@@ -572,26 +625,36 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
     <article style={{ position: 'relative', padding: '2px 0 2px var(--space-4)' }}>
       <Stripe project={project} absolute />
       <button type="button" className="card-link" onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%' }}>
           <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
             {project.client}
           </span>
-          <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              title={`Priority ${project.priority} — ${project.priorityLabel}`}
-              style={{
-                fontSize: 10,
-                letterSpacing: '.08em',
-                padding: '1px 6px',
-                borderRadius: 2,
-                background: project.priority <= 2 ? 'var(--color-accent-2-100)' : 'var(--color-neutral-200)',
-                color: project.priority <= 2 ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)',
-              }}
-            >
-              P{project.priority}
+          {/* Priority and type on one line, with whose project it is directly beneath —
+              the three things you check before opening the card. */}
+          <span style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span
+                title={`Priority ${project.priority} — ${project.priorityLabel}`}
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '.08em',
+                  padding: '1px 6px',
+                  borderRadius: 2,
+                  background: project.priority <= 2 ? 'var(--color-accent-2-100)' : 'var(--color-neutral-200)',
+                  color: project.priority <= 2 ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)',
+                }}
+              >
+                P{project.priority}
+              </span>
+              <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+                {project.typeShort}
+              </span>
             </span>
-            <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
-              {project.typeShort}
+            <span
+              title={`Run by ${project.pmName}`}
+              style={{ fontSize: 13, lineHeight: 1.2, color: 'var(--color-neutral-800)', whiteSpace: 'nowrap' }}
+            >
+              {project.pmName}
             </span>
           </span>
         </div>
@@ -630,7 +693,6 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
             <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
               {project.loadSharePct.toFixed(1)}% of the portfolio
             </div>
-            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.pmName}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--color-neutral-700)', width: '100%' }}>
@@ -640,5 +702,71 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
         </div>
       </button>
     </article>
+  );
+}
+
+/* One delivery type's phases laid along the horizontal scale. Because that scale is
+   progress through a whole project, each phase takes an equal share of it — so a circle's
+   position reads straight off as the phase it is in. */
+function PhaseAxis({
+  type,
+  colour,
+  x,
+  top,
+  height,
+}: {
+  type: ProjectTypeDef | undefined;
+  colour: string;
+  /** The same scale the plot uses, so the bands line up with the grid. */
+  x: (pct: number) => number;
+  top: number;
+  height: number;
+}) {
+  if (!type?.phases.length) return null;
+  const n = type.phases.length;
+  return (
+    <>
+      <span
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: `${(top / CHART_H) * 100}%`,
+          width: `${((PLOT_LEFT - 10) / CHART_W) * 100}%`,
+          textAlign: 'right',
+          fontSize: 10,
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+          fontWeight: 600,
+          color: colour,
+        }}
+      >
+        {type.id}
+      </span>
+      {type.phases.map((name, i) => (
+        <span
+          key={name}
+          title={`${type.label} · phase ${i + 1} of ${n}: ${name}`}
+          style={{
+            position: 'absolute',
+            left: `${(x((i / n) * 100) / CHART_W) * 100}%`,
+            width: `${(((x(100) - x(0)) / n) / CHART_W) * 100}%`,
+            top: `${(top / CHART_H) * 100}%`,
+            height: `${(height / CHART_H) * 100}%`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 4px',
+            fontSize: 10,
+            lineHeight: 1.25,
+            textAlign: 'center',
+            textWrap: 'balance',
+            color: colour,
+            overflow: 'hidden',
+          }}
+        >
+          {name}
+        </span>
+      ))}
+    </>
   );
 }

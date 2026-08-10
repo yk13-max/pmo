@@ -176,7 +176,7 @@ function TimelineRow({
       <div style={{ position: 'relative', height: 18, cursor: 'pointer' }}>
         <span style={{ position: 'absolute', left: 0, right: 0, top: 8, height: 1, background: 'var(--color-neutral-200)', display: 'block' }} />
         {quarters.map((q) => (
-          <span key={q.key} style={{ position: 'absolute', left: `${q.left}%`, top: -4, bottom: -4, width: 1, background: 'var(--color-neutral-200)', display: 'block' }} />
+          <span key={q.key} style={{ position: 'absolute', left: `${q.left}%`, top: -4, bottom: -4, width: 1, background: 'var(--color-neutral-300)', display: 'block' }} />
         ))}
         <span style={{ position: 'absolute', left: `${todayLeft}%`, top: -3, bottom: -3, width: 1, background: 'var(--color-text)', display: 'block' }} />
         <span style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, top: 5, height: 8, background: project.ragColor, display: 'block' }} />
