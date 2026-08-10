@@ -369,7 +369,7 @@ function Scatter({
     .filter((p) => p.rag === 'R' || p.priority <= 2)
     .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
     .forEach((p) => {
-      const cx = x(p.pct);
+      const cx = x(p.overallPct);
       const cy = y(p.budget);
       const text =
         p.rag === 'R' && p.burn > 90
@@ -407,7 +407,7 @@ function Scatter({
               viewBox={`0 0 ${CHART_W} ${CHART_H}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
               role="img"
-              aria-label="Every project by how far through its current phase it is against its approved budget"
+              aria-label="Every project by how far through the whole project it is against its approved budget"
             >
               <rect x={70} y={34} width={950} height={266} fill="none" stroke="var(--color-neutral-200)" strokeWidth={1} />
               {xMinor.map((t) => (
@@ -425,7 +425,7 @@ function Scatter({
               {projects.map((p) => (
                 <circle
                   key={p.id}
-                  cx={x(p.pct)}
+                  cx={x(p.overallPct)}
                   cy={y(p.budget)}
                   r={radius(p.load) + (hovered?.id === p.id ? 4 : 0)}
                   fill={p.cust ? ragColor(p.rag) : 'none'}
@@ -437,7 +437,7 @@ function Scatter({
               {projects.map((p) => (
                 <circle
                   key={`hit-${p.id}`}
-                  cx={x(p.pct)}
+                  cx={x(p.overallPct)}
                   cy={y(p.budget)}
                   r={radius(p.load) + 9}
                   fill="transparent"
@@ -504,7 +504,7 @@ function Scatter({
               <div
                 style={{
                   position: 'absolute',
-                  left: `${(x(hovered.pct) / CHART_W) * 100}%`,
+                  left: `${(x(hovered.overallPct) / CHART_W) * 100}%`,
                   top: `${((y(hovered.budget) - 18) / CHART_H) * 100}%`,
                   transform: 'translate(-50%,-100%)',
                   minWidth: 236,
@@ -539,7 +539,7 @@ function Scatter({
               </div>
             )}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>How far through the current phase →</div>
+          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>How far through the whole project →</div>
         </div>
       </div>
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>

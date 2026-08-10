@@ -4,6 +4,7 @@ import type { PortfolioView, ProjectView } from '../lib/derive';
 import { hoursToDays } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
 import { Stripe } from '../components/Stripe';
+import { WindowControls } from '../components/WindowControls';
 import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_TYPE } from '../types';
 import { shortDate, shortDateYear, toISO } from '../lib/dates';
 
@@ -12,11 +13,13 @@ export function ProjectDetail({
   project,
   onSelect,
   onEdit,
+  onSetWindow,
 }: {
   view: PortfolioView;
   project: ProjectView | null;
   onSelect: (id: string) => void;
   onEdit: (project: Project) => void;
+  onSetWindow: (startMonth: string, months: number) => void;
 }) {
   if (!project) {
     return <p className="empty">No projects yet. Use “New project” to add the first one.</p>;
@@ -52,9 +55,17 @@ export function ProjectDetail({
   return (
     <div className="printable">
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <span className="eyebrow">Project</span>
-          <select className="input" style={{ width: 'auto', minWidth: 320 }} value={project.id} onChange={(e) => onSelect(e.target.value)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <label className="eyebrow" htmlFor="pd-project">
+            Project
+          </label>
+          <select
+            id="pd-project"
+            className="input"
+            style={{ width: 'auto', minWidth: 320 }}
+            value={project.id}
+            onChange={(e) => onSelect(e.target.value)}
+          >
             <optgroup label="CDMO">
               {cdmo.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -70,7 +81,7 @@ export function ProjectDetail({
               ))}
             </optgroup>
           </select>
-        </label>
+        </div>
         <button type="button" className="btn btn-secondary" onClick={() => onEdit(project)}>
           Edit project
         </button>
@@ -214,7 +225,9 @@ export function ProjectDetail({
         </div>
       ) }]
             : []),
-          { id: 'team', label: 'Who is working on it', count: team.length, render: () => <TeamGrid view={view} team={team} /> },
+          { id: 'team', label: 'Who is working on it', count: team.length, render: () => (
+            <TeamGrid view={view} team={team} onSetWindow={onSetWindow} />
+          ) },
           { id: 'watch', label: 'What to watch', count: notes.length, render: () => (<>
       <h3 style={{ margin: '0 0 var(--space-3)' }}>What to watch</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxWidth: '64ch' }}>
@@ -237,9 +250,11 @@ export function ProjectDetail({
 function TeamGrid({
   view,
   team,
+  onSetWindow,
 }: {
   view: PortfolioView;
   team: ReturnType<PortfolioView['allocationsFor']>;
+  onSetWindow: (startMonth: string, months: number) => void;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const cols = `180px repeat(${view.months.length}, 1fr) 70px`;
@@ -248,11 +263,20 @@ function TeamGrid({
 
   return (
     <>
-      <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Share of each person&rsquo;s working week committed to this project, month by month. Hover a month for the hours
-        behind it.
-      </p>
+      {/* The same window control as the resourcing screen, and the same window behind it:
+          set the months here and they follow you there. */}
+      <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+        <div>
+          <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
+          <p className="lede" style={{ margin: 0 }}>
+            Share of each person&rsquo;s working week committed to this project, month by month. Hover a month for the
+            hours behind it.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
+          <WindowControls view={view} onSetWindow={onSetWindow} />
+        </div>
+      </div>
       {team.length === 0 ? (
         <p className="empty" style={{ maxWidth: 640, marginBottom: 'var(--space-8)' }}>
           Nobody booked yet. Open “Edit project” to book people onto it.

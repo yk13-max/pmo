@@ -200,6 +200,7 @@ export function App() {
             project={selected}
             onSelect={(id) => go({ projectId: id })}
             onEdit={(project) => setEditing({ kind: 'project', project })}
+            onSetWindow={store.setWindow}
           />
         )}
         {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}

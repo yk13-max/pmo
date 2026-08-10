@@ -5,7 +5,9 @@ import { hoursToDays } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 import { PersonBars } from '../components/PersonBars';
-import { monthKeyLabel, monthOptions } from '../lib/dates';
+import { WindowControls } from '../components/WindowControls';
+import { Drawer } from '../components/Drawer';
+import { monthKeyLabel } from '../lib/dates';
 import { MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
 
 
@@ -128,7 +130,7 @@ export function Resourcing({
             </span>
             <span>
               <span style={{ width: 14, height: 12, background: 'var(--color-accent-500)', display: 'block' }} />
-              Non-project work
+              Other
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -431,75 +433,6 @@ export function Resourcing({
   );
 }
 
-/** The planning window, shared by every tab that lets you type into a month. */
-function WindowControls({
-  view,
-  onSetWindow,
-}: {
-  view: PortfolioView;
-  onSetWindow: (startMonth: string, months: number) => void;
-}) {
-  const labelStyle = {
-    display: 'block',
-    fontSize: 12,
-    marginBottom: 5,
-    color: 'color-mix(in srgb, var(--color-text) 70%, transparent)',
-  } as const;
-  return (
-    <>
-      <label className="field" style={{ margin: 0 }}>
-        <span style={labelStyle}>Plan from</span>
-        <select
-          className="input"
-          style={{ width: 'auto', minWidth: 110 }}
-          value={view.months[0]}
-          onChange={(e) => onSetWindow(e.target.value, view.months.length)}
-        >
-          {monthOptions(new Date().getFullYear() - 1, MAX_YEAR).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="field" style={{ margin: 0 }}>
-        <span style={labelStyle}>For</span>
-        <select
-          className="input"
-          style={{ width: 'auto', minWidth: 110 }}
-          value={view.months.length}
-          onChange={(e) => onSetWindow(view.months[0], Number(e.target.value))}
-        >
-          {/* The current length is always offered, even when it came from the button below. */}
-          {[...new Set([3, 6, 12, 18, 24, 36, 48, 60, view.months.length])]
-            .sort((a, b) => a - b)
-            .map((n) => (
-              <option key={n} value={n}>
-                {n} months
-              </option>
-            ))}
-        </select>
-      </label>
-      {/* A soft limit rather than a hard one: nothing stops a longer window, but this is how
-          far out there is actually work to look at. */}
-      {view.lastEndMonth && view.monthsToLastEnd > view.months.length && (
-        <button
-          type="button"
-          className="btn btn-ghost"
-          style={{ marginBottom: 2, whiteSpace: 'nowrap' }}
-          title={`The last project runs to ${monthKeyLabel(view.lastEndMonth)}`}
-          onClick={() => onSetWindow(view.months[0], Math.min(MAX_WINDOW, view.monthsToLastEnd))}
-        >
-          Show to {monthKeyLabel(view.lastEndMonth)}
-        </button>
-      )}
-    </>
-  );
-}
-
-/** The longest window offered, so a stray end date cannot ask for a thousand columns. */
-const MAX_WINDOW = 120;
-
 /** Days off, month by month. The top row is the public holidays everybody takes, entered
     once here rather than seven times below. */
 function LeaveTable({
@@ -781,7 +714,17 @@ function DemandChart({
         </div>
       </div>
 
-      {picked !== null && <MonthBreakdown view={view} index={picked} onClose={() => setPicked(null)} />}
+      {/* Centred over the page rather than tucked under the chart, so the detail arrives
+          where the eye already is and does not depend on how far down the chart sits. */}
+      {picked !== null && (
+        <Drawer
+          title={monthKeyLabel(view.months[picked])}
+          kicker="What this month is made of"
+          onClose={() => setPicked(null)}
+        >
+          <MonthBreakdown view={view} index={picked} />
+        </Drawer>
+      )}
       <div className="legend" style={{ marginTop: 'var(--space-2)' }}>
         <span>
           <span style={{ width: 14, height: 12, background: 'var(--color-neutral-200)', display: 'block' }} />
@@ -801,7 +744,7 @@ function DemandChart({
         </span>
         <span>
           <span style={{ width: 14, height: 12, background: 'var(--color-accent-500)', display: 'block' }} />
-          Non-project work
+          Other
         </span>
         <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -814,7 +757,7 @@ function DemandChart({
 
 /* Everything behind one column of the demand chart: where the month's capacity went, what
    the promised work asks for, and who carries it. */
-function MonthBreakdown({ view, index, onClose }: { view: PortfolioView; index: number; onClose: () => void }) {
+function MonthBreakdown({ view, index }: { view: PortfolioView; index: number }) {
   const cap = view.capacity;
   const leave = view.peopleViews.reduce((n, p) => n + p.leaveLoads[index], 0) / 100;
   const avail = view.capacityByMonth[index];
@@ -824,33 +767,20 @@ function MonthBreakdown({ view, index, onClose }: { view: PortfolioView; index: 
   const asDays = (pctOfMonth: number) => `${((pctOfMonth / 100) * WORKING_DAYS_PER_MONTH).toFixed(1)}d`;
 
   return (
-    <div
-      style={{
-        marginTop: 'var(--space-6)',
-        padding: 'var(--space-6)',
-        background: 'var(--color-neutral-100)',
-        borderRadius: 'var(--radius-md)',
-        maxWidth: 1040,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-        <h4 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20 }}>
-          {monthKeyLabel(view.months[index])}
-        </h4>
-        <span style={{ fontSize: 13, color: gap > 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
-          {gap > 0
-            ? `${people(gap)} short of what the promised work needs`
-            : `${people(-gap)} spare after everything promised`}
-        </span>
-        <button type="button" className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose}>
-          Close
-        </button>
-      </div>
+    <div>
+      <p
+        className="lede"
+        style={{ marginBottom: 'var(--space-6)', color: gap > 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}
+      >
+        {gap > 0
+          ? `${people(gap)} short of what the promised work needs.`
+          : `${people(-gap)} spare after everything promised.`}
+      </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-6) 48px', marginBottom: 'var(--space-6)' }}>
         <Figure label="People we have" value={people(cap)} sub={`${view.people.length} on the team`} />
         <Figure label="Away on leave" value={`− ${people(leave)}`} sub="Own leave plus public holidays" />
-        <Figure label="Non-project work" value={`− ${people(view.overhead)}`} sub="Meetings, admin, training" />
+        <Figure label="Other" value={`− ${people(view.overhead)}`} sub="Meetings, admin, training" />
         <Figure label="Left to book" value={people(avail)} sub="What projects can actually draw on" />
         <Figure
           label="The work needs"
@@ -864,12 +794,13 @@ function MonthBreakdown({ view, index, onClose }: { view: PortfolioView; index: 
         <thead>
           <tr>
             <th>Person</th>
-            <th style={{ textAlign: 'right', width: 100 }}>Their month</th>
-            <th style={{ textAlign: 'right', width: 100 }}>Days off</th>
-            <th style={{ textAlign: 'right', width: 110 }}>Non-project</th>
-            <th style={{ textAlign: 'right', width: 110 }}>Project work</th>
-            <th style={{ textAlign: 'right', width: 110 }}>Committed</th>
-            <th style={{ width: 150 }}>Left to book</th>
+            {/* Trimmed so the names keep a line to themselves in the centred dialog. */}
+            <th style={{ textAlign: 'right', width: 88 }}>Their month</th>
+            <th style={{ textAlign: 'right', width: 82 }}>Days off</th>
+            <th style={{ textAlign: 'right', width: 76 }}>Other</th>
+            <th style={{ textAlign: 'right', width: 96 }}>Project work</th>
+            <th style={{ textAlign: 'right', width: 96 }}>Committed</th>
+            <th style={{ width: 112 }}>Left to book</th>
           </tr>
         </thead>
         <tbody>
