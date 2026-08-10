@@ -46,7 +46,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
               <div style={{ marginTop: 'var(--space-3)' }}>
                 <PhaseBar project={p} height={8} />
               </div>
-              <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 6 }}>
                 {p.phaseName} · {p.phaseStep}
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-3)' }}>
@@ -89,7 +89,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 26, color: 'var(--color-accent-2-700)', marginTop: 'var(--space-3)' }}>
                     {p.peak}%
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Past a full week in {months.join(', ')}</div>
+                  <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Past a full week in {months.join(', ')}</div>
                 </div>
                 <div style={{ flex: '1 1 260px', minWidth: 220 }}>
                   <PersonBars person={p} monthLabels={view.monthLabels} threshold={view.threshold} showPct />
@@ -113,7 +113,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                 <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
                   {p.name}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
                   {p.client} · {p.phaseName}
                 </div>
               </button>
@@ -144,7 +144,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
                 <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
                   {p.name}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
                   {p.client} · {Math.round((p.billed / p.value) * 100)}% invoiced
                 </div>
               </button>

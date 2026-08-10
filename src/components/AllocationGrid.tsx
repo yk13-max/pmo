@@ -60,9 +60,9 @@ export function AllocationGrid({
               <tr key={person.id} style={barred ? { opacity: 0.55 } : undefined}>
                 <td>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{person.role}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{person.role}</div>
                   {barred && (
-                    <div style={{ fontSize: 11, color: 'var(--color-accent-2-700)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-accent-2-700)' }}>
                       Does not work on {typeLabel}
                     </div>
                   )}
@@ -105,7 +105,7 @@ export function AllocationGrid({
             );
           })}
           <tr>
-            <td style={{ fontSize: 11, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+            <td style={{ fontSize: 12, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
               This project, total days drawn each month
             </td>
             {months.map((month) => {
@@ -114,13 +114,13 @@ export function AllocationGrid({
                 <td
                   key={month}
                   className="month-col"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--color-neutral-700)' }}
+                  style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--color-neutral-700)' }}
                 >
                   {asDays(total)}d
                 </td>
               );
             })}
-            <td className="month-col" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 600 }}>
+            <td className="month-col" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 600 }}>
               {asDays(months.reduce((n, m) => n + people.reduce((s, p) => s + (value[`${p.id}|${m}`] ?? 0), 0), 0))}d
             </td>
           </tr>

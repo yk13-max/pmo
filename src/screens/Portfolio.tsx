@@ -22,6 +22,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [sort, setSort] = useState<'status' | 'priority'>('priority');
   const [xMode, setXMode] = useState<XMode>(X_MODES[0]);
+  const [showNames, setShowNames] = useState(false);
 
   const shown = view.projects
     .filter(
@@ -142,6 +143,8 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
         activeType={type}
         xMode={xMode}
         onXMode={setXMode}
+        showNames={showNames}
+        onShowNames={setShowNames}
         hovered={hovered}
         onHover={setHoverId}
       />
@@ -180,7 +183,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           </select>
         </label>
         {/* Both halves of the stripe, named: the type on top, who it is for beneath. */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
           {view.projectTypes.map((t, i) => (
             <span key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <StripeSwatch type={typeColour(i)} facing="var(--color-neutral-200)" />
@@ -296,7 +299,7 @@ function ShortfallDetail({
                     <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
                       {project.name}
                     </span>
-                    <span style={{ color: 'var(--color-neutral-600)', fontSize: 12 }}> · {project.client}</span>
+                    <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {project.client}</span>
                   </button>
                 </td>
                 <td style={{ fontSize: 13 }}>P{project.priority}</td>
@@ -387,6 +390,8 @@ function Scatter({
   activeType,
   xMode,
   onXMode,
+  showNames,
+  onShowNames,
   hovered,
   onHover,
 }: {
@@ -396,6 +401,9 @@ function Scatter({
   activeType: string;
   xMode: XMode;
   onXMode: (mode: XMode) => void;
+  /** Name every project on the plot, not just the ones worth stopping on. */
+  showNames: boolean;
+  onShowNames: (on: boolean) => void;
   hovered: ProjectView | null;
   onHover: (id: string | null) => void;
 }) {
@@ -432,33 +440,39 @@ function Scatter({
   const xMinor = [12.5, 37.5, 62.5, 87.5];
   const yTicks = budgetTicks(minBudget, maxBudget, y);
 
-  /* Callouts are limited to what a delivery lead would stop on: anything at risk, plus
-     priority 1-2. Labels are placed only where they will not collide with one already
-     placed, so a crowded corner stays readable. */
+  /* Two ways to label the plot. Left alone it calls out only what a delivery lead would
+     stop on — anything at risk, plus priority 1-2 — and says why. Switched to names it
+     labels every project with its name alone, so the chart can be read as a map.
+     Either way a label is placed only where it will not collide with one already there,
+     biggest budget first, so a crowded corner stays readable. */
   const callouts: { p: ProjectView; x: number; y: number; text: string; anchor: 'start' | 'end' }[] = [];
   const placed: { x: number; y: number; w: number }[] = [];
-  [...projects]
-    .filter((p) => p.rag === 'R' || p.priority <= 2)
-    .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
-    .forEach((p) => {
-      const cx = x(xValue(p));
-      const cy = y(p.budget);
-      const text =
-        p.rag === 'R' && p.burn > 90
-          ? `${p.name} · ${p.burnLabel} spent`
-          : p.rag === 'R'
-            ? `${p.name} · at risk`
-            : p.cust && p.value > p.billed
-              ? `${p.name} · ${p.toBillLabel} to bill`
-              : `${p.name} · P${p.priority}`;
-      const w = text.length * 6.2 + 24;
-      const anchor: 'start' | 'end' = cx > 720 ? 'end' : 'start';
-      const left = anchor === 'start' ? cx : cx - w;
-      const clash = placed.some((k) => Math.abs(k.y - cy) < 15 && left < k.x + k.w && k.x < left + w);
-      if (clash) return;
-      placed.push({ x: left, y: cy, w });
-      callouts.push({ p, x: cx, y: cy, text, anchor });
-    });
+  (showNames
+    ? [...projects].sort((a, b) => b.budget - a.budget)
+    : [...projects]
+        .filter((p) => p.rag === 'R' || p.priority <= 2)
+        .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
+  ).forEach((p) => {
+    const cx = x(xValue(p));
+    const cy = y(p.budget);
+    const text = showNames
+      ? p.name
+      : p.rag === 'R' && p.burn > 90
+        ? `${p.name} · ${p.burnLabel} spent`
+        : p.rag === 'R'
+          ? `${p.name} · at risk`
+          : p.cust && p.value > p.billed
+            ? `${p.name} · ${p.toBillLabel} to bill`
+            : `${p.name} · P${p.priority}`;
+    // Roughly how wide the label will render at 12px, in the chart's own units.
+    const w = text.length * 6.8 + 24;
+    const anchor: 'start' | 'end' = cx > 720 ? 'end' : 'start';
+    const left = anchor === 'start' ? cx : cx - w;
+    const clash = placed.some((k) => Math.abs(k.y - cy) < 15 && left < k.x + k.w && k.x < left + w);
+    if (clash) return;
+    placed.push({ x: left, y: cy, w });
+    callouts.push({ p, x: cx, y: cy, text, anchor });
+  });
 
   return (
     <div style={{ marginBottom: 'var(--space-8)' }}>
@@ -474,7 +488,16 @@ function Scatter({
             means the project manager has flagged a problem.
           </p>
         </div>
-        <div style={{ flex: 'none', paddingTop: 4 }}>
+        <div style={{ flex: 'none', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={showNames}
+              onChange={(e) => onShowNames(e.target.checked)}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Name every project
+          </label>
           <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
         </div>
       </div>
@@ -578,7 +601,7 @@ function Scatter({
                     top: `${(c.y / chartH) * 100}%`,
                     transform: c.anchor === 'start' ? 'translate(14px,-50%)' : 'translate(-100%,-50%)',
                     marginLeft: c.anchor === 'end' ? -14 : 0,
-                    fontSize: 11,
+                    fontSize: 12,
                     lineHeight: 1.3,
                     whiteSpace: 'nowrap',
                     color: c.p.rag === 'R' ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)',
@@ -640,7 +663,7 @@ function Scatter({
                   zIndex: 2,
                 }}
               >
-                <div style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
+                <div style={{ fontSize: 12, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
                   {hovered.client}
                 </div>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.15, marginTop: 3 }}>
@@ -651,13 +674,13 @@ function Scatter({
                     ? `${hovered.valueLabel} agreed · ${hovered.billedLabel} invoiced`
                     : `${hovered.budgetLabel} budget · ${hovered.actualLabel} spent`}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>
+                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 4 }}>
                   {hovered.phaseName} · {hovered.phaseStep}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
                   {hovered.loadDaysLabel} this month · {hovered.ragLabel}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-600)', marginTop: 6 }}>
                   {hovered.typeLabel} · {hovered.facingLabel} · {hovered.pmName}
                 </div>
               </div>
@@ -684,7 +707,11 @@ function Scatter({
           Watch
         </span>
         <span>Bigger circle = draws more of the team</span>
-        <span>Labels mark at-risk and priority 1&ndash;2 work</span>
+        <span>
+          {showNames
+            ? 'Every project named, bar those a neighbour’s label would sit on top of'
+            : 'Labels mark at-risk and priority 1–2 work'}
+        </span>
         <span>Hover a circle for the project&rsquo;s details</span>
       </div>
     </div>
@@ -705,7 +732,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
       <Stripe project={project} absolute />
       <button type="button" className="card-link" onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%' }}>
-          <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
+          <span style={{ fontSize: 12, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
             {project.client}
           </span>
           {/* Priority and type on one line, with whose project it is directly beneath —
@@ -715,7 +742,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
               <span
                 title={`Priority ${project.priority} — ${project.priorityLabel}`}
                 style={{
-                  fontSize: 10,
+                  fontSize: 12,
                   letterSpacing: '.08em',
                   padding: '1px 6px',
                   borderRadius: 2,
@@ -725,7 +752,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
               >
                 P{project.priority}
               </span>
-              <span style={{ fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+              <span style={{ fontSize: 12, letterSpacing: '.11em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
                 {project.typeShort}
               </span>
             </span>
@@ -742,7 +769,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
           <PhaseBar project={project} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <span>{project.phaseName}</span>
             <span style={{ flex: 'none' }}>{project.phaseStep}</span>
           </div>
@@ -755,7 +782,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
           <div>
             <div className="eyebrow">{project.moneyLabel}</div>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, marginTop: 3 }}>{project.moneyMain}</div>
-            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{project.moneySub}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{project.moneySub}</div>
           </div>
           <div style={{ textAlign: 'right', flex: 'none' }}>
             <div className="eyebrow">Team draw this month</div>
@@ -765,12 +792,12 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
                 {project.loadDaysLabel}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
               {project.loadSharePct.toFixed(1)}% of the portfolio
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--color-neutral-700)', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--color-neutral-700)', width: '100%' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: project.ragColor }} />
           {project.ragLabel}
           <span style={{ marginLeft: 'auto', color: 'var(--color-neutral-600)' }}>{project.facingLabel}</span>
@@ -811,7 +838,7 @@ function PhaseAxis({
           top: `${(top / chartH) * 100}%`,
           width: `${((PLOT_LEFT - 10) / CHART_W) * 100}%`,
           textAlign: 'right',
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: '.08em',
           textTransform: 'uppercase',
           fontWeight: 600,
@@ -836,7 +863,7 @@ function PhaseAxis({
             flexDirection: 'column',
             gap: 2,
             padding: '0 4px',
-            fontSize: 10,
+            fontSize: 12,
             lineHeight: 1.25,
             textAlign: 'center',
             textWrap: 'balance',
@@ -850,10 +877,10 @@ function PhaseAxis({
             style={{
               fontFamily: 'var(--font-heading)',
               fontWeight: 600,
-              fontSize: 11,
-              width: 16,
-              height: 16,
-              lineHeight: '16px',
+              fontSize: 12,
+              width: 18,
+              height: 18,
+              lineHeight: '18px',
               borderRadius: '50%',
               background: colour,
               color: 'var(--color-bg)',

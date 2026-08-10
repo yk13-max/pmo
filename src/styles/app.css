@@ -14,13 +14,13 @@ a:hover { color: var(--color-accent-600); }
 .nav-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 0; cursor: pointer; font-family: var(--font-heading); font-size: 16px; padding: 8px 10px; border-radius: var(--radius-md); background: transparent; color: var(--color-text); }
 .nav-item:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
 .nav-item[aria-current='page'] { color: var(--color-accent-700); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
-.nav-item .count { font-size: 11px; font-family: var(--font-body); color: var(--color-neutral-600); }
+.nav-item .count { font-size: 12px; font-family: var(--font-body); color: var(--color-neutral-600); }
 
-.kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
-.eyebrow { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
+.kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
+.eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
 .stat-value { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -0.025em; }
-.stat-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-top: 10px; }
-.stat-sub { font-size: 12px; color: var(--color-neutral-700); margin-top: 3px; }
+.stat-label { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-top: 10px; }
+.stat-sub { font-size: 13px; color: var(--color-neutral-700); margin-top: 3px; }
 .stat-row { display: flex; flex-wrap: wrap; gap: var(--space-8) 72px; margin-bottom: var(--space-8); }
 /* One unbroken row of metrics: the columns share the width evenly and the numbers step
    down rather than wrapping. Below tablet it falls back to wrapping. */
@@ -30,8 +30,8 @@ a:hover { color: var(--color-accent-600); }
 .stat-row.one-line .stat-sub { text-wrap: balance; }
 @media (max-width: 900px) { .stat-row.one-line { flex-wrap: wrap; } .stat-row.one-line > * { flex: 1 1 200px; } }
 
-.lede { font-size: 13px; color: var(--color-neutral-700); max-width: 64ch; }
-.legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); font-size: 12px; color: var(--color-neutral-700); }
+.lede { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); font-size: 13px; color: var(--color-neutral-700); }
 .legend > span { display: flex; align-items: center; gap: 8px; }
 
 .chip { cursor: pointer; font-family: var(--font-body); font-size: 13px; padding: 5px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-divider); background: transparent; color: var(--color-text); }
@@ -43,12 +43,12 @@ a:hover { color: var(--color-accent-600); }
 
 /* — forms — */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); }
-.field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
-.field-hint { font-size: 11px; color: var(--color-neutral-600); margin-top: 4px; }
-.field-error { font-size: 11px; color: var(--color-accent-2-700); margin-top: 4px; }
+.field > label { display: block; font-size: 13px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+.field-hint { font-size: 12px; color: var(--color-neutral-600); margin-top: 4px; }
+.field-error { font-size: 12px; color: var(--color-accent-2-700); margin-top: 4px; }
 .input[aria-invalid='true'] { border-color: var(--color-accent-2-600); }
 .fieldset { border: 0; padding: 0; margin: 0 0 var(--space-6); }
-.fieldset > legend { padding: 0; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: var(--space-3); }
+.fieldset > legend { padding: 0; font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: var(--space-3); }
 
 /* Centred in the viewport rather than pinned to an edge — the edit pane is a modal. */
 .drawer-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-neutral-900) 40%, transparent); display: flex; align-items: center; justify-content: center; padding: var(--space-6); z-index: 20; }
@@ -56,7 +56,7 @@ a:hover { color: var(--color-accent-600); }
 .drawer-actions { display: flex; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--color-divider); position: sticky; bottom: 0; background: var(--color-bg); }
 
 .alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.alloc-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
+.alloc-table th { text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
 .alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
 .alloc-table .num { width: 58px; text-align: right; padding: 4px 4px; min-height: 30px; }
 /* Month columns carry the same width on the heading and the cell, so the labels sit
@@ -73,6 +73,10 @@ a:hover { color: var(--color-accent-600); }
 .sort-header:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 5%, transparent); }
 th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header { color: var(--color-accent); }
 
+/* The design system sets column headings in 11px caps. Uppercase at that size is hard
+   work on a dense table, so every heading on the site is lifted a step. */
+.table th { font-size: 12px; }
+
 .row-actions { display: flex; gap: var(--space-2); }
 .empty { padding: var(--space-8); text-align: center; color: var(--color-neutral-700); border: 1px dashed var(--color-divider); border-radius: var(--radius-md); }
 
@@ -81,10 +85,10 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .tab { appearance: none; border: 0; background: transparent; cursor: pointer; font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--color-neutral-700); padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tab:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 .tab[aria-selected='true'] { color: var(--color-accent); border-bottom-color: var(--color-accent); }
-.tab .tab-count { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--color-neutral-600); margin-left: 7px; }
+.tab .tab-count { font-family: var(--font-body); font-weight: 400; font-size: 13px; color: var(--color-neutral-600); margin-left: 7px; }
 .tab[aria-selected='true'] .tab-count { color: var(--color-accent-600); }
 
-.stat-more { display: block; font-size: 11px; color: var(--color-accent); margin-top: 6px; opacity: 0; transition: opacity 120ms; }
+.stat-more { display: block; font-size: 12px; color: var(--color-accent); margin-top: 6px; opacity: 0; transition: opacity 120ms; }
 .stat-button:hover .stat-more, .stat-button:focus-visible .stat-more { opacity: 1; }
 
 /* — printing — the project detail page exports as a PDF with every tab expanded — */

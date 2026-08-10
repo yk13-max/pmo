@@ -84,6 +84,9 @@ export interface Person {
   /** Share of their own working time that never reaches a project — meetings, admin,
       training, line management. Comes off what is available to book, %. */
   overheadPct: number;
+  /** Archived people keep every booking and day off; they drop out of every screen but
+      the archive, so the history of what they worked on survives them leaving. */
+  archived?: boolean;
 }
 
 /** Keyed `${projectId}|${personId}|${YYYY-MM}` → hours booked that month. */

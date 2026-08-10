@@ -15,7 +15,9 @@ interface PortfolioStore {
   /** Archiving keeps the data; only the archive screen shows it. */
   setArchived: (id: string, archived: boolean) => void;
   savePerson: (person: Person) => void;
-  deletePerson: (id: string) => void;
+  /** People are archived, never deleted: their bookings and days off are the record of
+      what the team actually did. */
+  setPersonArchived: (id: string, archived: boolean) => void;
   /** Hours booked for one person on one project in one month. */
   setAllocation: (projectId: string, personId: string, month: string, hours: number) => void;
   /** Days of annual leave for one person in one month. */
@@ -31,6 +33,8 @@ interface PortfolioStore {
   removeProjectType: (id: string) => void;
   replaceAll: (portfolio: Portfolio) => void;
   resetToSeed: () => void;
+  /** Empties the portfolio, keeping only the scaffolding needed to start entering work. */
+  clearAll: () => void;
 }
 
 const Ctx = createContext<PortfolioStore | null>(null);
@@ -81,6 +85,7 @@ export function normalise(p: Portfolio): Portfolio {
         person.workingDays ?? Math.round(((person.capacity ?? 100) / 100) * WORKING_DAYS_PER_MONTH),
       // Stores written before non-project work existed kept none of it, so they start at zero.
       overheadPct: person.overheadPct ?? 0,
+      archived: person.archived ?? false,
     })),
   };
 }
@@ -110,7 +115,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       const exists = prev.projects.some((p) => p.id === project.id);
       let allocations = prev.allocations;
       if (projectAllocations) {
-        allocations = dropKeys(prev.allocations, (key) => key.split('|')[0] === project.id);
+        /* The edit form only shows people who are still here, so it can only speak for them.
+           An archived person's bookings on this project are left exactly as they were —
+           otherwise saving an unrelated edit would quietly erase their history. */
+        const gone = new Set(prev.people.filter((p) => p.archived).map((p) => p.id));
+        allocations = dropKeys(prev.allocations, (key) => {
+          const [projectId, personId] = key.split('|');
+          return projectId === project.id && !gone.has(personId);
+        });
         Object.entries(projectAllocations).forEach(([key, pct]) => {
           if (pct > 0) allocations[`${project.id}|${key}`] = pct;
         });
@@ -150,12 +162,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const deletePerson = useCallback((id: string) => {
+  const setPersonArchived = useCallback((id: string, archived: boolean) => {
     setPortfolio((prev) => ({
       ...prev,
-      people: prev.people.filter((p) => p.id !== id),
-      allocations: dropKeys(prev.allocations, (key) => key.split('|')[1] === id),
-      leave: dropKeys(prev.leave, (key) => key.split('|')[0] === id),
+      people: prev.people.map((p) => (p.id === id ? { ...p, archived } : p)),
     }));
   }, []);
 
@@ -241,6 +251,20 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const replaceAll = useCallback((next: Portfolio) => setPortfolio(normalise(next)), []);
   const resetToSeed = useCallback(() => setPortfolio(buildSeedPortfolio()), []);
 
+  /* Job titles, delivery types and the planning window are how the tracker is set up rather
+     than work anybody entered, so clearing the data leaves them standing — otherwise the
+     first thing after a clear-out would be rebuilding the scaffolding by hand. */
+  const clearAll = useCallback(() => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: [],
+      people: [],
+      allocations: {},
+      leave: {},
+      publicHolidays: {},
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       portfolio,
@@ -248,7 +272,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       savePerson,
-      deletePerson,
+      setPersonArchived,
       setAllocation,
       setLeave,
       addRole,
@@ -260,6 +284,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeProjectType,
       replaceAll,
       resetToSeed,
+      clearAll,
     }),
     [
       portfolio,
@@ -267,7 +292,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       savePerson,
-      deletePerson,
+      setPersonArchived,
       setAllocation,
       setLeave,
       addRole,
@@ -279,6 +304,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeProjectType,
       replaceAll,
       resetToSeed,
+      clearAll,
     ],
   );
 

@@ -144,7 +144,7 @@ export function Resourcing({
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <label className="field" style={{ margin: 0 }}>
-            <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+            <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
               Flag over-allocation above {view.threshold}%
             </span>
             <input
@@ -157,7 +157,7 @@ export function Resourcing({
               onChange={(e) => onSetThreshold(Number(e.target.value))}
             />
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, paddingBottom: 6, cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, paddingBottom: 6, cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={showPct}
@@ -190,7 +190,7 @@ export function Resourcing({
                   >
                     <span className="project-name">{p.person.name}</span>
                   </button>
-                  <div style={{ fontSize: 12, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4 }}>
                     {p.person.role}
                     {p.person.types.length
                       ? ` · ${p.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ')}`
@@ -316,8 +316,8 @@ export function Resourcing({
                     >
                       <span className="project-name">{p.person.name}</span>
                     </button>
-                    <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{p.person.role}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-accent-2-700)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>{p.person.role}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-accent-2-700)' }}>
                       {rows.length} month{rows.length === 1 ? '' : 's'} over · worst +{daysOver(worst)} days
                     </span>
                   </div>
@@ -485,7 +485,7 @@ function LeaveTable({
             <tr style={{ background: 'var(--color-accent-100)' }}>
               <td>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>Public holidays</div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>Everyone, shutdowns included</div>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>Everyone, shutdowns included</div>
               </td>
               {view.months.map((month, i) => (
                 <td key={month} className="month-col">
@@ -509,7 +509,7 @@ function LeaveTable({
               <tr key={p.person.id}>
                 <td>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{p.person.role}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{p.person.role}</div>
                 </td>
                 {view.months.map((month, i) => (
                   <td key={month} className="month-col">
@@ -810,7 +810,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
               <tr key={p.person.id}>
                 <td>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</span>
-                  <span style={{ color: 'var(--color-neutral-600)', fontSize: 12 }}> · {p.person.role}</span>
+                  <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.person.role}</span>
                 </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{asDays(p.person.capacity)}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent)' }}>
@@ -834,7 +834,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
                 >
                   {asDays(p.committed[index])}
                 </td>
-                <td style={{ fontSize: 12, color: free < 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
+                <td style={{ fontSize: 13, color: free < 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
                   {free < 0 ? `${asDays(-free)} over` : `${asDays(free)} free`}
                 </td>
               </tr>

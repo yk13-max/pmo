@@ -100,7 +100,7 @@ export function ProjectDetail({
           <span>{project.typeLabel}</span>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               letterSpacing: '.08em',
               textTransform: 'uppercase',
               padding: '2px 8px',
@@ -155,11 +155,11 @@ export function ProjectDetail({
             </span>
             <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, lineHeight: 1.2, textWrap: 'pretty' }}>{name}</span>
             {project.phaseDates[i] && (
-              <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{shortDate(project.phaseDates[i])}</span>
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{shortDate(project.phaseDates[i])}</span>
             )}
             <span
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 letterSpacing: '.07em',
                 textTransform: 'uppercase',
                 color: i === project.phase ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
@@ -199,7 +199,7 @@ export function ProjectDetail({
       </div>
 
       <div style={{ maxWidth: 640, marginBottom: 'var(--space-8)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 6 }}>
           <span>Budget spent</span>
           <span>
             {project.actualLabel} of {project.budgetLabel}
@@ -225,8 +225,8 @@ export function ProjectDetail({
               <div key={iv.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: iv.dot, display: 'block', flex: 'none' }} />
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16, color: iv.ink }}>{iv.label}</span>
-                <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{iv.date}</span>
-                <span style={{ marginLeft: 'auto', width: 110, textAlign: 'right', fontSize: 12, color: 'var(--color-neutral-600)' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>{iv.date}</span>
+                <span style={{ marginLeft: 'auto', width: 110, textAlign: 'right', fontSize: 13, color: 'var(--color-neutral-600)' }}>
                   {iv.status}
                 </span>
               </div>
@@ -296,11 +296,11 @@ function TeamGrid({
           <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 'var(--space-2)', alignItems: 'end' }}>
             <span />
             {view.monthLabels.map((m) => (
-              <span key={m} style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'center' }}>
+              <span key={m} style={{ fontSize: 12, color: 'var(--color-neutral-600)', textAlign: 'center' }}>
                 {m}
               </span>
             ))}
-            <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Total</span>
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', textAlign: 'right' }}>Total</span>
           </div>
           {team.map((row) => (
             <div
@@ -309,7 +309,7 @@ function TeamGrid({
             >
               <div>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{row.person.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
               </div>
               {row.loads.map((v, i) => {
                 const key = `${row.person.id}-${i}`;
@@ -357,7 +357,7 @@ function TeamGrid({
                             borderTop: '1px solid var(--color-divider)',
                           }}
                         >
-                          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                          <span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
                             Of the {hoursToDays(monthTotals[i]).toFixed(1)}d this project draws
                           </span>
                           <span

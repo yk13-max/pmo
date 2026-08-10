@@ -227,7 +227,7 @@ export function PersonBars({
 
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, marginTop: 5 }}>
         {monthLabels.map((m) => (
-          <span key={m} style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+          <span key={m} style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
             {m}
           </span>
         ))}
@@ -244,12 +244,12 @@ export function PersonBars({
           alignItems: 'baseline',
           gap: 'var(--space-3)',
           marginTop: 3,
-          minHeight: 15,
-          fontSize: 10,
+          minHeight: 18,
+          fontSize: 12,
           color: 'var(--color-neutral-600)',
         }}
       >
-        <span style={{ color: 'var(--color-text)', fontSize: 11, textWrap: 'pretty' }}>
+        <span style={{ color: 'var(--color-text)', fontSize: 12, textWrap: 'pretty' }}>
           {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
         </span>
         <span style={{ flex: 'none' }}>

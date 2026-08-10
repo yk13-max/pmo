@@ -136,19 +136,19 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
                     <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
                       {p.name}
                     </span>
-                    <span style={{ color: 'var(--color-neutral-600)', fontSize: 12 }}> · {p.client}</span>
+                    <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
                   </button>
                 </td>
-                <td style={{ color: 'var(--color-neutral-700)', fontSize: 12 }}>{p.typeShort}</td>
+                <td style={{ color: 'var(--color-neutral-700)', fontSize: 13 }}>{p.typeShort}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.budgetLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.actualLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.burnInk }}>{p.burnLabel}</td>
-                <td style={{ color: 'var(--color-neutral-700)', fontSize: 12 }}>{p.currencyLabel}</td>
+                <td style={{ color: 'var(--color-neutral-700)', fontSize: 13 }}>{p.currencyLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.valueLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.billedLabel}</td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>{p.toBillLabel}</td>
                 <td>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: p.ragColor }} />
                     {p.ragLabel}
                   </span>
@@ -229,7 +229,7 @@ function MoneyBar({
         <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
           {project.name}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>
+        <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
           {project.client} · {project.typeShort}
         </div>
       </button>

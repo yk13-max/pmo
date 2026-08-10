@@ -143,7 +143,7 @@ export function PersonForm({
           )}
         </div>
         <div className="field">
-          <span style={{ display: 'block', fontSize: 12, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+          <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
             Project types they work on
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
@@ -251,7 +251,7 @@ export function PersonForm({
             style={{ marginRight: 'auto', color: 'var(--color-accent-2-700)' }}
             onClick={() => onDelete(person.id)}
           >
-            Remove person
+            Archive person
           </button>
         )}
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

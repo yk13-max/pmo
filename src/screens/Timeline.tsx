@@ -98,7 +98,7 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
               left: `${todayLeft}%`,
               top: -19,
               transform: 'translateX(-50%)',
-              fontSize: 11,
+              fontSize: 12,
               letterSpacing: '.09em',
               textTransform: 'uppercase',
               color: 'var(--color-accent-700)',
@@ -169,7 +169,7 @@ function TimelineRow({
         <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>
           {project.name}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {project.client}
         </span>
       </button>

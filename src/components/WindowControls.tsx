@@ -18,7 +18,7 @@ export function WindowControls({
 }) {
   const labelStyle = {
     display: 'block',
-    fontSize: 12,
+    fontSize: 13,
     marginBottom: 5,
     color: 'color-mix(in srgb, var(--color-text) 70%, transparent)',
   } as const;

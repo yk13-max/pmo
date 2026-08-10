@@ -112,7 +112,7 @@ function TypeCard({
           aria-label={`Name of ${type.label}`}
           onChange={(e) => update({ label: e.target.value })}
         />
-        <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
+        <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>
           {used} project{used === 1 ? '' : 's'} · {type.phases.length} phases
         </span>
         <button

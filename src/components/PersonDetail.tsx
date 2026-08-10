@@ -78,7 +78,7 @@ export function PersonDetail({
                   <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 15 }}>
                     {project.name}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}> · {project.client}</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}> · {project.client}</span>
                 </button>
                 {hours.map((h, i) => (
                   <span

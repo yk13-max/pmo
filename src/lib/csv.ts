@@ -94,6 +94,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'End date',
       'Next milestone',
       'Milestone date',
+      'Archived',
     ],
     p.projects.map((x) => [
       x.name,
@@ -118,13 +119,14 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       x.endDate,
       x.milestone,
       x.milestoneDate,
+      x.archived ? 'Yes' : 'No',
     ]),
   );
 }
 
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
-    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %', 'Non-project work %'],
+    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
     p.people.map((x) => [
       x.name,
       x.role,
@@ -132,6 +134,7 @@ export function peopleCsv(p: Portfolio): string {
       x.workingDays,
       x.capacity,
       x.overheadPct ?? 0,
+      x.archived ? 'Yes' : 'No',
     ]),
   );
 }
@@ -255,7 +258,10 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         milestoneDate: col(r, 'Milestone date') || base?.milestoneDate || '',
         phaseDates: base?.phaseDates ?? [],
         invoiceDates: base?.invoiceDates ?? [],
-        archived: base?.archived,
+        // A file without the column leaves the stored answer alone.
+        archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
+          ? col(r, 'Archived').toLowerCase() === 'yes'
+          : base?.archived,
         // A file without the column leaves the stored answer alone.
         sterile: headers.some((h) => h.trim().toLowerCase() === 'sterile')
           ? col(r, 'Sterile').toLowerCase() === 'yes'
@@ -304,6 +310,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         overheadPct: headers.some((h) => h.trim().toLowerCase() === 'non-project work %')
           ? Math.min(100, Math.max(0, num(col(r, 'Non-project work %'))))
           : (existing >= 0 ? people[existing].overheadPct : 0) ?? 0,
+        archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
+          ? col(r, 'Archived').toLowerCase() === 'yes'
+          : existing >= 0 && people[existing].archived,
       };
       if (existing >= 0) people[existing] = merged;
       else people.push(merged);

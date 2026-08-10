@@ -231,6 +231,8 @@ export interface PortfolioView {
   projects: ProjectView[];
   archivedProjects: ProjectView[];
   people: Person[];
+  /** People who have left. Their bookings are still in the record. */
+  archivedPeople: Person[];
   peopleViews: PersonView[];
   /** `YYYY-MM` keys for the six planning months. */
   months: string[];
@@ -282,7 +284,13 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const loadPerMonth = new Map<string, number[]>();
     // Long windows repeat month names across years, so they carry the year too.
     const monthLabels = months.map((m) => (portfolio.window.months > 12 ? monthKeyLabel(m) : shortMonth(m)));
-    const { threshold, people, allocations } = portfolio;
+    const { threshold, allocations } = portfolio;
+    /* Archived people leave every screen but the archive. Their bookings stay in the
+       store, so what a project drew historically is still true; only the planning
+       forward stops counting them. The full list is kept for looking up names. */
+    const allPeople = portfolio.people;
+    const people = allPeople.filter((p) => !p.archived);
+    const archivedPeople = allPeople.filter((p) => p.archived);
 
     /* Project draw is the sum of everyone's booked hours on it, month by month. */
     Object.entries(allocations).forEach(([key, hours]) => {
@@ -304,7 +312,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const allProjectViews = portfolio.projects.map((p) =>
       viewProject(
         p,
-        people,
+        allPeople,
         threshold,
         portfolio.projectTypes,
         Math.round(hoursToPct(drawHours(p.id))),
@@ -469,6 +477,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       projects,
       archivedProjects,
       people,
+      archivedPeople,
       peopleViews,
       months,
       monthLabels,

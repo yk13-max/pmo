@@ -125,7 +125,7 @@ export function ProjectFilters({
       <Picker label="For" value={filters.facing} onChange={(v) => set({ facing: v })} options={['Customer', 'Internal']} />
       <Picker label="Owner" value={filters.owner} onChange={(v) => set({ owner: v })} options={owners} width={150} />
       <Picker label="Status" value={filters.rag} onChange={(v) => set({ rag: v })} options={['On track', 'Watch', 'At risk']} />
-      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', paddingBottom: 9 }}>
+      <span style={{ fontSize: 13, color: 'var(--color-neutral-700)', paddingBottom: 9 }}>
         {shown} of {total} shown
       </span>
       {on && (

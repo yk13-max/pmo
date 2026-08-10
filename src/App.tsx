@@ -52,7 +52,7 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
   data: [
     'Everything you have entered',
     'Data',
-    'Add, edit and remove projects and people, or move the whole portfolio in and out as a file.',
+    'Add, edit and archive projects and people, or move the whole portfolio in and out as a file.',
   ],
 };
 
@@ -143,7 +143,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', fontSize: 11, lineHeight: 1.6, color: 'var(--color-accent-300)' }}>
+        <div style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-accent-300)' }}>
           Week {weekNumber(view.today)} · FY{String(view.today.getFullYear()).slice(2)}
           <br />
           {view.people.length} people · {view.projects.length} projects
@@ -276,7 +276,14 @@ export function App() {
             onSetLeave={store.setLeave}
             onCancel={() => setEditing(null)}
             onDelete={(id) => {
-              store.deletePerson(id);
+              const person = view.people.find((p) => p.id === id);
+              if (
+                !window.confirm(
+                  `Archive ${person?.name ?? 'this person'}? They keep every booking and day off and move to the archive on the Data screen, where they can be restored.`,
+                )
+              )
+                return;
+              store.setPersonArchived(id, true);
               setEditing(null);
             }}
           />
