@@ -7,6 +7,10 @@ import { PhaseBar } from '../components/PhaseBar';
 import { Drawer } from '../components/Drawer';
 import type { ProjectTypeDef } from '../types';
 
+/** The two readings of the horizontal axis, in the order the toggle offers them. */
+const X_MODES = ['Whole project', 'Current phase'] as const;
+type XMode = (typeof X_MODES)[number];
+
 const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
 const RAG_FILTERS = ['All', 'On track', 'Watch', 'At risk'] as const;
 
@@ -17,6 +21,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   const [pm, setPm] = useState<string>('All');
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [sort, setSort] = useState<'status' | 'priority'>('priority');
+  const [xMode, setXMode] = useState<XMode>(X_MODES[0]);
 
   const shown = view.projects
     .filter(
@@ -131,7 +136,15 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
       {showShortfall && <ShortfallDetail view={view} onClose={() => setShowShortfall(false)} onOpenProject={onOpenProject} />}
 
-      <Scatter projects={shown} types={view.projectTypes} activeType={type} hovered={hovered} onHover={setHoverId} />
+      <Scatter
+        projects={shown}
+        types={view.projectTypes}
+        activeType={type}
+        xMode={xMode}
+        onXMode={setXMode}
+        hovered={hovered}
+        onHover={setHoverId}
+      />
 
       <div
         style={{
@@ -351,6 +364,8 @@ function Scatter({
   projects,
   types,
   activeType,
+  xMode,
+  onXMode,
   hovered,
   onHover,
 }: {
@@ -358,9 +373,16 @@ function Scatter({
   types: ProjectTypeDef[];
   /** The type filter's current value, by label, or 'All'. */
   activeType: string;
+  xMode: XMode;
+  onXMode: (mode: XMode) => void;
   hovered: ProjectView | null;
   onHover: (id: string | null) => void;
 }) {
+  /* Two readings of "how far along": across the whole project, or within the phase it is
+     in now. The second answers "is this phase nearly done", which the first hides. */
+  const overall = xMode === X_MODES[0];
+  const xValue = (p: ProjectView) => (overall ? p.overallPct : p.pct);
+  const axisTitle = overall ? 'How far through the whole project →' : 'How far through the current phase →';
   /* The horizontal scale is progress through a whole project, so a delivery type's phases
      divide it evenly — which is what turns a bare percentage into "it is in validation".
      Only the type being filtered on gets a scale: phases of one type say nothing about a
@@ -368,9 +390,11 @@ function Scatter({
      its own side, and the band it would use collapses when it is not drawn. */
   const topType = types[1] ?? types[0];
   const bottomType = types[0];
+  /* The phase scale only lines up under the whole-project reading. Against phase progress
+     the axis means something different for every project, so there is nothing to name. */
   const selected = activeType === 'All' ? null : types.find((t) => t.label === activeType);
-  const showTop = Boolean(selected && topType && selected.id === topType.id);
-  const showBottom = Boolean(selected && bottomType && selected.id === bottomType.id);
+  const showTop = Boolean(overall && selected && topType && selected.id === topType.id);
+  const showBottom = Boolean(overall && selected && bottomType && selected.id === bottomType.id);
 
   const plotTop = showTop ? BAND_H : 10;
   const plotBottom = plotTop + PLOT_H;
@@ -397,7 +421,7 @@ function Scatter({
     .filter((p) => p.rag === 'R' || p.priority <= 2)
     .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
     .forEach((p) => {
-      const cx = x(p.overallPct);
+      const cx = x(xValue(p));
       const cy = y(p.budget);
       const text =
         p.rag === 'R' && p.burn > 90
@@ -418,11 +442,22 @@ function Scatter({
 
   return (
     <div style={{ marginBottom: 'var(--space-8)' }}>
-      <h3 style={{ marginBottom: 4 }}>Every project on one chart</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        Read left to right for how far a project has got, bottom to top for how big its budget is. Big and top-right means
-        expensive work that is nearly done; red means the project manager has flagged a problem.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-6)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+        <div>
+          <h3 style={{ marginBottom: 4 }}>Every project on one chart</h3>
+          <p className="lede" style={{ margin: 0 }}>
+            Read left to right for{' '}
+            {overall
+              ? 'how far a project has got overall'
+              : 'how far through its current phase a project is, whichever phase that is'}
+            , bottom to top for how big its budget is. Big and top-right means expensive work that is nearly done; red
+            means the project manager has flagged a problem.
+          </p>
+        </div>
+        <div style={{ flex: 'none', paddingTop: 4 }}>
+          <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
           <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: 14 }}>
@@ -435,7 +470,7 @@ function Scatter({
               viewBox={`0 0 ${CHART_W} ${chartH}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
               role="img"
-              aria-label="Every project by how far through the whole project it is against its approved budget"
+              aria-label={`Every project by ${axisTitle.replace(/ →$/, '').toLowerCase()} against its approved budget`}
             >
               <rect
                 x={PLOT_LEFT}
@@ -485,7 +520,7 @@ function Scatter({
               {projects.map((p) => (
                 <circle
                   key={p.id}
-                  cx={x(p.overallPct)}
+                  cx={x(xValue(p))}
                   cy={y(p.budget)}
                   r={radius(p.load) + (hovered?.id === p.id ? 4 : 0)}
                   fill={p.cust ? ragColor(p.rag) : 'none'}
@@ -497,7 +532,7 @@ function Scatter({
               {projects.map((p) => (
                 <circle
                   key={`hit-${p.id}`}
-                  cx={x(p.overallPct)}
+                  cx={x(xValue(p))}
                   cy={y(p.budget)}
                   r={radius(p.load) + 9}
                   fill="transparent"
@@ -584,7 +619,7 @@ function Scatter({
               <div
                 style={{
                   position: 'absolute',
-                  left: `${(x(hovered.overallPct) / CHART_W) * 100}%`,
+                  left: `${(x(xValue(hovered)) / CHART_W) * 100}%`,
                   top: `${((y(hovered.budget) - 18) / chartH) * 100}%`,
                   transform: 'translate(-50%,-100%)',
                   minWidth: 236,
@@ -619,7 +654,7 @@ function Scatter({
               </div>
             )}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>How far through the whole project →</div>
+          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>{axisTitle}</div>
         </div>
       </div>
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
