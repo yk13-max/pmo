@@ -66,29 +66,29 @@ type PersonSeed = [
 const PEOPLE_SEED: PersonSeed[] = [
   ['Saranan', 'Project manager', 'CDMO', [72, 78, 82, 80, 76, 70],
     ['Rolex', 'Omega', 'Patek', 'Cartier', 'Seiko', 'Breitling'], undefined, 15],
-  ['Andy', 'Project manager', 'CS', [84, 90, 96, 93, 88, 82],
+  ['Priya', 'Project manager', 'CS', [84, 90, 96, 93, 88, 82],
     ['Ferrari', 'Mercedes', 'Aston Martin', 'Racing Bulls', 'Tyrrell', 'Renault', 'Minardi', 'Ligier'], undefined, 15],
-  ['Neil', 'Project manager', 'CS', [104, 120, 150, 138, 118, 98],
+  ['Marcus', 'Project manager', 'CS', [104, 120, 150, 138, 118, 98],
     ['McLaren', 'Red Bull', 'Haas', 'Lotus', 'Benetton', 'Toro Rosso', 'Arrows'], undefined, 20],
-  ['Toby', 'Project manager', 'CS', [66, 72, 78, 75, 71, 64],
+  ['Dermot', 'Project manager', 'CS', [66, 72, 78, 75, 71, 64],
     ['Williams', 'Alpine', 'Sauber', 'Brabham', 'Jordan', 'Force India', 'March'], 16, 15],
-  ['Josh', 'Process engineer', '', [98, 114, 142, 132, 112, 96],
+  ['Yusuf', 'Process engineer', '', [98, 114, 142, 132, 112, 96],
     ['Patek', 'Rolex', 'Seiko', 'Toro Rosso', 'Red Bull'], undefined, 10],
-  ['Anna', 'Design engineer', '', [88, 94, 99, 96, 92, 86],
+  ['Elena', 'Design engineer', '', [88, 94, 99, 96, 92, 86],
     ['Red Bull', 'Benetton', 'Ferrari', 'March', 'Cartier'], 17, 10],
-  ['Carrie', 'Regulatory support', '', [102, 118, 148, 136, 116, 100],
+  ['Rachel', 'Regulatory support', '', [102, 118, 148, 136, 116, 100],
     ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek'], undefined, 12],
 ];
 
 /** Annual leave in days, per person, across the six planning months. */
 const LEAVE_SEED: Record<string, number[]> = {
   Saranan: [0, 0, 3, 0, 5, 0],
-  Andy: [5, 0, 0, 2, 4, 0],
-  Neil: [0, 2, 0, 0, 6, 0],
-  Toby: [3, 0, 0, 5, 3, 0],
-  Josh: [0, 0, 2, 0, 5, 0],
-  Anna: [4, 0, 0, 0, 4, 0],
-  Carrie: [0, 3, 0, 0, 5, 2],
+  Priya: [5, 0, 0, 2, 4, 0],
+  Marcus: [0, 2, 0, 0, 6, 0],
+  Dermot: [3, 0, 0, 5, 3, 0],
+  Yusuf: [0, 0, 2, 0, 5, 0],
+  Elena: [4, 0, 0, 0, 4, 0],
+  Rachel: [0, 3, 0, 0, 5, 2],
 };
 
 /** Month offset and day-of-month for each project's next milestone. */

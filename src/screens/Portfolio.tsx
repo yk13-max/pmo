@@ -131,7 +131,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
       {showShortfall && <ShortfallDetail view={view} onClose={() => setShowShortfall(false)} onOpenProject={onOpenProject} />}
 
-      <Scatter projects={shown} types={view.projectTypes} hovered={hovered} onHover={setHoverId} />
+      <Scatter projects={shown} types={view.projectTypes} activeType={type} hovered={hovered} onHover={setHoverId} />
 
       <div
         style={{
@@ -339,34 +339,46 @@ function ShortfallSpark({ view }: { view: PortfolioView }) {
 }
 
 const CHART_W = 1040;
-/* The plot box, with a band above and below it for the two phase scales. Everything else
-   is measured from these, so the box can move without hunting for stray numbers. */
 const PLOT_LEFT = 70;
 const PLOT_RIGHT = 1020;
-const PLOT_TOP = 72;
-const PLOT_BOTTOM = 298;
-const CHART_H = 400;
+/** Height of the plot box itself. Everything above and below is measured from it. */
+const PLOT_H = 407;
+/** Room for one phase scale, and for the percentage labels under the plot. */
+const BAND_H = 68;
+const TICK_ROW = 26;
 
 function Scatter({
   projects,
   types,
+  activeType,
   hovered,
   onHover,
 }: {
   projects: ProjectView[];
   types: ProjectTypeDef[];
+  /** The type filter's current value, by label, or 'All'. */
+  activeType: string;
   hovered: ProjectView | null;
   onHover: (id: string | null) => void;
 }) {
-  const maxBudget = Math.max(1, ...projects.map((p) => p.budget));
-  const x = (pct: number) => PLOT_LEFT + (pct / 100) * (PLOT_RIGHT - PLOT_LEFT);
-  const y = (budget: number) => PLOT_BOTTOM - Math.sqrt(budget / maxBudget) * (PLOT_BOTTOM - PLOT_TOP);
-
-  /* The horizontal scale is progress through a whole project, so each delivery type's
-     phases divide it evenly — which is what turns a bare percentage into "it is in
-     validation". Two types, two scales: one above the plot and one below. */
+  /* The horizontal scale is progress through a whole project, so a delivery type's phases
+     divide it evenly — which is what turns a bare percentage into "it is in validation".
+     Only the type being filtered on gets a scale: phases of one type say nothing about a
+     project of another, and both at once over a mixed list is just noise. Each type keeps
+     its own side, and the band it would use collapses when it is not drawn. */
   const topType = types[1] ?? types[0];
   const bottomType = types[0];
+  const selected = activeType === 'All' ? null : types.find((t) => t.label === activeType);
+  const showTop = Boolean(selected && topType && selected.id === topType.id);
+  const showBottom = Boolean(selected && bottomType && selected.id === bottomType.id);
+
+  const plotTop = showTop ? BAND_H : 10;
+  const plotBottom = plotTop + PLOT_H;
+  const chartH = plotBottom + TICK_ROW + (showBottom ? BAND_H : 6);
+
+  const maxBudget = Math.max(1, ...projects.map((p) => p.budget));
+  const x = (pct: number) => PLOT_LEFT + (pct / 100) * (PLOT_RIGHT - PLOT_LEFT);
+  const y = (budget: number) => plotBottom - Math.sqrt(budget / maxBudget) * PLOT_H;
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
   const maxLoad = Math.max(1, ...projects.map((p) => p.load));
   const radius = (load: number) => 5 + (load / maxLoad) * 8;
@@ -420,37 +432,39 @@ function Scatter({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ position: 'relative' }}>
             <svg
-              viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+              viewBox={`0 0 ${CHART_W} ${chartH}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
               role="img"
               aria-label="Every project by how far through the whole project it is against its approved budget"
             >
               <rect
                 x={PLOT_LEFT}
-                y={PLOT_TOP}
+                y={plotTop}
                 width={PLOT_RIGHT - PLOT_LEFT}
-                height={PLOT_BOTTOM - PLOT_TOP}
+                height={plotBottom - plotTop}
                 fill="none"
                 stroke="var(--color-neutral-200)"
                 strokeWidth={1}
               />
               {xMinor.map((t) => (
-                <line key={`xm-${t}`} x1={x(t)} y1={PLOT_TOP} x2={x(t)} y2={PLOT_BOTTOM} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
+                <line key={`xm-${t}`} x1={x(t)} y1={plotTop} x2={x(t)} y2={plotBottom} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
               ))}
               {yMinor.map((t) => (
                 <line key={`ym-${t}`} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
               ))}
               {xTicks.map((t) => (
-                <line key={t} x1={x(t)} y1={PLOT_TOP} x2={x(t)} y2={PLOT_BOTTOM} stroke="var(--color-neutral-300)" strokeWidth={1} />
+                <line key={t} x1={x(t)} y1={plotTop} x2={x(t)} y2={plotBottom} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
               {yTicks.map((t) => (
                 <line key={t} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
 
-              {/* Where one phase gives way to the next, on each type's own scale. */}
+              {/* Where one phase gives way to the next, on the scale being shown. */}
               {[
-                { type: topType, colour: typeColour(types.indexOf(topType)), from: PLOT_TOP - 12, to: PLOT_TOP },
-                { type: bottomType, colour: typeColour(types.indexOf(bottomType)), from: PLOT_BOTTOM, to: PLOT_BOTTOM + 12 },
+                ...(showTop ? [{ type: topType, colour: typeColour(types.indexOf(topType)), from: plotTop - 12, to: plotTop }] : []),
+                ...(showBottom
+                  ? [{ type: bottomType, colour: typeColour(types.indexOf(bottomType)), from: plotBottom, to: plotBottom + 12 }]
+                  : []),
               ].map(({ type, colour, from, to }) =>
                 (type?.phases ?? []).slice(1).map((name, i) => {
                   const at = ((i + 1) / (type?.phases.length ?? 1)) * 100;
@@ -500,7 +514,7 @@ function Scatter({
                   style={{
                     position: 'absolute',
                     left: `${(c.x / CHART_W) * 100}%`,
-                    top: `${(c.y / CHART_H) * 100}%`,
+                    top: `${(c.y / chartH) * 100}%`,
                     transform: c.anchor === 'start' ? 'translate(14px,-50%)' : 'translate(-100%,-50%)',
                     marginLeft: c.anchor === 'end' ? -14 : 0,
                     fontSize: 11,
@@ -516,21 +530,33 @@ function Scatter({
                   {c.text}
                 </span>
               ))}
-            <PhaseAxis type={topType} colour={typeColour(types.indexOf(topType))} x={x} top={4} height={PLOT_TOP - 18} />
-            <PhaseAxis
-              type={bottomType}
-              colour={typeColour(types.indexOf(bottomType))}
-              x={x}
-              top={PLOT_BOTTOM + 32}
-              height={CHART_H - PLOT_BOTTOM - 36}
-            />
+            {showTop && (
+              <PhaseAxis
+                type={topType}
+                colour={typeColour(types.indexOf(topType))}
+                x={x}
+                top={4}
+                height={plotTop - 18}
+                chartH={chartH}
+              />
+            )}
+            {showBottom && (
+              <PhaseAxis
+                type={bottomType}
+                colour={typeColour(types.indexOf(bottomType))}
+                x={x}
+                top={plotBottom + TICK_ROW + 4}
+                height={BAND_H - TICK_ROW - 8}
+                chartH={chartH}
+              />
+            )}
             {xTicks.map((t) => (
               <span
                 key={t}
                 style={{
                   position: 'absolute',
                   left: `${(x(t) / CHART_W) * 100}%`,
-                  top: `${((PLOT_BOTTOM + 8) / CHART_H) * 100}%`,
+                  top: `${((plotBottom + 8) / chartH) * 100}%`,
                   transform: 'translateX(-50%)',
                   fontSize: 13,
                   color: 'var(--color-neutral-700)',
@@ -545,7 +571,7 @@ function Scatter({
                 style={{
                   position: 'absolute',
                   left: `${((PLOT_LEFT - 8) / CHART_W) * 100}%`,
-                  top: `${(y(t) / CHART_H) * 100}%`,
+                  top: `${(y(t) / chartH) * 100}%`,
                   transform: 'translate(-100%,-50%)',
                   fontSize: 13,
                   color: 'var(--color-neutral-700)',
@@ -559,7 +585,7 @@ function Scatter({
                 style={{
                   position: 'absolute',
                   left: `${(x(hovered.overallPct) / CHART_W) * 100}%`,
-                  top: `${((y(hovered.budget) - 18) / CHART_H) * 100}%`,
+                  top: `${((y(hovered.budget) - 18) / chartH) * 100}%`,
                   transform: 'translate(-50%,-100%)',
                   minWidth: 236,
                   padding: 'var(--space-3)',
@@ -653,7 +679,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
             </span>
             <span
               title={`Run by ${project.pmName}`}
-              style={{ fontSize: 13, lineHeight: 1.2, color: 'var(--color-neutral-800)', whiteSpace: 'nowrap' }}
+              style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.2, color: 'var(--color-neutral-800)', whiteSpace: 'nowrap' }}
             >
               {project.pmName}
             </span>
@@ -711,6 +737,7 @@ function PhaseAxis({
   x,
   top,
   height,
+  chartH,
 }: {
   type: ProjectTypeDef | undefined;
   colour: string;
@@ -718,6 +745,8 @@ function PhaseAxis({
   x: (pct: number) => number;
   top: number;
   height: number;
+  /** The canvas height the band is placed against; it changes with the bands on show. */
+  chartH: number;
 }) {
   if (!type?.phases.length) return null;
   const n = type.phases.length;
@@ -727,7 +756,7 @@ function PhaseAxis({
         style={{
           position: 'absolute',
           left: 0,
-          top: `${(top / CHART_H) * 100}%`,
+          top: `${(top / chartH) * 100}%`,
           width: `${((PLOT_LEFT - 10) / CHART_W) * 100}%`,
           textAlign: 'right',
           fontSize: 10,
@@ -747,8 +776,8 @@ function PhaseAxis({
             position: 'absolute',
             left: `${(x((i / n) * 100) / CHART_W) * 100}%`,
             width: `${(((x(100) - x(0)) / n) / CHART_W) * 100}%`,
-            top: `${(top / CHART_H) * 100}%`,
-            height: `${(height / CHART_H) * 100}%`,
+            top: `${(top / chartH) * 100}%`,
+            height: `${(height / chartH) * 100}%`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
