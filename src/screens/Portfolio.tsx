@@ -204,7 +204,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
       {shown.length === 0 ? (
         <p className="empty">Nothing matches these filters.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(376px,1fr))', gap: 'var(--space-8) 64px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(376px,1fr))', gap: 'var(--space-6) 64px' }}>
           {shown.map((p) => (
             <ProjectCard key={p.id} project={p} onOpen={() => onOpenProject(p.id)} />
           ))}
@@ -357,8 +357,29 @@ const PLOT_RIGHT = 1020;
 /** Height of the plot box itself. Everything above and below is measured from it. */
 const PLOT_H = 407;
 /** Room for one phase scale, and for the percentage labels under the plot. */
-const BAND_H = 68;
+const BAND_H = 84;
 const TICK_ROW = 26;
+
+/* Round money for the budget axis. Two things keep it relevant: the values come off a
+   1-2-5 ladder so they read as money rather than as arithmetic, and the ladder is clipped
+   to the budgets actually on the chart — a tick below the smallest project labels empty
+   space. The scale is a square root, so anything landing too close to the tick below it is
+   dropped as well, which stops the top of the axis crowding. */
+function budgetTicks(min: number, max: number, y: (v: number) => number): number[] {
+  const ladder: number[] = [];
+  for (let e = 0; e <= 9; e += 1) {
+    for (const m of [1, 2, 5]) {
+      const v = m * 10 ** e;
+      if (v >= min && v <= max) ladder.push(v);
+    }
+  }
+  const kept: number[] = [];
+  // Walked from the top down, so the largest values are the ones that survive.
+  [...ladder].reverse().forEach((v) => {
+    if (!kept.length || Math.abs(y(v) - y(kept[kept.length - 1])) >= 34) kept.push(v);
+  });
+  return [0, ...kept.reverse()];
+}
 
 function Scatter({
   projects,
@@ -386,21 +407,21 @@ function Scatter({
   /* The horizontal scale is progress through a whole project, so a delivery type's phases
      divide it evenly — which is what turns a bare percentage into "it is in validation".
      Only the type being filtered on gets a scale: phases of one type say nothing about a
-     project of another, and both at once over a mixed list is just noise. Each type keeps
-     its own side, and the band it would use collapses when it is not drawn. */
-  const topType = types[1] ?? types[0];
-  const bottomType = types[0];
-  /* The phase scale only lines up under the whole-project reading. Against phase progress
-     the axis means something different for every project, so there is nothing to name. */
-  const selected = activeType === 'All' ? null : types.find((t) => t.label === activeType);
-  const showTop = Boolean(overall && selected && topType && selected.id === topType.id);
-  const showBottom = Boolean(overall && selected && bottomType && selected.id === bottomType.id);
+     project of another. Whichever type it is, the names sit above the plot.
 
-  const plotTop = showTop ? BAND_H : 10;
+     The scale only lines up under the whole-project reading. Against phase progress the
+     axis means something different for every project, so there is nothing to name. */
+  const selected = overall && activeType !== 'All' ? types.find((t) => t.label === activeType) : undefined;
+  const phaseColour = selected ? typeColour(types.indexOf(selected)) : '';
+  const phases = selected?.phases ?? [];
+
+  const plotTop = phases.length ? BAND_H : 10;
   const plotBottom = plotTop + PLOT_H;
-  const chartH = plotBottom + TICK_ROW + (showBottom ? BAND_H : 6);
+  const chartH = plotBottom + TICK_ROW + 6;
 
-  const maxBudget = Math.max(1, ...projects.map((p) => p.budget));
+  const budgets = projects.map((p) => p.budget).filter((v) => v > 0);
+  const maxBudget = Math.max(1, ...budgets);
+  const minBudget = budgets.length ? Math.min(...budgets) : 1;
   const x = (pct: number) => PLOT_LEFT + (pct / 100) * (PLOT_RIGHT - PLOT_LEFT);
   const y = (budget: number) => plotBottom - Math.sqrt(budget / maxBudget) * PLOT_H;
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
@@ -409,8 +430,7 @@ function Scatter({
 
   const xTicks = [0, 25, 50, 75, 100];
   const xMinor = [12.5, 37.5, 62.5, 87.5];
-  const yTicks = [0, Math.round(maxBudget / 4), Math.round(maxBudget / 2), maxBudget];
-  const yMinor = [maxBudget / 8, (maxBudget * 3) / 8, (maxBudget * 5) / 8, (maxBudget * 7) / 8];
+  const yTicks = budgetTicks(minBudget, maxBudget, y);
 
   /* Callouts are limited to what a delivery lead would stop on: anything at risk, plus
      priority 1-2. Labels are placed only where they will not collide with one already
@@ -481,11 +501,23 @@ function Scatter({
                 stroke="var(--color-neutral-200)"
                 strokeWidth={1}
               />
+              {/* Every other phase carries the faintest wash of the type's colour, so the
+                  phases read as distinct stretches of the chart and not just as ticks. */}
+              {phases.map((name, i) =>
+                i % 2 === 1 ? (
+                  <rect
+                    key={`band-${name}`}
+                    x={x((i / phases.length) * 100)}
+                    y={plotTop}
+                    width={(PLOT_RIGHT - PLOT_LEFT) / phases.length}
+                    height={plotBottom - plotTop}
+                    fill={phaseColour}
+                    opacity={0.045}
+                  />
+                ) : null,
+              )}
               {xMinor.map((t) => (
                 <line key={`xm-${t}`} x1={x(t)} y1={plotTop} x2={x(t)} y2={plotBottom} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
-              ))}
-              {yMinor.map((t) => (
-                <line key={`ym-${t}`} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-200)" strokeWidth={0.5} />
               ))}
               {xTicks.map((t) => (
                 <line key={t} x1={x(t)} y1={plotTop} x2={x(t)} y2={plotBottom} stroke="var(--color-neutral-300)" strokeWidth={1} />
@@ -494,29 +526,23 @@ function Scatter({
                 <line key={t} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
 
-              {/* Where one phase gives way to the next, on the scale being shown. */}
-              {[
-                ...(showTop ? [{ type: topType, colour: typeColour(types.indexOf(topType)), from: plotTop - 12, to: plotTop }] : []),
-                ...(showBottom
-                  ? [{ type: bottomType, colour: typeColour(types.indexOf(bottomType)), from: plotBottom, to: plotBottom + 12 }]
-                  : []),
-              ].map(({ type, colour, from, to }) =>
-                (type?.phases ?? []).slice(1).map((name, i) => {
-                  const at = ((i + 1) / (type?.phases.length ?? 1)) * 100;
-                  return (
-                    <line
-                      key={`${type?.id}-${name}`}
-                      x1={x(at)}
-                      y1={from}
-                      x2={x(at)}
-                      y2={to}
-                      stroke={colour}
-                      strokeWidth={1}
-                      opacity={0.55}
-                    />
-                  );
-                }),
-              )}
+              {/* Where one phase gives way to the next, carried the full height so the
+                  boundary is readable wherever a circle sits. */}
+              {phases.slice(1).map((name, i) => {
+                const at = ((i + 1) / phases.length) * 100;
+                return (
+                  <line
+                    key={`edge-${name}`}
+                    x1={x(at)}
+                    y1={plotTop - 12}
+                    x2={x(at)}
+                    y2={plotBottom}
+                    stroke={phaseColour}
+                    strokeWidth={1}
+                    opacity={0.4}
+                  />
+                );
+              })}
               {projects.map((p) => (
                 <circle
                   key={p.id}
@@ -565,25 +591,8 @@ function Scatter({
                   {c.text}
                 </span>
               ))}
-            {showTop && (
-              <PhaseAxis
-                type={topType}
-                colour={typeColour(types.indexOf(topType))}
-                x={x}
-                top={4}
-                height={plotTop - 18}
-                chartH={chartH}
-              />
-            )}
-            {showBottom && (
-              <PhaseAxis
-                type={bottomType}
-                colour={typeColour(types.indexOf(bottomType))}
-                x={x}
-                top={plotBottom + TICK_ROW + 4}
-                height={BAND_H - TICK_ROW - 8}
-                chartH={chartH}
-              />
+            {selected && (
+              <PhaseAxis type={selected} colour={phaseColour} x={x} top={4} height={plotTop - 18} chartH={chartH} />
             )}
             {xTicks.map((t) => (
               <span
@@ -682,9 +691,17 @@ function Scatter({
   );
 }
 
+/* A rule under each card separates the rows. Nothing vertical: the columns are already far
+   apart, and a full grid of boxes would read as a table this is not. */
 function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => void }) {
   return (
-    <article style={{ position: 'relative', padding: '2px 0 2px var(--space-4)' }}>
+    <article
+      style={{
+        position: 'relative',
+        padding: '2px 0 var(--space-6) var(--space-4)',
+        borderBottom: '1px solid var(--color-divider)',
+      }}
+    >
       <Stripe project={project} absolute />
       <button type="button" className="card-link" onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%' }}>
@@ -816,6 +833,8 @@ function PhaseAxis({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 2,
             padding: '0 4px',
             fontSize: 10,
             lineHeight: 1.25,
@@ -825,7 +844,25 @@ function PhaseAxis({
             overflow: 'hidden',
           }}
         >
-          {name}
+          {/* The number carries the order when a name is too long to read at a glance,
+              and matches the phase count shown on every card and detail page. */}
+          <span
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 600,
+              fontSize: 11,
+              width: 16,
+              height: 16,
+              lineHeight: '16px',
+              borderRadius: '50%',
+              background: colour,
+              color: 'var(--color-bg)',
+              flex: 'none',
+            }}
+          >
+            {i + 1}
+          </span>
+          <span>{name}</span>
         </span>
       ))}
     </>
