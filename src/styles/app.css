@@ -30,7 +30,9 @@ a:hover { color: var(--color-accent-600); }
 .stat-row.one-line .stat-sub { text-wrap: balance; }
 @media (max-width: 900px) { .stat-row.one-line { flex-wrap: wrap; } .stat-row.one-line > * { flex: 1 1 200px; } }
 
-.lede { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; }
+/* Explanatory text runs the full width of whatever column it is in — capping it to a
+   measure left most of the page empty beside it. */
+.lede { font-size: 14px; color: var(--color-neutral-700); text-wrap: pretty; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); font-size: 13px; color: var(--color-neutral-700); }
 .legend > span { display: flex; align-items: center; gap: 8px; }
 

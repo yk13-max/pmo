@@ -130,7 +130,7 @@ export function Resourcing({
             </span>
             <span>
               <span style={{ width: 14, height: 12, background: 'var(--color-accent-500)', display: 'block' }} />
-              Other
+              Other work
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -744,7 +744,7 @@ function DemandChart({
         </span>
         <span>
           <span style={{ width: 14, height: 12, background: 'var(--color-accent-500)', display: 'block' }} />
-          Other
+          Other work
         </span>
         <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -780,7 +780,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-6) 48px', marginBottom: 'var(--space-6)' }}>
         <Figure label="People we have" value={people(cap)} sub={`${view.people.length} on the team`} />
         <Figure label="Away on leave" value={`− ${people(leave)}`} sub="Own leave plus public holidays" />
-        <Figure label="Other" value={`− ${people(view.overhead)}`} sub="Meetings, admin, training" />
+        <Figure label="Other work" value={`− ${people(view.overhead)}`} sub="Meetings, admin, training" />
         <Figure label="Left to book" value={people(avail)} sub="What projects can actually draw on" />
         <Figure
           label="The work needs"
@@ -797,7 +797,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
             {/* Trimmed so the names keep a line to themselves in the centred dialog. */}
             <th style={{ textAlign: 'right', width: 88 }}>Their month</th>
             <th style={{ textAlign: 'right', width: 82 }}>Days off</th>
-            <th style={{ textAlign: 'right', width: 76 }}>Other</th>
+            <th style={{ textAlign: 'right', width: 86 }}>Other work</th>
             <th style={{ textAlign: 'right', width: 96 }}>Project work</th>
             <th style={{ textAlign: 'right', width: 96 }}>Committed</th>
             <th style={{ width: 112 }}>Left to book</th>

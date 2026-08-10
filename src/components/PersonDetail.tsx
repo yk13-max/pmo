@@ -45,7 +45,7 @@ export function PersonDetail({
         </div>
         <div>
           <div className="stat-value" style={{ fontSize: 34 }}>{row.person.overheadPct ?? 0}%</div>
-          <div className="stat-label">Other</div>
+          <div className="stat-label">Other work</div>
           <div className="stat-sub">
             Meetings and admin · {row.overheadLoad}% of a full month
           </div>

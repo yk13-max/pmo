@@ -29,8 +29,20 @@ const PHASE_MILESTONES: Record<string, string[]> = {
 
 /** Shipped defaults. Once a portfolio exists these live in its own data and are editable. */
 export const DEFAULT_PROJECT_TYPES: ProjectTypeDef[] = [
-  { id: 'CS', label: 'Client Solutions', phases: PHASES.CS, milestones: PHASE_MILESTONES.CS },
-  { id: 'CDMO', label: 'CDMO', phases: PHASES.CDMO, milestones: PHASE_MILESTONES.CDMO },
+  {
+    id: 'CS',
+    label: 'Client Solutions',
+    fullName: 'Client Solutions',
+    phases: PHASES.CS,
+    milestones: PHASE_MILESTONES.CS,
+  },
+  {
+    id: 'CDMO',
+    label: 'CDMO',
+    fullName: 'Contract Development Manufacturing Organisation',
+    phases: PHASES.CDMO,
+    milestones: PHASE_MILESTONES.CDMO,
+  },
 ];
 
 export const RAG_LABEL = { G: 'On track', A: 'Watch', R: 'At risk' } as const;

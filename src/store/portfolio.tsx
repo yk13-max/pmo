@@ -67,7 +67,12 @@ export function normalise(p: Portfolio): Portfolio {
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
-    projectTypes: p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
+    projectTypes: (p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES).map((t) => ({
+      ...t,
+      /* Stores written before types had a long form fall back to the shipped one for the
+         types we know, and to the short label for anything the user added themselves. */
+      fullName: t.fullName ?? DEFAULT_PROJECT_TYPES.find((d) => d.id === t.id)?.fullName ?? t.label,
+    })),
     publicHolidays: p.publicHolidays ?? {},
     fxToBase: { ...{ GBP: 1, USD: 0.79, EUR: 0.85 }, ...(p.fxToBase ?? {}) },
     projects: p.projects.map((project) => ({

@@ -163,10 +163,10 @@ export function App() {
             marginBottom: 'var(--space-8)',
           }}
         >
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="kicker">{kicker}</div>
             <h1 style={{ margin: '8px 0 0', fontSize: 52 }}>{title}</h1>
-            <p style={{ margin: 'var(--space-3) 0 0', fontSize: 16, maxWidth: '60ch', color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>
+            <p style={{ margin: 'var(--space-3) 0 0', fontSize: 16, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>
               {blurb}
             </p>
           </div>

@@ -264,6 +264,6 @@ export function PersonBars({
 function monthDetail(person: PersonView, i: number, label: string): string {
   const parts = [`${person.loads[i]}% project work`];
   if (person.leaveDays[i]) parts.push(`${person.leaveDays[i]}d off`);
-  if (person.overheadLoad) parts.push(`${person.overheadLoad}% other`);
+  if (person.overheadLoad) parts.push(`${person.overheadLoad}% other work`);
   return `${label}: ${person.committed[i]}% committed — ${parts.join(' + ')}`;
 }

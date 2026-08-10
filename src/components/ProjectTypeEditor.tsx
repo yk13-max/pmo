@@ -15,7 +15,7 @@ export function ProjectTypeEditor({ view }: { view: PortfolioView }) {
     if (!label) return;
     const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `type-${Date.now()}`;
     if (view.projectTypes.some((t) => t.id === id)) return;
-    saveProjectType({ id, label, phases: ['Phase 1'], milestones: ['Phase 1 complete'] });
+    saveProjectType({ id, label, fullName: label, phases: ['Phase 1'], milestones: ['Phase 1 complete'] });
     setNewType('');
   };
 
@@ -111,6 +111,16 @@ function TypeCard({
           value={type.label}
           aria-label={`Name of ${type.label}`}
           onChange={(e) => update({ label: e.target.value })}
+        />
+        {/* The short label does the work everywhere space is tight; this is what the
+            portfolio chart says beside the phase scale, where there is room for it. */}
+        <input
+          className="input"
+          style={{ width: 320 }}
+          value={type.fullName ?? type.label}
+          placeholder="Written out in full"
+          aria-label={`Full name of ${type.label}`}
+          onChange={(e) => update({ fullName: e.target.value })}
         />
         <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>
           {used} project{used === 1 ? '' : 's'} · {type.phases.length} phases

@@ -355,7 +355,10 @@ function ShortfallSpark({ view }: { view: PortfolioView }) {
 }
 
 const CHART_W = 1040;
+/** The gutter left of the plot: room for the money labels, and for the delivery type's
+    name when a phase scale is on show and it needs writing out in full. */
 const PLOT_LEFT = 70;
+const PLOT_LEFT_NAMED = 190;
 const PLOT_RIGHT = 1020;
 /** Height of the plot box itself. Everything above and below is measured from it. */
 const PLOT_H = 407;
@@ -430,7 +433,9 @@ function Scatter({
   const budgets = projects.map((p) => p.budget).filter((v) => v > 0);
   const maxBudget = Math.max(1, ...budgets);
   const minBudget = budgets.length ? Math.min(...budgets) : 1;
-  const x = (pct: number) => PLOT_LEFT + (pct / 100) * (PLOT_RIGHT - PLOT_LEFT);
+  // The gutter widens to hold the type's full name whenever the phase scale is on show.
+  const plotLeft = phases.length ? PLOT_LEFT_NAMED : PLOT_LEFT;
+  const x = (pct: number) => plotLeft + (pct / 100) * (PLOT_RIGHT - plotLeft);
   const y = (budget: number) => plotBottom - Math.sqrt(budget / maxBudget) * PLOT_H;
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
   const maxLoad = Math.max(1, ...projects.map((p) => p.load));
@@ -516,9 +521,9 @@ function Scatter({
               aria-label={`Every project by ${axisTitle.replace(/ →$/, '').toLowerCase()} against its approved budget`}
             >
               <rect
-                x={PLOT_LEFT}
+                x={plotLeft}
                 y={plotTop}
-                width={PLOT_RIGHT - PLOT_LEFT}
+                width={PLOT_RIGHT - plotLeft}
                 height={plotBottom - plotTop}
                 fill="none"
                 stroke="var(--color-neutral-200)"
@@ -532,7 +537,7 @@ function Scatter({
                     key={`band-${name}`}
                     x={x((i / phases.length) * 100)}
                     y={plotTop}
-                    width={(PLOT_RIGHT - PLOT_LEFT) / phases.length}
+                    width={(PLOT_RIGHT - plotLeft) / phases.length}
                     height={plotBottom - plotTop}
                     fill={phaseColour}
                     opacity={0.045}
@@ -546,7 +551,7 @@ function Scatter({
                 <line key={t} x1={x(t)} y1={plotTop} x2={x(t)} y2={plotBottom} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
               {yTicks.map((t) => (
-                <line key={t} x1={PLOT_LEFT} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
+                <line key={t} x1={plotLeft} y1={y(t)} x2={PLOT_RIGHT} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth={1} />
               ))}
 
               {/* Where one phase gives way to the next, carried the full height so the
@@ -615,7 +620,15 @@ function Scatter({
                 </span>
               ))}
             {selected && (
-              <PhaseAxis type={selected} colour={phaseColour} x={x} top={4} height={plotTop - 18} chartH={chartH} />
+              <PhaseAxis
+                type={selected}
+                colour={phaseColour}
+                x={x}
+                top={4}
+                height={plotTop - 18}
+                gutter={plotLeft}
+                chartH={chartH}
+              />
             )}
             {xTicks.map((t) => (
               <span
@@ -637,7 +650,7 @@ function Scatter({
                 key={t}
                 style={{
                   position: 'absolute',
-                  left: `${((PLOT_LEFT - 8) / CHART_W) * 100}%`,
+                  left: `${((plotLeft - 8) / CHART_W) * 100}%`,
                   top: `${(y(t) / chartH) * 100}%`,
                   transform: 'translate(-100%,-50%)',
                   fontSize: 13,
@@ -816,6 +829,7 @@ function PhaseAxis({
   x,
   top,
   height,
+  gutter,
   chartH,
 }: {
   type: ProjectTypeDef | undefined;
@@ -824,6 +838,8 @@ function PhaseAxis({
   x: (pct: number) => number;
   top: number;
   height: number;
+  /** How much room there is left of the plot for the type's name. */
+  gutter: number;
   /** The canvas height the band is placed against; it changes with the bands on show. */
   chartH: number;
 }) {
@@ -831,21 +847,29 @@ function PhaseAxis({
   const n = type.phases.length;
   return (
     <>
+      {/* The type is named in full here, in the same box the phase labels use, so it sits
+          on the same line as their numbers and titles rather than riding above them. */}
       <span
         style={{
           position: 'absolute',
           left: 0,
           top: `${(top / chartH) * 100}%`,
-          width: `${((PLOT_LEFT - 10) / CHART_W) * 100}%`,
+          height: `${(height / chartH) * 100}%`,
+          width: `${((gutter - 14) / CHART_W) * 100}%`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
           textAlign: 'right',
           fontSize: 12,
-          letterSpacing: '.08em',
+          lineHeight: 1.25,
+          letterSpacing: '.06em',
           textTransform: 'uppercase',
+          textWrap: 'balance',
           fontWeight: 600,
           color: colour,
         }}
       >
-        {type.id}
+        {type.fullName ?? type.label}
       </span>
       {type.phases.map((name, i) => (
         <span

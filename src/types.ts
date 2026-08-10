@@ -4,6 +4,9 @@ export type ProjectType = string;
 export interface ProjectTypeDef {
   id: string;
   label: string;
+  /** The type written out in full. Short labels do the work everywhere space is tight;
+      this is what gets said where there is room to say it properly. */
+  fullName?: string;
   /** Ordered phases a project of this type passes through. */
   phases: string[];
   /** The milestone that closes each phase, offered as the default. */
