@@ -359,6 +359,8 @@ const CHART_W = 1040;
     name when a phase scale is on show and it needs writing out in full. */
 const PLOT_LEFT = 70;
 const PLOT_LEFT_NAMED = 190;
+/** Room the money labels take, in pixels — what the axis title stands clear of. */
+const Y_LABEL_W = 46;
 const PLOT_RIGHT = 1020;
 /** Height of the plot box itself. Everything above and below is measured from it. */
 const PLOT_H = 407;
@@ -506,14 +508,7 @@ function Scatter({
           <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
-          <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: 14 }}>
-            Approved budget →
-          </span>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
             <svg
               viewBox={`0 0 ${CHART_W} ${chartH}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
@@ -645,6 +640,22 @@ function Scatter({
                 {t}%
               </span>
             ))}
+            {/* The title sits just outside the money labels rather than at the far edge of
+                the row, so no empty band opens between the two when the gutter widens to
+                hold a delivery type's name. */}
+            <span
+              style={{
+                position: 'absolute',
+                left: `calc(${((plotLeft - 8) / CHART_W) * 100}% - ${Y_LABEL_W}px)`,
+                top: `${((plotTop + PLOT_H / 2) / chartH) * 100}%`,
+                transform: 'translate(-100%,-50%)',
+                fontSize: 14,
+              }}
+            >
+              <span style={{ display: 'block', writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap' }}>
+                Approved budget →
+              </span>
+            </span>
             {yTicks.map((t) => (
               <span
                 key={t}
@@ -698,10 +709,8 @@ function Scatter({
                 </div>
               </div>
             )}
-          </div>
-          <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>{axisTitle}</div>
-        </div>
       </div>
+      <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>{axisTitle}</div>
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
         <span>
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--color-neutral-500)', display: 'block' }} />
