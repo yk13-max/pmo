@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import type { ConstraintType, Task } from '../types';
+import type { ConstraintType, Project, Task } from '../types';
 import { CONSTRAINTS } from '../types';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
@@ -39,7 +39,7 @@ export function Planning({
   projectId: string | null;
   onSelectProject: (id: string) => void;
 }) {
-  const { portfolio, saveTask, deleteTask } = usePortfolio();
+  const { portfolio, saveTask, deleteTask, saveProject } = usePortfolio();
   const chosen = projectId ?? view.projects[0]?.id ?? '';
   const [zoom, setZoom] = useState<Zoom>('Weeks');
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
@@ -152,6 +152,17 @@ export function Planning({
             ))}
           </select>
         </label>
+        {/* Planning is opt-in per project. Left off, the project keeps the start, end and
+            phase dates entered on it, and every other screen reads those as it always did. */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <input
+            type="checkbox"
+            checked={Boolean(project.usesPlan)}
+            onChange={(e) => saveProject({ ...(project as unknown as Project), usesPlan: e.target.checked })}
+            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+          />
+          Plan this project here
+        </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           <input
             type="checkbox"
@@ -170,6 +181,23 @@ export function Planning({
           ))}
         </span>
       </div>
+
+      {!project.usesPlan && (
+        <p
+          style={{
+            fontSize: 14,
+            color: 'var(--color-neutral-700)',
+            background: 'var(--color-surface)',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-4)',
+          }}
+        >
+          This project is not planned here. It runs {shortDateYear(project.startDate)} →{' '}
+          {shortDateYear(project.endDate)} from the dates entered on the project itself, and that is what the
+          timeline and every other screen shows. Anything built below is kept but not used until you tick{' '}
+          <strong>Plan this project here</strong>.
+        </p>
+      )}
 
       <PlanSummary project={project} plan={plan} tasks={tasks} numberOf={numberOf} />
 

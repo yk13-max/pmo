@@ -43,6 +43,27 @@ a:hover { color: var(--color-accent-600); }
 .brand-paper:hover .brand-mark-light { opacity: 0; }
 .brand-paper:hover .brand-mark-dark { opacity: 1; }
 
+/* On the first paint the three panes fly in from three corners of the paper and settle
+   into the mark: the palest from the bottom left, the middle one from the top left, the
+   teal from the top right — each arriving at the corner it lives nearest. Every one ends
+   on exactly its resting lean, and the fill mode is backwards rather than forwards, so
+   once it has landed the stylesheet takes the transform back and the hover still works. */
+@keyframes glass-in-a {
+  from { transform: translate(-46px, 46px) rotate(-18deg); opacity: 0; }
+  to { transform: rotate(-3deg); opacity: 1; }
+}
+@keyframes glass-in-b {
+  from { transform: translate(-46px, -46px) rotate(14deg); opacity: 0; }
+  to { transform: rotate(0deg); opacity: 1; }
+}
+@keyframes glass-in-c {
+  from { transform: translate(46px, -46px) rotate(20deg); opacity: 0; }
+  to { transform: rotate(4deg); opacity: 1; }
+}
+.glass-pane-a { animation: glass-in-a 780ms cubic-bezier(0.22, 0.9, 0.3, 1) backwards; }
+.glass-pane-b { animation: glass-in-b 780ms cubic-bezier(0.22, 0.9, 0.3, 1) 100ms backwards; }
+.glass-pane-c { animation: glass-in-c 780ms cubic-bezier(0.22, 0.9, 0.3, 1) 200ms backwards; }
+
 /* The panes' resting lean, and the settle back to it. Arriving is quick; leaving takes
    three times as long, so the mark eases back into place rather than snapping.
 
@@ -75,7 +96,7 @@ a:hover { color: var(--color-accent-600); }
 
 @media (prefers-reduced-motion: reduce) {
   .brand-paper, .brand-grip, .brand-grip > svg, .glass-pane { transition: none; }
-  .brand-paper:hover .glass-pane > rect { animation: none; }
+  .brand-paper:hover .glass-pane > rect, .glass-pane { animation: none; }
 }
 
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }

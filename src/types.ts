@@ -51,6 +51,9 @@ export interface Project {
   currency: CurrencyCode;
   /** Whether the product is sterile. Only asked of Client Solutions work. */
   sterile?: boolean;
+  /** Whether this project's dates come from a task plan. Off by default: a project keeps
+      the start, end and phase dates entered on it until someone chooses to plan it out. */
+  usesPlan?: boolean;
 }
 
 /** The delivery type that carries the sterile question. */

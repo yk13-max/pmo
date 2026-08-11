@@ -327,16 +327,19 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       .filter((p) => !p.archived)
       .reduce((n, p) => n + drawHours(p.id), 0);
 
-    /* Each project's plan is scheduled once here, so the timeline can draw what the plan
-       actually says rather than the dates typed on the project. The stored dates are
-       untouched — a project without a plan behaves exactly as it always did. */
+    /* Each project that has opted into planning is scheduled once here, so the timeline can
+       draw what its plan actually says rather than the dates typed on it. The stored dates
+       are untouched, and a project that has not opted in behaves exactly as it always did
+       — which is what the toggle on the Planning screen turns on and off. */
     const planned = new Map<string, { start: string; end: string }>();
     const tasksByProject = new Map<string, Task[]>();
     (portfolio.tasks ?? []).forEach((t) => {
       tasksByProject.set(t.projectId, [...(tasksByProject.get(t.projectId) ?? []), t]);
     });
     tasksByProject.forEach((list, projectId) => {
-      const plan = schedule(list);
+      const project = portfolio.projects.find((p) => p.id === projectId);
+      if (!project?.usesPlan) return;
+      const plan = schedule(list, project.startDate);
       if (plan.start && plan.end) planned.set(projectId, { start: plan.start, end: plan.end });
     });
 
