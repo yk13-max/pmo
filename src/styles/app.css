@@ -22,13 +22,45 @@ a:hover { color: var(--color-accent-600); }
    tile in that colour would disappear into it instead of reading as dark. Padding follows
    the proportion of the brand file's app icon rather than the wider clear-space rule. */
 .brand-tile { display: grid; place-items: center; padding: 22px; border-radius: 28px;
-  background: var(--color-surface); transition: background 160ms ease; }
-.brand-tile > svg { grid-area: 1 / 1; transition: opacity 160ms ease; }
+  background: var(--color-surface); transition: background 700ms ease; }
+.brand-tile > svg { grid-area: 1 / 1; transition: opacity 700ms ease; }
 .brand-mark-dark { opacity: 0; }
+/* Every part of the hover arrives quickly and leaves slowly, the tile and the cross-fade
+   included, so the whole thing recedes at one pace rather than in stages. */
+.brand-tile:hover, .brand-tile:hover > svg { transition-duration: 200ms; }
 .brand-tile:hover { background: var(--color-accent-700); }
 .brand-tile:hover .brand-mark-light { opacity: 0; }
 .brand-tile:hover .brand-mark-dark { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .brand-tile, .brand-tile > svg { transition: none; } }
+
+/* The panes' resting lean, and the settle back to it. Arriving is quick; leaving takes
+   three times as long, so the mark eases back into place rather than snapping. */
+.glass-pane { transform-box: fill-box; transform-origin: center;
+  transition: transform 780ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.brand-tile:hover .glass-pane { transition-duration: 240ms; }
+.glass-pane-a { transform: rotate(-3deg); }
+.glass-pane-c { transform: rotate(4deg); }
+
+/* Under the pointer the stack opens a little — the outer panes slide apart along the
+   diagonal they already lean on — and each pane keeps a small wiggle going. The rects
+   are offset in the cycle so the three never swing together, which is what makes it
+   read as loose panes rather than one rocking object. */
+.brand-tile:hover .glass-pane-a { transform: rotate(-6deg) translate(-2px, 2px); }
+.brand-tile:hover .glass-pane-b { transform: rotate(1.5deg); }
+.brand-tile:hover .glass-pane-c { transform: rotate(7deg) translate(2px, -2px); }
+.brand-tile:hover .glass-pane > rect { animation: glass-wiggle 2.6s ease-in-out infinite; }
+.brand-tile:hover .glass-pane-b > rect { animation-delay: -0.9s; }
+.brand-tile:hover .glass-pane-c > rect { animation-delay: -1.7s; }
+.glass-pane > rect { transform-box: fill-box; transform-origin: center; }
+@keyframes glass-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  33% { transform: rotate(1.6deg); }
+  66% { transform: rotate(-1.4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-tile, .brand-tile > svg, .glass-pane { transition: none; }
+  .brand-tile:hover .glass-pane > rect { animation: none; }
+}
 
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
 .eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }

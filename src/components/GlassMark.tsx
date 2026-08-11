@@ -29,9 +29,19 @@ export function GlassMark({
       focusable="false"
       style={{ display: 'block', flex: 'none' }}
     >
-      <rect x="11" y="47" width="38" height="38" rx="9" fill={paneA} transform="rotate(-3 30 66)" />
-      <rect x="27" y="27" width="41" height="41" rx="9" fill={paneB} />
-      <rect x="44" y="8" width="44" height="44" rx="9" fill={paneC} transform="rotate(4 66 30)" />
+      {/* Each pane is wrapped so two motions can run without fighting over one transform:
+          the group carries the lean and the spread, the rect inside carries the wiggle.
+          The leans live in app.css rather than on the elements, because CSS transforms
+          replace the attribute rather than compose with it. */}
+      <g className="glass-pane glass-pane-a">
+        <rect x="11" y="47" width="38" height="38" rx="9" fill={paneA} />
+      </g>
+      <g className="glass-pane glass-pane-b">
+        <rect x="27" y="27" width="41" height="41" rx="9" fill={paneB} />
+      </g>
+      <g className="glass-pane glass-pane-c">
+        <rect x="44" y="8" width="44" height="44" rx="9" fill={paneC} />
+      </g>
     </svg>
   );
 }
