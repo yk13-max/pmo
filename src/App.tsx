@@ -224,12 +224,9 @@ export function App() {
                 Export as PDF
               </button>
             )}
-            {/* Moving the whole portfolio out is a Data job, and the Data screen's own
-                "Export JSON" is this same function under a name that says what it writes.
-                A second button beside it doing the same thing helped nobody. */}
-            <button type="button" className="btn btn-primary" onClick={() => setEditing({ kind: 'project', project: null })}>
-              New project
-            </button>
+            {/* Adding a project, and moving the whole portfolio out, are both Data jobs and
+                both already have a button there — "Add project" and "Export JSON" open the
+                same things this header used to. One button each, where the work is. */}
           </div>
         </header>
 

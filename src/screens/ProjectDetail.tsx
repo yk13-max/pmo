@@ -22,7 +22,7 @@ export function ProjectDetail({
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
   if (!project) {
-    return <p className="empty">No projects yet. Use “New project” to add the first one.</p>;
+    return <p className="empty">No projects yet. Add the first one from the Data screen.</p>;
   }
 
   const cdmo = view.projects.filter((p) => p.type === 'CDMO');
