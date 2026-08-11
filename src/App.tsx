@@ -132,8 +132,10 @@ export function App() {
             eyebrow follows the name's alignment so the whole block reads as one thing. */}
         <div style={{ textAlign: 'center' }}>
           <BrandMark />
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15, marginTop: 14 }}>
-            Project Glass
+          {/* One word per line, tightened to match — the brand file's stacked lockup. */}
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.05, marginTop: 14 }}>
+            <span style={{ display: 'block' }}>Project</span>
+            <span style={{ display: 'block' }}>Glass</span>
           </div>
           <div className="eyebrow" style={{ marginTop: 6 }}>Portfolio tracker</div>
         </div>
