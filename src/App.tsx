@@ -128,14 +128,12 @@ export function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Sized to balance the two-line wordmark rather than the book's one-line
-                version — the (PMO) suffix wraps at this sidebar width. */}
-            <GlassMark size={36} />
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15 }}>
-              Project Glass (PMO)
-            </div>
+        {/* The brand file's stacked lockup: mark on top, name centred beneath it. The
+            eyebrow follows the name's alignment so the whole block reads as one thing. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <GlassMark size={44} />
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15, marginTop: 12 }}>
+            Project Glass (PMO)
           </div>
           <div className="eyebrow" style={{ marginTop: 6 }}>Portfolio tracker</div>
         </div>
