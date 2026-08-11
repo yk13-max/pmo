@@ -125,10 +125,17 @@ export function App() {
     ['financials', 'Financials', money(view.totals.value)],
     ['timeline', 'Timeline', 'Two years'],
     ['detail', 'Project detail', selected?.name ?? '—'],
-    ['planning', 'Planning', `${store.portfolio.tasks.length} tasks`],
+    ['planning', 'Planning', selected?.name ?? '—'],
     ['alerts', 'Alerts', view.totals.atRisk],
     ['data', 'Data', 'Add & edit'],
   ];
+
+  /* Bookings run to the project's own end date, so the grid in the edit pane covers every
+     month the work is live rather than stopping at the resourcing window. */
+  const editSpan =
+    editing?.kind === 'project' && editing.project
+      ? view.monthsFor(editing.project)
+      : { months: view.months, labels: view.monthLabels };
 
   const [kicker, title, blurb] = HEADS[screen];
 
@@ -142,6 +149,7 @@ export function App() {
           {/* One word per line, as the brand file's stacked lockup sets it, but with the
               break opened up and the letters tracked out a little. */}
           <div
+            className="brand-wordmark"
             style={{
               fontFamily: 'var(--font-heading)',
               fontWeight: 600,
@@ -273,11 +281,11 @@ export function App() {
           <ProjectForm
             project={editing.project}
             people={view.people}
-            months={view.months}
-            monthLabels={view.monthLabels}
+            months={editSpan.months}
+            monthLabels={editSpan.labels}
             threshold={view.threshold}
             projectTypes={view.projectTypes}
-            allocations={editing.project ? view.allocationsOf(editing.project.id) : {}}
+            allocations={editing.project ? view.allocationsOf(editing.project.id, editSpan.months) : {}}
             otherLoads={view.loadsExcluding(editing.project?.id ?? '')}
             onSave={(project, allocations) => {
               store.saveProject(project, allocations);

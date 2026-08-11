@@ -297,9 +297,13 @@ export interface PortfolioView {
     atRisk: number;
     shortOfPeople: number;
   };
-  allocationsFor: (projectId: string) => { person: Person; hours: number[]; loads: number[]; totalHours: number }[];
+  /** The months a project can be booked across: the planning window, stretched forward so
+      it always reaches the project's own end date. Booking has to be possible for every
+      month the work actually runs, whatever the window happens to be set to. */
+  monthsFor: (project: { startDate: string; endDate: string }) => { months: string[]; labels: string[] };
+  allocationsFor: (projectId: string, months?: string[]) => { person: Person; hours: number[]; loads: number[]; totalHours: number }[];
   /** This project's bookings in hours, keyed `${personId}|${month}`, for the edit form. */
-  allocationsOf: (projectId: string) => Record<string, number>;
+  allocationsOf: (projectId: string, months?: string[]) => Record<string, number>;
   /** One person's booking across every project they touch, month by month. */
   spreadFor: (personId: string) => { project: ProjectView; hours: number[]; loads: number[]; totalHours: number }[];
   /** Everyone's booked hours with one project left out, so the form can warn on unsaved edits. */
@@ -353,7 +357,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       const project = portfolio.projects.find((p) => p.id === projectId);
       if (!project?.usesPlan) return;
       const plan = schedule(list, project.startDate);
-      if (plan.start && plan.end) planned.set(projectId, { start: plan.start, end: plan.end });
+      /* Every screen reads the start and end typed on the project unless its gates are
+         mirrored from the plan — ticking that box is what says the plan is the truth. */
+      if (project.mirrorPhases && plan.start && plan.end) {
+        planned.set(projectId, { start: plan.start, end: plan.end });
+      }
       // The gate for a phase is the last day of work anywhere inside it.
       const ends: string[] = [];
       list.forEach((task) => {
@@ -497,15 +505,28 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       totalHours: hours.reduce((n, v) => n + v, 0),
     });
 
-    const allocationsFor = (projectId: string) =>
+    /* A project runs to its own end date, which may be well past the six months resourcing
+       happens to be looking at. Its grid runs to whichever is later, so there is always a
+       column for every month the work is live. */
+    const monthsFor = (project: { startDate: string; endDate: string }) => {
+      const endMonth = project.endDate.slice(0, 7);
+      const wanted = Math.max(portfolio.window.months, monthsBetween(months[0], endMonth) + 1);
+      const full = wanted > portfolio.window.months ? monthsFrom(months[0], Math.min(wanted, 240)) : months;
+      return {
+        months: full,
+        labels: full.map((m) => (full.length > 12 ? monthKeyLabel(m) : shortMonth(m))),
+      };
+    };
+
+    const allocationsFor = (projectId: string, over: string[] = months) =>
       people
-        .map((person) => ({ person, ...row(months.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0)) }))
+        .map((person) => ({ person, ...row(over.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0)) }))
         .filter((r) => r.totalHours > 0);
 
-    const allocationsOf = (projectId: string) => {
+    const allocationsOf = (projectId: string, over: string[] = months) => {
       const out: Record<string, number> = {};
       people.forEach((person) => {
-        months.forEach((month) => {
+        over.forEach((month) => {
           const hours = allocations[`${projectId}|${person.id}|${month}`];
           if (hours) out[`${person.id}|${month}`] = hours;
         });
@@ -565,6 +586,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
           ),
         ).length,
       },
+      monthsFor,
       allocationsFor,
       allocationsOf,
       spreadFor,

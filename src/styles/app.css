@@ -44,6 +44,10 @@ a:hover { color: var(--color-accent-600); }
    included, so the whole thing recedes at one pace rather than in stages. */
 .brand-paper:hover, .brand-paper:hover svg { transition-duration: 200ms; }
 .brand-paper:hover { background: var(--color-accent-700); }
+/* The name takes the colour of the mark's front pane while the pointer is on the paper —
+   the wordmark is the next thing along, so a sibling selector reaches it. */
+.brand-wordmark { color: inherit; transition: color 700ms ease; }
+.brand-paper:hover ~ .brand-wordmark { color: var(--color-brand-teal); transition-duration: 200ms; }
 .brand-paper:hover .brand-mark-light { opacity: 0; }
 .brand-paper:hover .brand-mark-dark { opacity: 1; }
 
