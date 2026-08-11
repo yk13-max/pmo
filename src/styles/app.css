@@ -46,7 +46,8 @@ a:hover { color: var(--color-accent-600); }
 .brand-paper:hover { background: var(--color-accent-700); }
 /* The name takes the colour of the mark's front pane while the pointer is on the paper —
    the wordmark is the next thing along, so a sibling selector reaches it. */
-.brand-wordmark { color: inherit; transition: color 700ms ease; }
+.brand-wordmark { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.4;
+  letter-spacing: 0.04em; margin-top: 14px; color: inherit; transition: color 700ms ease; }
 .brand-paper:hover ~ .brand-wordmark { color: var(--color-brand-teal); transition-duration: 200ms; }
 .brand-paper:hover .brand-mark-light { opacity: 0; }
 .brand-paper:hover .brand-mark-dark { opacity: 1; }
@@ -129,7 +130,16 @@ a:hover { color: var(--color-accent-600); }
   gap: var(--space-4); background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
 /* The lockup sizes its paper against whatever holds it, so the width is set here. */
 .about > div:first-child { width: 240px; }
-.about-credit { margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 26px; letter-spacing: 0.02em; }
+/* The page has the room the menu column does not: the name runs across in one line, a
+   third larger than the 20px it is set at beside the nav. */
+.about .brand-wordmark { font-size: calc(20px * 4 / 3); white-space: nowrap; }
+.about-credit { margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 26px; letter-spacing: 0.02em;
+  transition: color 700ms ease; }
+/* The credit takes the paper's own dark blue while the pointer is on the mark. It is two
+   parents away from the paper, so this reaches it by asking the page whether the mark is
+   hovered rather than by walking across from it. Quick to arrive, slow to leave, like
+   every other part of the hover. */
+.about:has(.brand-paper:hover) .about-credit { color: var(--color-accent-700); transition-duration: 200ms; }
 .about-hint { margin: 0; font-size: 13px; color: var(--color-accent-300); }
 
 /* Project detail and Planning are the two areas about one project, so its name is said

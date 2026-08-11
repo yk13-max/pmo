@@ -9,27 +9,28 @@ import { BrandMark } from './BrandMark';
 export function BrandLockup({
   onDoubleClick,
   tagline,
+  stacked = true,
 }: {
   onDoubleClick?: () => void;
   /** The line under the name. Left out where the page has something else to say. */
   tagline?: string;
+  /** One word per line, as the menu's narrow column needs. Off where there is room. */
+  stacked?: boolean;
 }) {
   return (
     <div style={{ textAlign: 'center' }}>
       <BrandMark onDoubleClick={onDoubleClick} />
-      <div
-        className="brand-wordmark"
-        style={{
-          fontFamily: 'var(--font-heading)',
-          fontWeight: 600,
-          fontSize: 20,
-          lineHeight: 1.4,
-          letterSpacing: '0.04em',
-          marginTop: 14,
-        }}
-      >
-        <span style={{ display: 'block' }}>Project</span>
-        <span style={{ display: 'block' }}>Glass</span>
+      {/* Everything about how the name is set lives in the stylesheet, so a page with more
+          room to give it can say so in one rule. */}
+      <div className="brand-wordmark">
+        {stacked ? (
+          <>
+            <span style={{ display: 'block' }}>Project</span>
+            <span style={{ display: 'block' }}>Glass</span>
+          </>
+        ) : (
+          'Project Glass'
+        )}
       </div>
       {tagline && (
         <div className="eyebrow" style={{ marginTop: 6 }}>

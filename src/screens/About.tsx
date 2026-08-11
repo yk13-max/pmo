@@ -7,7 +7,7 @@ import { BrandLockup } from '../components/BrandLockup';
 export function About({ onLeave }: { onLeave: () => void }) {
   return (
     <div className="about">
-      <BrandLockup onDoubleClick={onLeave} />
+      <BrandLockup onDoubleClick={onLeave} stacked={false} />
       <p className="about-credit">Created By Saranan</p>
       <p className="about-hint">Double-click the mark to go back.</p>
     </div>
