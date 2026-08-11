@@ -6,7 +6,11 @@ a { color: var(--color-accent); }
 a:hover { color: var(--color-accent-600); }
 
 .shell { display: flex; align-items: stretch; min-height: 100vh; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
-.sidebar { flex: none; width: 252px; padding: var(--space-8) var(--space-6); display: flex; flex-direction: column; gap: var(--space-8); }
+/* The menu stays with you down the page. align-self stops the flex row stretching it to
+   the height of the content beside it, which is what would otherwise leave nothing for
+   sticky to hold on to; a tall menu on a short screen scrolls within itself. */
+.sidebar { flex: none; width: 252px; padding: var(--space-8) var(--space-6); display: flex; flex-direction: column; gap: var(--space-8);
+  position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto; }
 /* margin-inline centres the capped column in the space beside the sidebar, so wide
    displays don't leave the content stranded against the left edge. */
 .main { flex: 1; min-width: 0; padding: var(--space-8); max-width: 1560px; margin-inline: auto; }
@@ -45,7 +49,9 @@ a:hover { color: var(--color-accent-600); }
 
 /* On the first paint the three panes fly in from three corners of the paper and settle
    into the mark: the palest from the bottom left, the middle one from the top left, the
-   teal from the top right — each arriving at the corner it lives nearest. Every one ends
+   teal from the top right — each arriving at the corner it lives nearest. The stagger
+   between them is doubled along with the flight, so the whole arrival takes twice as long
+   rather than three panes moving slowly in the old rhythm. Every one ends
    on exactly its resting lean, and the fill mode is backwards rather than forwards, so
    once it has landed the stylesheet takes the transform back and the hover still works. */
 @keyframes glass-in-a {
@@ -60,9 +66,9 @@ a:hover { color: var(--color-accent-600); }
   from { transform: translate(46px, -46px) rotate(20deg); opacity: 0; }
   to { transform: rotate(4deg); opacity: 1; }
 }
-.glass-pane-a { animation: glass-in-a 780ms cubic-bezier(0.22, 0.9, 0.3, 1) backwards; }
-.glass-pane-b { animation: glass-in-b 780ms cubic-bezier(0.22, 0.9, 0.3, 1) 100ms backwards; }
-.glass-pane-c { animation: glass-in-c 780ms cubic-bezier(0.22, 0.9, 0.3, 1) 200ms backwards; }
+.glass-pane-a { animation: glass-in-a 1560ms cubic-bezier(0.22, 0.9, 0.3, 1) backwards; }
+.glass-pane-b { animation: glass-in-b 1560ms cubic-bezier(0.22, 0.9, 0.3, 1) 200ms backwards; }
+.glass-pane-c { animation: glass-in-c 1560ms cubic-bezier(0.22, 0.9, 0.3, 1) 400ms backwards; }
 
 /* The panes' resting lean, and the settle back to it. Arriving is quick; leaving takes
    three times as long, so the mark eases back into place rather than snapping.
