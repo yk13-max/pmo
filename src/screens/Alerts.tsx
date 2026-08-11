@@ -18,12 +18,6 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
 
   return (
     <div className="printable">
-      <div className="no-print" style={{ display: 'flex', marginBottom: 'var(--space-6)' }}>
-        <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
-          Export as PDF
-        </button>
-      </div>
-
       <div className="stat-row">
         <Stat value={atRisk.length} label="Projects at risk" sub="Flagged by their project manager" color="var(--color-accent-2-700)" />
         <Stat value={overbooked.length} label="People overbooked" sub="Committed past a full week" color="var(--color-accent-2-700)" />

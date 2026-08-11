@@ -64,6 +64,10 @@ type Editing =
 
 /** Screens whose content reads better at a narrower measure. The width wraps the header
     too, so a screen's title, buttons and body share one centred column. */
+/** Screens that lay themselves out for paper — they keep every tab mounted, so the whole
+    screen goes into the PDF rather than whichever panel happened to be open. */
+const PRINTABLE = new Set<ScreenId>(['detail', 'alerts']);
+
 const SCREEN_WIDTH: Partial<Record<ScreenId, number>> = {
   timeline: 1240,
   detail: 1100,
@@ -171,6 +175,11 @@ export function App() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
+            {PRINTABLE.has(screen) && (
+              <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
+                Export as PDF
+              </button>
+            )}
             <button type="button" className="btn btn-secondary" onClick={exportJson}>
               Export
             </button>

@@ -85,9 +85,6 @@ export function ProjectDetail({
         <button type="button" className="btn btn-secondary" onClick={() => onEdit(project)}>
           Edit project
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
-          Export as PDF
-        </button>
       </div>
 
       <div style={{ position: 'relative', paddingLeft: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
