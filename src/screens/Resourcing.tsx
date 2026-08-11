@@ -62,7 +62,7 @@ export function Resourcing({
 
   return (
     <div>
-      <div className="stat-row">
+      <div className="stat-row one-line">
         <Stat
           value={view.people.length}
           label="People"
