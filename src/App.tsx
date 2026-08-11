@@ -224,9 +224,9 @@ export function App() {
                 Export as PDF
               </button>
             )}
-            <button type="button" className="btn btn-secondary" onClick={exportJson}>
-              Export
-            </button>
+            {/* Moving the whole portfolio out is a Data job, and the Data screen's own
+                "Export JSON" is this same function under a name that says what it writes.
+                A second button beside it doing the same thing helped nobody. */}
             <button type="button" className="btn btn-primary" onClick={() => setEditing({ kind: 'project', project: null })}>
               New project
             </button>
