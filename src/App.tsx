@@ -131,7 +131,13 @@ export function App() {
         {/* The brand file's stacked lockup: mark on top, name centred beneath it. The
             eyebrow follows the name's alignment so the whole block reads as one thing. */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <GlassMark size={44} />
+          {/* Both variants are drawn, stacked, and cross-faded: the mark reads light on
+              paper and switches to the dark version as the tile turns navy under the
+              pointer — the light/dark pair the brand file sets out. */}
+          <div className="brand-tile">
+            <GlassMark size={75} variant="light" className="brand-mark-light" />
+            <GlassMark size={75} variant="dark" className="brand-mark-dark" />
+          </div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15, marginTop: 12 }}>
             Project Glass (PMO)
           </div>

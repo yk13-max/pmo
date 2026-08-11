@@ -7,10 +7,12 @@
 export function GlassMark({
   size = 30,
   variant = 'dark',
+  className,
 }: {
   size?: number;
   /** `dark` is the version for navy chrome; `light` is for a pale ground. */
   variant?: 'light' | 'dark';
+  className?: string;
 }) {
   const [paneA, paneB, paneC] =
     variant === 'dark'
@@ -21,6 +23,7 @@ export function GlassMark({
       viewBox="0 0 96 96"
       width={size}
       height={size}
+      className={className}
       // The wordmark beside it already says the name, so this is decoration.
       aria-hidden="true"
       focusable="false"

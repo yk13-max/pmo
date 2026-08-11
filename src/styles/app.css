@@ -16,6 +16,20 @@ a:hover { color: var(--color-accent-600); }
 .nav-item[aria-current='page'] { color: var(--color-accent-700); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 .nav-item .count { font-size: 12px; font-family: var(--font-body); color: var(--color-neutral-600); }
 
+/* The mark on its paper tile. The two variants sit in the same grid cell and cross-fade:
+   light on paper at rest, dark under the pointer. The dark ground is ink navy rather than
+   the brand navy of the app-icon lockup, because the sidebar is already brand navy and a
+   tile in that colour would disappear into it instead of reading as dark. Padding follows
+   the proportion of the brand file's app icon rather than the wider clear-space rule. */
+.brand-tile { display: grid; place-items: center; padding: 22px; border-radius: 28px;
+  background: var(--color-surface); transition: background 160ms ease; }
+.brand-tile > svg { grid-area: 1 / 1; transition: opacity 160ms ease; }
+.brand-mark-dark { opacity: 0; }
+.brand-tile:hover { background: var(--color-accent-700); }
+.brand-tile:hover .brand-mark-light { opacity: 0; }
+.brand-tile:hover .brand-mark-dark { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .brand-tile, .brand-tile > svg { transition: none; } }
+
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
 .eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
 .stat-value { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -0.025em; }
