@@ -69,7 +69,18 @@ export function normalise(p: Portfolio): Portfolio {
     allocationUnit: 'hours',
     leave: p.leave ?? {},
     // Stores written before planning existed simply have no plans.
-    tasks: (p.tasks ?? []).map((t) => ({ ...t, deps: t.deps ?? [], done: t.done ?? 0 })),
+    tasks: (p.tasks ?? []).map((t) => {
+      // Plans written before constraints existed carried a plain start, which is exactly
+      // what "start no earlier than" means.
+      const old = (t as Task & { start?: string }).start;
+      return {
+        ...t,
+        deps: t.deps ?? [],
+        done: t.done ?? 0,
+        constraint: t.constraint ?? 'SNET',
+        constraintDate: t.constraintDate ?? old ?? '',
+      };
+    }),
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },

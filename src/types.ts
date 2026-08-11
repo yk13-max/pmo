@@ -107,6 +107,21 @@ export interface Dep {
   lag: number;
 }
 
+/** The eight ways Microsoft Project lets a date be pinned down.
+    ASAP and ALAP need no date; the other six are measured against one. */
+export type ConstraintType = 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
+
+export const CONSTRAINTS: { id: ConstraintType; label: string; needsDate: boolean; hint: string }[] = [
+  { id: 'ASAP', label: 'As soon as possible', needsDate: false, hint: 'Starts the moment everything it waits on allows.' },
+  { id: 'ALAP', label: 'As late as possible', needsDate: false, hint: 'Slides as late as it can go without delaying the finish.' },
+  { id: 'SNET', label: 'Start no earlier than', needsDate: true, hint: 'Never starts before this date, whatever the links allow.' },
+  { id: 'SNLT', label: 'Start no later than', needsDate: true, hint: 'Must have started by this date; later is a conflict.' },
+  { id: 'FNET', label: 'Finish no earlier than', needsDate: true, hint: 'Cannot be finished before this date.' },
+  { id: 'FNLT', label: 'Finish no later than', needsDate: true, hint: 'Must be finished by this date; later is a conflict.' },
+  { id: 'MSO', label: 'Must start on', needsDate: true, hint: 'Pinned to this start, links or no links.' },
+  { id: 'MFO', label: 'Must finish on', needsDate: true, hint: 'Pinned to this finish, links or no links.' },
+];
+
 /** A piece of work inside one phase of one project. */
 export interface Task {
   id: string;
@@ -118,8 +133,11 @@ export interface Task {
   owner: string;
   /** Working days of work. A task always occupies at least one. */
   days: number;
-  /** When it would start if nothing upstream held it back. */
-  start: string;
+  /** How this task is pinned to the calendar. */
+  constraint: ConstraintType;
+  /** The date the constraint is measured against. Ignored by ASAP and ALAP, but kept, so
+      switching away and back does not lose the date that was typed. */
+  constraintDate: string;
   /** What has to happen first. */
   deps: Dep[];
   /** How far through it is, 0–100. */

@@ -1,5 +1,5 @@
-import type { CurrencyCode, Portfolio, Task } from '../types';
-import { CURRENCIES, PRIORITY_LABEL, STERILE_TYPE, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
+import type { ConstraintType, CurrencyCode, Portfolio, Task } from '../types';
+import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_TYPE, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 import { depsToText, parseDeps } from './schedule';
@@ -10,6 +10,7 @@ import { depsToText, parseDeps } from './schedule';
    and is case-insensitive about them. */
 
 const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
+const CONSTRAINT_IDS = CONSTRAINTS.map((c) => c.id);
 
 function escape(value: string | number): string {
   const s = String(value ?? '');
@@ -187,14 +188,15 @@ export function tasksCsv(p: Portfolio): string {
         t.name,
         t.owner,
         t.days,
-        t.start,
+        t.constraint,
+        t.constraintDate,
         depsToText(t.deps, (id) => numberOf.get(id) ?? null),
         t.done,
       ]);
     });
   });
   return toCsv(
-    ['Project', 'Phase', 'Task number', 'Task', 'Who', 'Working days', 'Starts no earlier than', 'Predecessors', '% done'],
+    ['Project', 'Phase', 'Task number', 'Task', 'Who', 'Working days', 'Constraint', 'Constraint date', 'Predecessors', '% done'],
     rows,
   );
 }
@@ -341,7 +343,11 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
           name: taskName,
           owner: col(r, 'Who'),
           days: Math.max(1, Math.round(num(col(r, 'Working days')) || 1)),
-          start: col(r, 'Starts no earlier than') || project.startDate,
+          /* Files written before constraints existed carry only a start date, which is
+             what "start no earlier than" says. */
+          constraint: (CONSTRAINT_IDS.find((c) => c === col(r, 'Constraint').toUpperCase()) ?? 'SNET') as ConstraintType,
+          constraintDate:
+            col(r, 'Constraint date') || col(r, 'Starts no earlier than') || project.startDate,
           deps: [],
           done: Math.min(100, Math.max(0, num(col(r, '% done')))),
         },

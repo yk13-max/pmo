@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import type { Task } from '../types';
+import type { ConstraintType, Task } from '../types';
+import { CONSTRAINTS } from '../types';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
 import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
@@ -27,14 +28,22 @@ type Row =
   | { kind: 'phase'; key: string; phase: number; name: string; start: string | null; end: string | null }
   | { kind: 'task'; key: string; number: number; task: Task; at: Scheduled | undefined };
 
-export function Planning({ view, initialProjectId }: { view: PortfolioView; initialProjectId: string | null }) {
+export function Planning({
+  view,
+  projectId,
+  onSelectProject,
+}: {
+  view: PortfolioView;
+  /* One project is under the pencil at a time. The choice is held by the app rather than
+     here, so the header's Edit project detail button knows which one it would open. */
+  projectId: string | null;
+  onSelectProject: (id: string) => void;
+}) {
   const { portfolio, saveTask, deleteTask } = usePortfolio();
-  /* One project is under the pencil at a time. Which one is this screen's own business,
-     so it is held here rather than in the address — but it opens on whichever project you
-     were last looking at, so crossing over from Project detail lands in the right plan. */
-  const [chosen, setChosen] = useState<string>(initialProjectId ?? view.projects[0]?.id ?? '');
+  const chosen = projectId ?? view.projects[0]?.id ?? '';
   const [zoom, setZoom] = useState<Zoom>('Weeks');
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
+  const [showCritical, setShowCritical] = useState(true);
 
   const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
 
@@ -42,7 +51,7 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
     () => (project ? portfolio.tasks.filter((t) => t.projectId === project.id) : []),
     [portfolio.tasks, project],
   );
-  const plan = useMemo(() => schedule(tasks), [tasks]);
+  const plan = useMemo(() => schedule(tasks, project?.startDate), [tasks, project?.startDate]);
 
   if (!project) return <p className="empty">No projects yet. Add one before planning it.</p>;
 
@@ -98,7 +107,11 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
       name: 'New task',
       owner: '',
       days: 5,
-      start,
+      /* Typing a date into a plan is how a planner says "not before this", which is
+         exactly what Microsoft Project does when you set a start on an auto-scheduled
+         task. Anything else is a deliberate choice, made in the Rule column. */
+      constraint: 'SNET',
+      constraintDate: start,
       deps: [],
       done: 0,
     });
@@ -128,7 +141,7 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
             style={{ width: 'auto', minWidth: 340 }}
             value={project.id}
             onChange={(e) => {
-              setChosen(e.target.value);
+              onSelectProject(e.target.value);
               setDepDraft(null);
             }}
           >
@@ -138,6 +151,15 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
               </option>
             ))}
           </select>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <input
+            type="checkbox"
+            checked={showCritical}
+            onChange={(e) => setShowCritical(e.target.checked)}
+            style={{ accentColor: 'var(--color-accent-2)', width: 15, height: 15 }}
+          />
+          Critical path
         </label>
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Zoom</span>
@@ -154,16 +176,21 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
       <div style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
-        <div style={{ flex: 'none', width: 664, borderRight: '1px solid var(--color-divider)' }}>
-          <div style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+        <div style={{ flex: 'none', width: 760, borderRight: '1px solid var(--color-divider)' }}>
+          {/* Same padding and the same gap as a task row, so every heading lands over the
+              control it names rather than drifting across the row. */}
+          <div style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
             <span style={{ width: 26 }}>#</span>
-            <span style={{ flex: 1 }}>Task</span>
-            <span style={{ width: 92 }}>Who</span>
-            <span style={{ width: 40, textAlign: 'right' }}>Days</span>
-            <span style={{ width: 122, textAlign: 'right' }}>Start</span>
-            <span style={{ width: 74, textAlign: 'right' }}>Finish</span>
-            <span style={{ width: 66, textAlign: 'right' }}>Before</span>
-            <span style={{ width: 44, textAlign: 'right' }}>Float</span>
+            <span style={{ flex: 1, minWidth: 0 }}>Task</span>
+            <span style={{ width: 84 }}>Who</span>
+            <span style={{ width: 38, textAlign: 'right' }}>Days</span>
+            <span style={{ width: 74 }}>Rule</span>
+            <span style={{ width: 116 }}>On</span>
+            <span style={{ width: 70, textAlign: 'right' }}>Finish</span>
+            <span style={{ width: 60, textAlign: 'right' }}>After</span>
+            <span style={{ width: 40, textAlign: 'right' }}>Float</span>
+            {/* Sits over the delete button, so every heading lands on its own column. */}
+            <span style={{ width: 22 }} aria-hidden="true" />
           </div>
           {rows.map((row) =>
             row.kind === 'phase' ? (
@@ -296,7 +323,7 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
                         width: Math.max(3, barEnd(row.at.endDate) - x(row.at.startDate)),
                         top: ROW / 2 - 8,
                         height: 16,
-                        background: row.at.critical ? 'var(--color-accent-2)' : 'var(--color-accent)',
+                        background: showCritical && row.at.critical ? 'var(--color-accent-2)' : 'var(--color-accent)',
                         borderRadius: 3,
                         display: 'block',
                       }}
@@ -342,6 +369,7 @@ export function Planning({ view, initialProjectId }: { view: PortfolioView; init
           Today
         </span>
         <span>Predecessors read as 3, or 3SS+2 for a start-to-start link with two days of lag</span>
+        <span>Rule is the constraint: ASAP, ALAP, start or finish no earlier/later than, must start/finish on</span>
       </div>
     </div>
   );
@@ -386,6 +414,15 @@ function PlanSummary({
           color={critical ? 'var(--color-accent-2-700)' : undefined}
         />
       </div>
+      {plan.conflicts.length > 0 && (
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          {plan.conflicts.map((c) => (
+            <p key={c.id} style={{ color: 'var(--color-accent-2-700)', fontSize: 14, margin: '0 0 4px' }}>
+              {numberOf.get(c.id) ?? '?'} {name(c.id)} {c.message}. The rule has been kept and the links let go.
+            </p>
+          ))}
+        </div>
+      )}
       {plan.cycles.length > 0 && (
         <p style={{ color: 'var(--color-accent-2-700)', fontSize: 14, marginBottom: 'var(--space-4)' }}>
           These tasks wait on each other in a loop, so none of them can be scheduled:{' '}
@@ -426,6 +463,7 @@ function TaskRow({
   const { task, at } = row;
   const set = (patch: Partial<Task>) => onSave({ ...task, ...patch });
   const written = depsToText(task.deps, (id) => numberOf.get(id) ?? null);
+  const needsDate = CONSTRAINTS.find((c) => c.id === task.constraint)?.needsDate ?? true;
   const editing = depDraft?.id === task.id;
   const cell: React.CSSProperties = { fontSize: 13, padding: '2px 4px', height: 26 };
 
@@ -452,7 +490,7 @@ function TaskRow({
       />
       <input
         className="input"
-        style={{ ...cell, width: 92 }}
+        style={{ ...cell, width: 84 }}
         defaultValue={task.owner}
         placeholder="Name"
         aria-label={`Task ${row.number} owner`}
@@ -463,7 +501,7 @@ function TaskRow({
         type="number"
         min={1}
         step={1}
-        style={{ ...cell, width: 40, textAlign: 'right' }}
+        style={{ ...cell, width: 38, textAlign: 'right' }}
         defaultValue={task.days}
         aria-label={`Task ${row.number} days`}
         onBlur={(e) => {
@@ -472,20 +510,50 @@ function TaskRow({
           e.target.value = String(days);
         }}
       />
+      <select
+        className="input"
+        style={{ ...cell, width: 74, fontSize: 12 }}
+        value={task.constraint}
+        aria-label={`Task ${row.number} constraint`}
+        title={CONSTRAINTS.find((c) => c.id === task.constraint)?.hint}
+        onChange={(e) => set({ constraint: e.target.value as ConstraintType })}
+      >
+        {CONSTRAINTS.map((c) => (
+          <option key={c.id} value={c.id} title={c.hint}>
+            {c.id}
+          </option>
+        ))}
+      </select>
       <input
         className="input"
         type="date"
-        style={{ ...cell, width: 122, fontSize: 12 }}
-        value={task.start}
-        aria-label={`Task ${row.number} start`}
-        onChange={(e) => e.target.value && set({ start: e.target.value })}
+        style={{ ...cell, width: 116, fontSize: 12, visibility: needsDate ? 'visible' : 'hidden' }}
+        value={task.constraintDate}
+        aria-label={`Task ${row.number} constraint date`}
+        aria-hidden={needsDate ? undefined : true}
+        tabIndex={needsDate ? undefined : -1}
+        title="Work only lands on weekdays, so a weekend here moves to the Monday."
+        onChange={(e) => {
+          if (!e.target.value) return;
+          // Nothing is worked at a weekend, so a date dropped on one moves to the Monday.
+          set({ constraintDate: toISO(nextWorkingDay(fromISO(e.target.value))) });
+        }}
       />
-      <span style={{ width: 74, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
-        {at ? shortDate(at.endDate) : '—'}
+      <span
+        title={at?.conflict ? `Its rule and its links disagree: ${at.conflict}` : undefined}
+        style={{
+          width: 70,
+          textAlign: 'right',
+          fontSize: 12,
+          fontVariantNumeric: 'tabular-nums',
+          color: at?.conflict ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)',
+        }}
+      >
+        {at ? `${at.conflict ? '! ' : ''}${shortDate(at.endDate)}` : '—'}
       </span>
       <input
         className="input"
-        style={{ ...cell, width: 66, fontSize: 12 }}
+        style={{ ...cell, width: 60, fontSize: 12 }}
         value={editing ? depDraft.text : written}
         placeholder="—"
         aria-label={`Task ${row.number} predecessors`}
@@ -504,7 +572,7 @@ function TaskRow({
       />
       <span
         style={{
-          width: 44,
+          width: 40,
           textAlign: 'right',
           fontSize: 12,
           fontVariantNumeric: 'tabular-nums',

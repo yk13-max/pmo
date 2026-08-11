@@ -198,6 +198,17 @@ export function App() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
+            {/* Planning works on one project at a time, so the way into that project's own
+                details belongs with the rest of the actions rather than buried in the grid. */}
+            {screen === 'planning' && selected && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setEditing({ kind: 'project', project: selected })}
+              >
+                Edit project detail
+              </button>
+            )}
             {PRINTABLE.has(screen) && (
               <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
                 Export as PDF
@@ -235,7 +246,9 @@ export function App() {
             onSetWindow={store.setWindow}
           />
         )}
-{screen === 'planning' && <Planning view={view} initialProjectId={selected?.id ?? null} />}
+{screen === 'planning' && (
+          <Planning view={view} projectId={selected?.id ?? null} onSelectProject={setLastProjectId} />
+        )}
                 {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}
         {screen === 'data' && (
           <DataManager

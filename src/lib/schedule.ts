@@ -1,4 +1,4 @@
-import type { Dep, Task } from '../types';
+import type { ConstraintType, Dep, Task } from '../types';
 import { fromISO, toISO } from './dates';
 
 /* Critical path scheduling over a working-day calendar.
@@ -6,6 +6,10 @@ import { fromISO, toISO } from './dates';
    Everything here is integer arithmetic on working-day numbers, and only the edges of
    the module deal in dates. That is what keeps the awkward parts — weekends, lag,
    four kinds of link — from tangling with each other.
+
+   Constraints are Microsoft Project's eight, and they meet the links here: a link says
+   the earliest a task may go, a constraint says where it is allowed to sit, and where
+   the two disagree the constraint wins and the disagreement is reported.
 
    Weekends are the whole of the calendar. The portfolio does record public holidays,
    but as a count of days per month rather than as dates, so there is no way to say
@@ -89,6 +93,9 @@ export class WorkingDays {
   }
 }
 
+/** Which constraints are read on the way forward, and which cap the way back. */
+const NEEDS_DATE = new Set<ConstraintType>(['SNET', 'SNLT', 'FNET', 'FNLT', 'MSO', 'MFO']);
+
 export interface Scheduled {
   task: Task;
   /** Working-day numbers: earliest and latest each end may happen. */
@@ -101,6 +108,8 @@ export interface Scheduled {
   critical: boolean;
   startDate: string;
   endDate: string;
+  /** Set when the links and the constraint cannot both be honoured. */
+  conflict: string;
 }
 
 export interface Schedule {
@@ -112,6 +121,8 @@ export interface Schedule {
   cycles: string[];
   /** Ids named as predecessors that are not in this plan. */
   dangling: string[];
+  /** Tasks whose constraint the links cannot satisfy, and why. */
+  conflicts: { id: string; message: string }[];
   start: string | null;
   end: string | null;
   /** Working days from the first start to the last finish. */
@@ -123,6 +134,7 @@ const EMPTY: Schedule = {
   ordered: [],
   cycles: [],
   dangling: [],
+  conflicts: [],
   start: null,
   end: null,
   span: 0,
@@ -132,7 +144,7 @@ const EMPTY: Schedule = {
 
     A task occupies whole working days, so a one-day task starting on day 4 also
     finishes on day 4 — finish is the last day worked, not the day after. */
-export function schedule(tasks: Task[]): Schedule {
+export function schedule(tasks: Task[], planStart?: string): Schedule {
   if (!tasks.length) return EMPTY;
 
   const known = new Set(tasks.map((t) => t.id));
@@ -145,7 +157,10 @@ export function schedule(tasks: Task[]): Schedule {
       return false;
     });
 
-  const earliest = tasks.reduce((min, t) => (t.start && t.start < min ? t.start : min), tasks[0].start);
+  /* The ruler starts at the earliest date anybody named, or at the project's own start —
+     which is also where a task that is as-soon-as-possible with nothing to wait on goes. */
+  const dated = tasks.filter((t) => NEEDS_DATE.has(t.constraint) && t.constraintDate).map((t) => t.constraintDate);
+  const earliest = [planStart, ...dated].filter(Boolean).sort()[0] ?? tasks[0].constraintDate ?? toISO(new Date());
   const clock = new WorkingDays(fromISO(earliest));
   const duration = (t: Task) => Math.max(1, Math.round(t.days));
 
@@ -173,57 +188,129 @@ export function schedule(tasks: Task[]): Schedule {
   const cycles = tasks.filter((t) => !placed.has(t.id)).map((t) => t.id);
 
   const byId = new Map<string, Task>(tasks.map((t) => [t.id, t]));
-  const es = new Map<string, number>();
-  const ef = new Map<string, number>();
+  const origin = clock.number(earliest);
+  const anchorOf = (t: Task) => clock.number(t.constraintDate || earliest);
 
-  /* Forward pass. Each link says the earliest day this task may start; the task takes
-     the latest of them, and its own start date is the floor when nothing binds it. */
-  order.forEach((id) => {
-    const t = byId.get(id) as Task;
+  /** The earliest day the links alone would allow, or null when nothing waits on. */
+  const drivenStart = (t: Task, es: Map<string, number>, ef: Map<string, number>) => {
+    const links = depsOf(t);
+    if (!links.length) return null;
     const d = duration(t);
-    let start = clock.number(t.start);
-    depsOf(t).forEach((link) => {
-      const ps = es.get(link.id) ?? 0;
-      const pf = ef.get(link.id) ?? 0;
-      const wants =
-        link.type === 'FS' ? pf + 1 + link.lag
-        : link.type === 'SS' ? ps + link.lag
-        // Finish-to-finish and start-to-finish constrain this task's finish, so the
-        // start is read back off the duration.
-        : link.type === 'FF' ? pf + link.lag - d + 1
-        : ps + link.lag - d + 1;
-      if (wants > start) start = wants;
-    });
-    es.set(id, start);
-    ef.set(id, start + d - 1);
-  });
+    return Math.max(
+      ...links.map((link) => {
+        const ps = es.get(link.id) ?? 0;
+        const pf = ef.get(link.id) ?? 0;
+        return link.type === 'FS' ? pf + 1 + link.lag
+          : link.type === 'SS' ? ps + link.lag
+          // Finish-to-finish and start-to-finish constrain this task's finish, so the
+          // start is read back off the duration.
+          : link.type === 'FF' ? pf + link.lag - d + 1
+          : ps + link.lag - d + 1;
+      }),
+    );
+  };
 
-  const finish = order.length ? Math.max(...order.map((id) => ef.get(id) ?? 0)) : 0;
+  /* One pass of the arithmetic. `pinned` holds tasks whose start has been fixed for this
+     round, which is how as-late-as-possible is settled: it needs the backward pass to
+     know how late "as late" is, so it is solved, pinned, and solved again. */
+  const solve = (pinned: Map<string, number>) => {
+    const es = new Map<string, number>();
+    const ef = new Map<string, number>();
+    const conflicts: { id: string; message: string }[] = [];
 
-  /* Backward pass. Walking the same order in reverse, each task may finish as late as
-     its successors allow — and if it has none, as late as the plan itself ends. */
-  const lf = new Map<string, number>();
-  const ls = new Map<string, number>();
-  [...order].reverse().forEach((id) => {
-    const t = byId.get(id) as Task;
-    const d = duration(t);
-    let latest = finish;
-    (feeds.get(id) ?? []).filter((s) => placed.has(s)).forEach((sid) => {
-      const s = byId.get(sid) as Task;
-      const link = depsOf(s).find((x) => x.id === id);
-      if (!link) return;
-      const sls = ls.get(sid) ?? finish;
-      const slf = lf.get(sid) ?? finish;
-      const allows =
-        link.type === 'FS' ? sls - 1 - link.lag
-        : link.type === 'SS' ? sls - link.lag + d - 1
-        : link.type === 'FF' ? slf - link.lag
-        : slf - link.lag + d - 1;
-      if (allows < latest) latest = allows;
+    order.forEach((id) => {
+      const t = byId.get(id) as Task;
+      const d = duration(t);
+      const driven = drivenStart(t, es, ef);
+      const anchor = anchorOf(t);
+      let start: number;
+      switch (t.constraint) {
+        // Nothing to wait on means nothing to be early relative to, so it goes at the top.
+        case 'ASAP':
+        case 'ALAP':
+          start = driven ?? origin;
+          break;
+        case 'SNET':
+          start = Math.max(driven ?? anchor, anchor);
+          break;
+        case 'FNET':
+          start = Math.max(driven ?? anchor - d + 1, anchor - d + 1);
+          break;
+        // The "no later than" pair do not pull a task earlier; they cap it on the way
+        // back, and say so when the links have already pushed it past the date.
+        case 'SNLT':
+          start = driven ?? anchor;
+          if (start > anchor) conflicts.push({ id, message: `cannot start by ${clock.date(anchor)} — what it waits on pushes it to ${clock.date(start)}` });
+          break;
+        case 'FNLT':
+          start = driven ?? anchor - d + 1;
+          if (start + d - 1 > anchor) conflicts.push({ id, message: `cannot finish by ${clock.date(anchor)} — what it waits on pushes it to ${clock.date(start + d - 1)}` });
+          break;
+        // The two "must" constraints are pins: the date wins over the links outright.
+        case 'MSO':
+          start = anchor;
+          if (driven !== null && driven > anchor) conflicts.push({ id, message: `pinned to start ${clock.date(anchor)}, but what it waits on is not done until ${clock.date(driven - 1)}` });
+          break;
+        default:
+          start = anchor - d + 1;
+          if (driven !== null && driven > start) conflicts.push({ id, message: `pinned to finish ${clock.date(anchor)}, but what it waits on would not let it start until ${clock.date(driven)}` });
+          break;
+      }
+      const fixed = pinned.get(id);
+      if (fixed !== undefined) start = fixed;
+      es.set(id, start);
+      ef.set(id, start + d - 1);
     });
-    lf.set(id, latest);
-    ls.set(id, latest - d + 1);
-  });
+
+    const finish = order.length ? Math.max(...order.map((id) => ef.get(id) ?? 0)) : 0;
+
+    /* Backward pass. Each task may finish as late as its successors allow — and if it has
+       none, as late as the plan itself ends — then a constraint may pull that in further. */
+    const lf = new Map<string, number>();
+    const ls = new Map<string, number>();
+    [...order].reverse().forEach((id) => {
+      const t = byId.get(id) as Task;
+      const d = duration(t);
+      let latest = finish;
+      (feeds.get(id) ?? []).filter((sid) => placed.has(sid)).forEach((sid) => {
+        const succ = byId.get(sid) as Task;
+        const link = depsOf(succ).find((x) => x.id === id);
+        if (!link) return;
+        const sls = ls.get(sid) ?? finish;
+        const slf = lf.get(sid) ?? finish;
+        const allows =
+          link.type === 'FS' ? sls - 1 - link.lag
+          : link.type === 'SS' ? sls - link.lag + d - 1
+          : link.type === 'FF' ? slf - link.lag
+          : slf - link.lag + d - 1;
+        if (allows < latest) latest = allows;
+      });
+      const anchor = anchorOf(t);
+      if (t.constraint === 'SNLT') latest = Math.min(latest, anchor + d - 1);
+      if (t.constraint === 'FNLT') latest = Math.min(latest, anchor);
+      if (t.constraint === 'MSO') latest = anchor + d - 1;
+      if (t.constraint === 'MFO') latest = anchor;
+      lf.set(id, latest);
+      ls.set(id, latest - d + 1);
+    });
+
+    return { es, ef, ls, lf, finish, conflicts };
+  };
+
+  /* As-late-as-possible needs to know how much room it has before it can use it, so the
+     plan is solved, those tasks are pinned to their late starts, and it is solved again.
+     Moving a task inside its own float cannot push the finish out, so this settles — the
+     loop stops as soon as the pins stop moving. */
+  const alap = order.filter((id) => (byId.get(id) as Task).constraint === 'ALAP');
+  let pinned = new Map<string, number>();
+  let run = solve(pinned);
+  for (let i = 0; alap.length && i < 4; i += 1) {
+    const next = new Map(alap.map((id) => [id, run.ls.get(id) ?? run.es.get(id) ?? 0]));
+    if (alap.every((id) => next.get(id) === pinned.get(id))) break;
+    pinned = next;
+    run = solve(pinned);
+  }
+  const { es, ef, ls, lf, finish, conflicts } = run;
 
   const ordered = order
     .map((id) => {
@@ -232,6 +319,7 @@ export function schedule(tasks: Task[]): Schedule {
       const earlyFinish = ef.get(id) ?? 0;
       const lateStart = ls.get(id) ?? earlyStart;
       const slack = lateStart - earlyStart;
+      const clash = conflicts.find((c) => c.id === id)?.message ?? '';
       return {
         task,
         earlyStart,
@@ -243,6 +331,7 @@ export function schedule(tasks: Task[]): Schedule {
         critical: slack <= 0,
         startDate: clock.date(earlyStart),
         endDate: clock.date(earlyFinish),
+        conflict: clash,
       };
     })
     .sort((a, b) => a.earlyStart - b.earlyStart || a.earlyFinish - b.earlyFinish);
@@ -253,6 +342,7 @@ export function schedule(tasks: Task[]): Schedule {
     ordered,
     cycles,
     dangling: [...dangling],
+    conflicts,
     start: ordered.length ? clock.date(first) : null,
     end: ordered.length ? clock.date(finish) : null,
     span: ordered.length ? finish - first + 1 : 0,
