@@ -80,7 +80,7 @@ export function DataManager({
     const files = portfolioCsvFiles(portfolio, view.months);
     // Browsers throttle back-to-back downloads, so they are spaced out a little.
     files.forEach((f, i) => setTimeout(() => download(f.name, f.content, 'text/csv;charset=utf-8'), i * 250));
-    setMessage({ tone: 'ok', text: `Exported ${files.length} CSVs: projects, people, allocations and leave.` });
+    setMessage({ tone: 'ok', text: `Exported ${files.length} CSVs: projects, people, allocations, leave and tasks.` });
   };
 
   const importCsv = async (file: File) => {
@@ -487,7 +487,7 @@ export function DataManager({
       <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
         Everything lives in this browser and nowhere else, so the two actions below cannot be undone from inside the
         tracker. Both take you through three questions and make you download a full CSV backup on the way — import
-        those four files again to put things back as they were.
+        those five files again to put things back as they were.
       </p>
 
       <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
@@ -522,9 +522,9 @@ export function DataManager({
                   </p>
                   <p style={{ margin: 0, fontSize: 15 }}>
                     {step === 1 &&
-                      'Take a backup first. Continuing downloads four CSV files — projects, people, allocations and leave. They are the only way back, so put them somewhere you will find them again.'}
+                      'Take a backup first. Continuing downloads five CSV files — projects, people, allocations, leave and the task plans. They are the only way back, so put them somewhere you will find them again.'}
                     {step === 2 &&
-                      'Check those four CSVs really did download before you go any further. Nothing has changed yet.'}
+                      'Check those five CSVs really did download before you go any further. Nothing has changed yet.'}
                     {step === 3 &&
                       `Last chance. ${portfolio.projects.length} project${portfolio.projects.length === 1 ? '' : 's'}, ${portfolio.people.length} ${portfolio.people.length === 1 ? 'person' : 'people'} and ${Object.keys(portfolio.allocations).length} booking${Object.keys(portfolio.allocations).length === 1 ? '' : 's'} ${action.fate}.`}
                   </p>

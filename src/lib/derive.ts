@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CurrencyCode, Person, Portfolio, Project, ProjectTypeDef, Rag } from '../types';
+import type { CurrencyCode, Person, Portfolio, Project, ProjectTypeDef, Rag, Task } from '../types';
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -8,6 +8,7 @@ import {
   WORKING_HOURS_PER_DAY,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
+import { schedule } from './schedule';
 import { PRIORITY_LABEL } from '../types';
 import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsBetween, monthsFrom, shortDate, shortMonth } from './dates';
 
@@ -104,6 +105,16 @@ export interface ProjectView extends Project {
   priorityLabel: string;
   startLabel: string;
   endLabel: string;
+  /** Where the project's own plan says it runs, when one has been built. The stored
+      dates are left alone: a plan informs the views, it does not rewrite the project. */
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  /** Whether to read the dates above as planned or as entered by hand. */
+  planned: boolean;
+  /** The span every screen should draw — the plan where there is one, the entered dates
+      otherwise. */
+  spanStart: string;
+  spanEnd: string;
   durationMonths: number;
 }
 
@@ -119,6 +130,8 @@ export function viewProject(
   fx = 1,
   /** Hours this project draws this month, and every hour the portfolio draws in the same month. */
   draw: { hours: number; portfolioHours: number } = { hours: 0, portfolioHours: 0 },
+  /** Where this project's own plan runs, if one has been built for it. */
+  planSpan: { start: string; end: string } | null = null,
 ): ProjectView {
   const sharePct = draw.portfolioHours ? (draw.hours / draw.portfolioHours) * 100 : 0;
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
@@ -185,6 +198,11 @@ export function viewProject(
     priorityLabel: PRIORITY_LABEL[project.priority] ?? 'Normal',
     startLabel: monthLabel(start),
     endLabel: monthLabel(end),
+    plannedStart: planSpan?.start ?? null,
+    plannedEnd: planSpan?.end ?? null,
+    planned: Boolean(planSpan),
+    spanStart: planSpan?.start ?? project.startDate,
+    spanEnd: planSpan?.end ?? project.endDate,
     durationMonths: monthSpan(start, end),
   };
 }
@@ -309,6 +327,19 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       .filter((p) => !p.archived)
       .reduce((n, p) => n + drawHours(p.id), 0);
 
+    /* Each project's plan is scheduled once here, so the timeline can draw what the plan
+       actually says rather than the dates typed on the project. The stored dates are
+       untouched — a project without a plan behaves exactly as it always did. */
+    const planned = new Map<string, { start: string; end: string }>();
+    const tasksByProject = new Map<string, Task[]>();
+    (portfolio.tasks ?? []).forEach((t) => {
+      tasksByProject.set(t.projectId, [...(tasksByProject.get(t.projectId) ?? []), t]);
+    });
+    tasksByProject.forEach((list, projectId) => {
+      const plan = schedule(list);
+      if (plan.start && plan.end) planned.set(projectId, { start: plan.start, end: plan.end });
+    });
+
     const allProjectViews = portfolio.projects.map((p) =>
       viewProject(
         p,
@@ -318,6 +349,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         Math.round(hoursToPct(drawHours(p.id))),
         portfolio.fxToBase[p.currency] ?? 1,
         { hours: drawHours(p.id), portfolioHours },
+        planned.get(p.id) ?? null,
       ),
     );
     // Archived work keeps its data but is invisible to every screen except the archive.

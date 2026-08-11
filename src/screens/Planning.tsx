@@ -1,0 +1,530 @@
+import { useMemo, useState } from 'react';
+import type { PortfolioView, ProjectView } from '../lib/derive';
+import type { Task } from '../types';
+import { usePortfolio } from '../store/portfolio';
+import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
+import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
+
+/** How much of the chart one day takes, at each way of looking at it. */
+const ZOOMS = [
+  { id: 'Days', px: 22 },
+  { id: 'Weeks', px: 7.5 },
+  { id: 'Months', px: 2.6 },
+  { id: 'Quarters', px: 1.1 },
+] as const;
+type Zoom = (typeof ZOOMS)[number]['id'];
+
+const ROW = 34;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const addDays = (iso: string, n: number) => {
+  const d = fromISO(iso);
+  d.setDate(d.getDate() + n);
+  return toISO(d);
+};
+
+type Row =
+  | { kind: 'phase'; key: string; phase: number; name: string; start: string | null; end: string | null }
+  | { kind: 'task'; key: string; number: number; task: Task; at: Scheduled | undefined };
+
+export function Planning({ view, initialProjectId }: { view: PortfolioView; initialProjectId: string | null }) {
+  const { portfolio, saveTask, deleteTask } = usePortfolio();
+  /* One project is under the pencil at a time. Which one is this screen's own business,
+     so it is held here rather than in the address — but it opens on whichever project you
+     were last looking at, so crossing over from Project detail lands in the right plan. */
+  const [chosen, setChosen] = useState<string>(initialProjectId ?? view.projects[0]?.id ?? '');
+  const [zoom, setZoom] = useState<Zoom>('Weeks');
+  const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
+
+  const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
+
+  const tasks = useMemo(
+    () => (project ? portfolio.tasks.filter((t) => t.projectId === project.id) : []),
+    [portfolio.tasks, project],
+  );
+  const plan = useMemo(() => schedule(tasks), [tasks]);
+
+  if (!project) return <p className="empty">No projects yet. Add one before planning it.</p>;
+
+  /* Rows are the project's own phases with their tasks nested underneath, in the order
+     they were added — numbering that shuffled as the dates moved would make the
+     predecessor column impossible to type into. */
+  const rows: Row[] = [];
+  let n = 0;
+  const numberOf = new Map<string, number>();
+  project.phases.forEach((name, i) => {
+    const mine = tasks.filter((t) => t.phase === i);
+    const dates = mine.map((t) => plan.byId.get(t.id)).filter(Boolean) as Scheduled[];
+    rows.push({
+      kind: 'phase',
+      key: `phase-${i}`,
+      phase: i,
+      name,
+      start: dates.length ? dates.reduce((a, b) => (a.startDate < b.startDate ? a : b)).startDate : null,
+      end: dates.length ? dates.reduce((a, b) => (a.endDate > b.endDate ? a : b)).endDate : null,
+    });
+    mine.forEach((task) => {
+      n += 1;
+      numberOf.set(task.id, n);
+      rows.push({ kind: 'task', key: task.id, number: n, task, at: plan.byId.get(task.id) });
+    });
+  });
+  const byNumber = new Map([...numberOf].map(([id, num]) => [num, id]));
+
+  const px = ZOOMS.find((z) => z.id === zoom)?.px ?? 8;
+  /* The chart opens on the plan, so adding a task shows it rather than leaving the bars
+     off to the right of a project that started months earlier. With nothing planned yet
+     it falls back to the project's own start, which is where the first task will land. */
+  const first = plan.start ?? project.startDate;
+  const last = [plan.end, project.endDate].filter(Boolean).sort().reverse()[0] as string;
+  // Only ever look forward from the plan's own start, never back to an earlier project date.
+  const chartFrom = plan.end && plan.end > (plan.start ?? '') ? plan.end : last;
+  const chartStart = addDays(first, -7);
+  const totalDays = Math.max(30, Math.round((fromISO(chartFrom).getTime() - fromISO(chartStart).getTime()) / DAY_MS) + 21);
+  const chartW = totalDays * px;
+  const x = (iso: string) => (Math.round((fromISO(iso).getTime() - fromISO(chartStart).getTime()) / DAY_MS)) * px;
+  const barEnd = (iso: string) => x(iso) + px;
+  const todayX = x(toISO(view.today));
+
+  const addTask = (phase: number) => {
+    const after = tasks.filter((t) => t.phase === phase).map((t) => plan.byId.get(t.id)?.endDate).filter(Boolean).sort();
+    const start = after.length
+      ? toISO(nextWorkingDay(fromISO(addDays(after[after.length - 1] as string, 1))))
+      : toISO(nextWorkingDay(fromISO(project.phaseDates[phase] || project.startDate)));
+    saveTask({
+      id: `task-${crypto.randomUUID().slice(0, 8)}`,
+      projectId: project.id,
+      phase,
+      name: 'New task',
+      owner: '',
+      days: 5,
+      start,
+      deps: [],
+      done: 0,
+    });
+  };
+
+  const months: { key: string; x: number; label: string }[] = [];
+  {
+    const cursor = fromISO(chartStart);
+    cursor.setDate(1);
+    for (let i = 0; i < 200; i += 1) {
+      const iso = toISO(cursor);
+      const at = x(iso);
+      if (at > chartW) break;
+      if (at >= 0) months.push({ key: iso, x: at, label: `${cursor.toLocaleString('en-GB', { month: 'short' })} ’${String(cursor.getFullYear()).slice(2)}` });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+
+  return (
+    <div>
+      <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Planning</span>
+          <select
+            id="pl-project"
+            className="input"
+            style={{ width: 'auto', minWidth: 340 }}
+            value={project.id}
+            onChange={(e) => {
+              setChosen(e.target.value);
+              setDepDraft(null);
+            }}
+          >
+            {view.projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.typeLabel} · {p.client}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span className="eyebrow">Zoom</span>
+          {ZOOMS.map((z) => (
+            <button key={z.id} type="button" className="chip" aria-pressed={zoom === z.id} onClick={() => setZoom(z.id)}>
+              {z.id}
+            </button>
+          ))}
+        </span>
+      </div>
+
+      <PlanSummary project={project} plan={plan} tasks={tasks} numberOf={numberOf} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
+        {/* The task list. Everything here is editable in place; the chart to the right is
+            drawn from it and never edited directly. */}
+        <div style={{ flex: 'none', width: 664, borderRight: '1px solid var(--color-divider)' }}>
+          <div style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+            <span style={{ width: 26 }}>#</span>
+            <span style={{ flex: 1 }}>Task</span>
+            <span style={{ width: 92 }}>Who</span>
+            <span style={{ width: 40, textAlign: 'right' }}>Days</span>
+            <span style={{ width: 122, textAlign: 'right' }}>Start</span>
+            <span style={{ width: 74, textAlign: 'right' }}>Finish</span>
+            <span style={{ width: 66, textAlign: 'right' }}>Before</span>
+            <span style={{ width: 44, textAlign: 'right' }}>Float</span>
+          </div>
+          {rows.map((row) =>
+            row.kind === 'phase' ? (
+              <div
+                key={row.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  height: ROW,
+                  padding: '0 8px',
+                  gap: 6,
+                  background: 'var(--color-surface)',
+                  borderBottom: '1px solid var(--color-divider)',
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {row.phase + 1}. {row.name}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+                  {row.start ? `${shortDate(row.start)} → ${shortDate(row.end as string)}` : 'nothing planned'}
+                </span>
+                <button type="button" className="btn btn-ghost" onClick={() => addTask(row.phase)}>
+                  Add task
+                </button>
+              </div>
+            ) : (
+              <TaskRow
+                key={row.key}
+                row={row}
+                numberOf={numberOf}
+                byNumber={byNumber}
+                depDraft={depDraft}
+                setDepDraft={setDepDraft}
+                onSave={saveTask}
+                onDelete={deleteTask}
+              />
+            ),
+          )}
+        </div>
+
+        {/* The chart. It scrolls sideways on its own; the rows line up because both sides
+            step in the same row height. */}
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          <div style={{ position: 'relative', width: chartW, minWidth: '100%' }}>
+            <div style={{ height: ROW * 2, position: 'relative', borderBottom: '1px solid var(--color-divider)' }}>
+              {months.map((m) => (
+                <span key={m.key} style={{ position: 'absolute', left: m.x, bottom: 6, fontSize: 12, color: 'var(--color-neutral-700)', paddingLeft: 4, whiteSpace: 'nowrap' }}>
+                  {m.label}
+                </span>
+              ))}
+            </div>
+            <svg
+              width={chartW}
+              height={rows.length * ROW}
+              style={{ position: 'absolute', left: 0, top: ROW * 2, pointerEvents: 'none' }}
+            >
+              <defs>
+                <marker id="pl-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 z" fill="var(--color-neutral-600)" />
+                </marker>
+              </defs>
+              {months.map((m) => (
+                <line key={m.key} x1={m.x} y1={0} x2={m.x} y2={rows.length * ROW} stroke="var(--color-neutral-200)" strokeWidth={1} />
+              ))}
+              {rows.map((_, i) => (
+                <line key={i} x1={0} y1={(i + 1) * ROW} x2={chartW} y2={(i + 1) * ROW} stroke="var(--color-divider)" strokeWidth={1} />
+              ))}
+              <line x1={todayX} y1={0} x2={todayX} y2={rows.length * ROW} stroke="var(--color-text)" strokeWidth={1} strokeDasharray="3 3" />
+              {/* One line per link, elbowed so it is readable even when a task runs
+                  backwards from the one it waits on. */}
+              {rows.map((row, i) => {
+                if (row.kind !== 'task') return null;
+                const to = row.at;
+                if (!to) return null;
+                return row.task.deps.map((dep) => {
+                      const fromIndex = rows.findIndex((r) => r.kind === 'task' && r.task.id === dep.id);
+                      const from = rows[fromIndex];
+                      if (fromIndex < 0 || from.kind !== 'task' || !from.at) return null;
+                      const y1 = fromIndex * ROW + ROW / 2;
+                      const y2 = i * ROW + ROW / 2;
+                      const startsAtFinish = dep.type === 'FS' || dep.type === 'FF';
+                      const endsAtStart = dep.type === 'FS' || dep.type === 'SS';
+                      const x1 = startsAtFinish ? barEnd(from.at.endDate) : x(from.at.startDate);
+                      const x2 = endsAtStart ? x(to.startDate) : barEnd(to.endDate);
+                      const d =
+                        x2 - 12 > x1 + 6
+                          ? `M${x1} ${y1} H${x1 + 6} V${y2} H${x2 - 6}`
+                          : `M${x1} ${y1} H${x1 + 6} V${(y1 + y2) / 2} H${x2 - 16} V${y2} H${x2 - 6}`;
+                      return (
+                        <path
+                          key={`${row.key}-${dep.id}`}
+                          d={d}
+                          fill="none"
+                          stroke="var(--color-neutral-600)"
+                          strokeWidth={1}
+                          markerEnd="url(#pl-arrow)"
+                        />
+                      );
+                    });
+              })}
+            </svg>
+            <div style={{ position: 'relative' }}>
+              {rows.map((row) => (
+                <div key={row.key} style={{ position: 'relative', height: ROW }}>
+                  {row.kind === 'phase' && row.start && (
+                    <span
+                      title={`${row.name}: ${shortDateYear(row.start)} → ${shortDateYear(row.end as string)}`}
+                      style={{
+                        position: 'absolute',
+                        left: x(row.start),
+                        width: Math.max(3, barEnd(row.end as string) - x(row.start)),
+                        top: ROW / 2 - 5,
+                        height: 10,
+                        background: 'var(--color-accent-700)',
+                        borderRadius: 2,
+                        display: 'block',
+                        opacity: 0.85,
+                      }}
+                    />
+                  )}
+                  {row.kind === 'task' && row.at && (
+                    <span
+                      title={`${row.task.name}: ${shortDateYear(row.at.startDate)} → ${shortDateYear(row.at.endDate)}${row.at.critical ? ' · on the critical path' : ` · ${row.at.float} days of float`}`}
+                      style={{
+                        position: 'absolute',
+                        left: x(row.at.startDate),
+                        width: Math.max(3, barEnd(row.at.endDate) - x(row.at.startDate)),
+                        top: ROW / 2 - 8,
+                        height: 16,
+                        background: row.at.critical ? 'var(--color-accent-2)' : 'var(--color-accent)',
+                        borderRadius: 3,
+                        display: 'block',
+                      }}
+                    >
+                      {row.task.done > 0 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: `${Math.min(100, row.task.done)}%`,
+                            background: 'color-mix(in srgb, var(--color-text) 45%, transparent)',
+                            borderRadius: '3px 0 0 3px',
+                            display: 'block',
+                          }}
+                        />
+                      )}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
+        <span>
+          <span style={{ width: 26, height: 10, background: 'var(--color-accent-700)', display: 'block' }} />
+          Phase
+        </span>
+        <span>
+          <span style={{ width: 26, height: 10, background: 'var(--color-accent)', display: 'block' }} />
+          Task
+        </span>
+        <span>
+          <span style={{ width: 26, height: 10, background: 'var(--color-accent-2)', display: 'block' }} />
+          On the critical path
+        </span>
+        <span>
+          <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
+          Today
+        </span>
+        <span>Predecessors read as 3, or 3SS+2 for a start-to-start link with two days of lag</span>
+      </div>
+    </div>
+  );
+}
+
+/** What the plan adds up to, and anything wrong with it. */
+function PlanSummary({
+  project,
+  plan,
+  tasks,
+  numberOf,
+}: {
+  project: ProjectView;
+  plan: ReturnType<typeof schedule>;
+  tasks: Task[];
+  numberOf: Map<string, number>;
+}) {
+  const critical = plan.ordered.filter((s) => s.critical).length;
+  const name = (id: string) => tasks.find((t) => t.id === id)?.name ?? id;
+  return (
+    <>
+      <div className="stat-row one-line" style={{ marginBottom: 'var(--space-4)' }}>
+        <Fig value={String(tasks.length)} label="Tasks" sub={`Across ${project.phases.length} phases`} />
+        <Fig value={plan.start ? shortDateYear(plan.start) : '—'} label="Plan starts" sub={`Project opens ${shortDateYear(project.startDate)}`} />
+        <Fig
+          value={plan.end ? shortDateYear(plan.end) : '—'}
+          label="Plan finishes"
+          sub={
+            plan.end
+              ? plan.end > project.endDate
+                ? `Past the project's own end of ${shortDateYear(project.endDate)}`
+                : `Inside the project's end of ${shortDateYear(project.endDate)}`
+              : 'Nothing planned yet'
+          }
+          color={plan.end && plan.end > project.endDate ? 'var(--color-accent-2-700)' : undefined}
+        />
+        <Fig value={String(plan.span)} label="Working days end to end" sub="Weekends not counted" />
+        <Fig
+          value={String(critical)}
+          label="Tasks that cannot slip"
+          sub="A day lost on any of these is a day lost on the project"
+          color={critical ? 'var(--color-accent-2-700)' : undefined}
+        />
+      </div>
+      {plan.cycles.length > 0 && (
+        <p style={{ color: 'var(--color-accent-2-700)', fontSize: 14, marginBottom: 'var(--space-4)' }}>
+          These tasks wait on each other in a loop, so none of them can be scheduled:{' '}
+          {plan.cycles.map((id) => `${numberOf.get(id) ?? '?'} ${name(id)}`).join(', ')}. Break one of the links.
+        </p>
+      )}
+    </>
+  );
+}
+
+function Fig({ value, label, sub, color }: { value: string; label: string; sub: string; color?: string }) {
+  return (
+    <div>
+      <div className="stat-value" style={{ fontSize: 30, color }}>{value}</div>
+      <div className="stat-label">{label}</div>
+      <div className="stat-sub">{sub}</div>
+    </div>
+  );
+}
+
+function TaskRow({
+  row,
+  numberOf,
+  byNumber,
+  depDraft,
+  setDepDraft,
+  onSave,
+  onDelete,
+}: {
+  row: Extract<Row, { kind: 'task' }>;
+  numberOf: Map<string, number>;
+  byNumber: Map<number, string>;
+  depDraft: { id: string; text: string; error: string } | null;
+  setDepDraft: (d: { id: string; text: string; error: string } | null) => void;
+  onSave: (task: Task) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { task, at } = row;
+  const set = (patch: Partial<Task>) => onSave({ ...task, ...patch });
+  const written = depsToText(task.deps, (id) => numberOf.get(id) ?? null);
+  const editing = depDraft?.id === task.id;
+  const cell: React.CSSProperties = { fontSize: 13, padding: '2px 4px', height: 26 };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        height: ROW,
+        padding: '0 8px',
+        gap: 6,
+        borderBottom: '1px solid var(--color-divider)',
+      }}
+    >
+      <span style={{ width: 26, fontSize: 12, color: 'var(--color-neutral-600)', fontVariantNumeric: 'tabular-nums' }}>
+        {row.number}
+      </span>
+      <input
+        className="input"
+        style={{ ...cell, flex: 1, minWidth: 0 }}
+        defaultValue={task.name}
+        aria-label={`Task ${row.number} name`}
+        onBlur={(e) => e.target.value !== task.name && set({ name: e.target.value })}
+      />
+      <input
+        className="input"
+        style={{ ...cell, width: 92 }}
+        defaultValue={task.owner}
+        placeholder="Name"
+        aria-label={`Task ${row.number} owner`}
+        onBlur={(e) => e.target.value !== task.owner && set({ owner: e.target.value })}
+      />
+      <input
+        className="input"
+        type="number"
+        min={1}
+        step={1}
+        style={{ ...cell, width: 40, textAlign: 'right' }}
+        defaultValue={task.days}
+        aria-label={`Task ${row.number} days`}
+        onBlur={(e) => {
+          const days = Math.max(1, Math.round(Number(e.target.value) || 1));
+          if (days !== task.days) set({ days });
+          e.target.value = String(days);
+        }}
+      />
+      <input
+        className="input"
+        type="date"
+        style={{ ...cell, width: 122, fontSize: 12 }}
+        value={task.start}
+        aria-label={`Task ${row.number} start`}
+        onChange={(e) => e.target.value && set({ start: e.target.value })}
+      />
+      <span style={{ width: 74, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+        {at ? shortDate(at.endDate) : '—'}
+      </span>
+      <input
+        className="input"
+        style={{ ...cell, width: 66, fontSize: 12 }}
+        value={editing ? depDraft.text : written}
+        placeholder="—"
+        aria-label={`Task ${row.number} predecessors`}
+        aria-invalid={editing && depDraft.error ? true : undefined}
+        title={editing && depDraft.error ? depDraft.error : 'Task numbers, e.g. 3 or 3SS+2'}
+        onChange={(e) => setDepDraft({ id: task.id, text: e.target.value, error: '' })}
+        onBlur={(e) => {
+          const parsed = parseDeps(e.target.value, (num) => byNumber.get(num) ?? null, row.number);
+          if (parsed.error) {
+            setDepDraft({ id: task.id, text: e.target.value, error: parsed.error });
+            return;
+          }
+          setDepDraft(null);
+          set({ deps: parsed.deps });
+        }}
+      />
+      <span
+        style={{
+          width: 44,
+          textAlign: 'right',
+          fontSize: 12,
+          fontVariantNumeric: 'tabular-nums',
+          color: at?.critical ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)',
+        }}
+      >
+        {at ? (at.critical ? 'none' : `${at.float}d`) : '—'}
+      </span>
+      <button
+        type="button"
+        className="btn btn-ghost"
+        aria-label={`Delete task ${row.number}`}
+        title={`Delete “${task.name}”`}
+        style={{ color: 'var(--color-accent-2-700)', padding: '2px 6px' }}
+        onClick={() => {
+          if (window.confirm(`Delete “${task.name}”? Any task waiting on it will lose that link.`)) onDelete(task.id);
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}

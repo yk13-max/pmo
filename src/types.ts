@@ -92,6 +92,40 @@ export interface Person {
   archived?: boolean;
 }
 
+/** How one task waits on another, in the four forms a project planner expects.
+    FS: start after it finishes. SS: start together. FF: finish together.
+    SF: finish after it starts. */
+export type DepType = 'FS' | 'SS' | 'FF' | 'SF';
+
+export const DEP_TYPES: DepType[] = ['FS', 'SS', 'FF', 'SF'];
+
+export interface Dep {
+  /** The task waited on. */
+  id: string;
+  type: DepType;
+  /** Working days of slack after the link is satisfied. Negative pulls the task earlier. */
+  lag: number;
+}
+
+/** A piece of work inside one phase of one project. */
+export interface Task {
+  id: string;
+  projectId: string;
+  /** Which of the project type's phases this sits under. */
+  phase: number;
+  name: string;
+  /** Who is doing it — a name, not a person on the team. Resourcing is not linked yet. */
+  owner: string;
+  /** Working days of work. A task always occupies at least one. */
+  days: number;
+  /** When it would start if nothing upstream held it back. */
+  start: string;
+  /** What has to happen first. */
+  deps: Dep[];
+  /** How far through it is, 0–100. */
+  done: number;
+}
+
 /** Keyed `${projectId}|${personId}|${YYYY-MM}` → hours booked that month. */
 export type Allocations = Record<string, number>;
 
@@ -112,6 +146,8 @@ export const CURRENCIES: Record<CurrencyCode, { symbol: string; label: string }>
 export interface Portfolio {
   projects: Project[];
   people: Person[];
+  /** Every project's plan, in one list. A project with none simply has no plan yet. */
+  tasks: Task[];
   allocations: Allocations;
   leave: Leave;
   /** Job titles available when adding someone. Editable on the Data screen. */

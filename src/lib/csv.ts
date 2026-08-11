@@ -1,7 +1,8 @@
-import type { CurrencyCode, Portfolio } from '../types';
+import type { CurrencyCode, Portfolio, Task } from '../types';
 import { CURRENCIES, PRIORITY_LABEL, STERILE_TYPE, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
+import { depsToText, parseDeps } from './schedule';
 
 /* CSVs are written to be read by a person, not just re-imported: words rather than codes
    ("Client Solutions", "At risk", "Customer"), money in whole thousands under a labelled
@@ -168,6 +169,36 @@ export function leaveCsv(p: Portfolio, months: string[]): string {
   return toCsv(['Person', ...months.map((m) => `${monthKeyLabel(m)} (days)`)], body);
 }
 
+/** One row per task, with predecessors written the way the planner types them. Numbering
+    runs per project in the same order the Planning screen shows, so a file exported here
+    reads back as the same plan. */
+export function tasksCsv(p: Portfolio): string {
+  const rows: (string | number)[][] = [];
+  p.projects.forEach((project) => {
+    const phases = p.projectTypes.find((t) => t.id === project.type)?.phases ?? [];
+    const mine: Task[] = [];
+    phases.forEach((_, i) => mine.push(...p.tasks.filter((t) => t.projectId === project.id && t.phase === i)));
+    const numberOf = new Map(mine.map((t, i) => [t.id, i + 1]));
+    mine.forEach((t) => {
+      rows.push([
+        project.name,
+        phases[t.phase] ?? String(t.phase + 1),
+        numberOf.get(t.id) ?? 0,
+        t.name,
+        t.owner,
+        t.days,
+        t.start,
+        depsToText(t.deps, (id) => numberOf.get(id) ?? null),
+        t.done,
+      ]);
+    });
+  });
+  return toCsv(
+    ['Project', 'Phase', 'Task number', 'Task', 'Who', 'Working days', 'Starts no earlier than', 'Predecessors', '% done'],
+    rows,
+  );
+}
+
 export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
   const stamp = new Date().toISOString().slice(0, 10);
   return [
@@ -175,14 +206,16 @@ export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
     { name: `pmo-people-${stamp}.csv`, content: peopleCsv(p) },
     { name: `pmo-allocations-${stamp}.csv`, content: allocationsCsv(p, months) },
     { name: `pmo-leave-${stamp}.csv`, content: leaveCsv(p, months) },
+    { name: `pmo-tasks-${stamp}.csv`, content: tasksCsv(p) },
   ];
 }
 
-export type CsvKind = 'projects' | 'people' | 'allocations' | 'leave';
+export type CsvKind = 'projects' | 'people' | 'allocations' | 'leave' | 'tasks';
 
 /** Works out which export a file is from its header row. */
 export function detectKind(headers: string[]): CsvKind | null {
   const h = headers.map((x) => x.trim().toLowerCase());
+  if (h.includes('task') && h.includes('predecessors')) return 'tasks';
   if (h.includes('project') && h.includes('budget £k')) return 'projects';
   if (h.includes('name') && h.includes('job title')) return 'people';
   if (h.includes('person') && h.includes('project')) return 'allocations';
@@ -208,7 +241,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
   if (!rows.length) throw new Error('the file is empty');
   const headers = rows[0];
   const kind = detectKind(headers);
-  if (!kind) throw new Error('the header row does not match a projects, people, allocations or leave export');
+  if (!kind) throw new Error('the header row does not match a projects, people, allocations, leave or tasks export');
 
   const body = rows.slice(1);
   const skipped: string[] = [];
@@ -279,6 +312,57 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       applied += 1;
     });
     next.projects = projects;
+  }
+
+  /* A tasks file replaces the plan of every project it names, and leaves every other
+     project's plan alone. Merging row by row would quietly double a plan up each time a
+     backup was restored. */
+  if (kind === 'tasks') {
+    const touched = new Set<string>();
+    const made: { task: Task; predecessors: string; number: number }[] = [];
+    body.forEach((r, i) => {
+      const projectName = col(r, 'Project');
+      const taskName = col(r, 'Task');
+      if (!projectName || !taskName) return;
+      const project = portfolio.projects.find((x) => x.name.toLowerCase() === projectName.toLowerCase());
+      if (!project) {
+        skipped.push(`${taskName}: no project called ${projectName}`);
+        return;
+      }
+      const phases = portfolio.projectTypes.find((t) => t.id === project.type)?.phases ?? [];
+      const phaseName = col(r, 'Phase');
+      const phase = Math.max(0, phases.findIndex((x) => x.toLowerCase() === phaseName.toLowerCase()));
+      touched.add(project.id);
+      made.push({
+        task: {
+          id: `task-${project.id}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          projectId: project.id,
+          phase,
+          name: taskName,
+          owner: col(r, 'Who'),
+          days: Math.max(1, Math.round(num(col(r, 'Working days')) || 1)),
+          start: col(r, 'Starts no earlier than') || project.startDate,
+          deps: [],
+          done: Math.min(100, Math.max(0, num(col(r, '% done')))),
+        },
+        predecessors: col(r, 'Predecessors'),
+        number: Math.round(num(col(r, 'Task number'))),
+      });
+      applied += 1;
+    });
+    // Links are resolved once every task exists, since a task may point either way.
+    made.forEach((entry) => {
+      if (!entry.predecessors) return;
+      const inProject = made.filter((m) => m.task.projectId === entry.task.projectId);
+      const parsed = parseDeps(
+        entry.predecessors,
+        (n) => inProject.find((m) => m.number === n)?.task.id ?? null,
+        entry.number,
+      );
+      if (parsed.error) skipped.push(`${entry.task.name}: ${parsed.error}`);
+      else entry.task.deps = parsed.deps;
+    });
+    next.tasks = [...portfolio.tasks.filter((t) => !touched.has(t.projectId)), ...made.map((m) => m.task)];
   }
 
   if (kind === 'people') {

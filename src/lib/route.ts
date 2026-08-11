@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ScreenId } from '../App';
 
-const SCREENS: ScreenId[] = ['portfolio', 'resources', 'financials', 'timeline', 'detail', 'alerts', 'data'];
+const SCREENS: ScreenId[] = ['portfolio', 'resources', 'financials', 'timeline', 'detail', 'planning', 'alerts', 'data'];
 
 export interface Route {
   screen: ScreenId;

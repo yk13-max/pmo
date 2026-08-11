@@ -15,9 +15,10 @@ import { Financials } from './screens/Financials';
 import { Timeline } from './screens/Timeline';
 import { ProjectDetail } from './screens/ProjectDetail';
 import { Alerts } from './screens/Alerts';
+import { Planning } from './screens/Planning';
 import { DataManager } from './screens/DataManager';
 
-export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | 'detail' | 'alerts' | 'data';
+export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | 'detail' | 'planning' | 'alerts' | 'data';
 
 const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = {
   portfolio: [
@@ -44,6 +45,11 @@ const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = 
     'One project, end to end',
     'Project detail',
     'The phases it passes through, the money it earns or spends, and who is working on it.',
+  ],
+  planning: [
+    'Tasks, dependencies and the critical path',
+    'Planning',
+    'Build one project\u2019s plan: nest tasks under its phases, link what waits on what, and see which of them the finish date actually turns on.',
   ],
   alerts: [
     'Things needing attention',
@@ -119,6 +125,7 @@ export function App() {
     ['financials', 'Financials', money(view.totals.value)],
     ['timeline', 'Timeline', 'Two years'],
     ['detail', 'Project detail', selected?.name ?? '—'],
+    ['planning', 'Planning', `${store.portfolio.tasks.length} tasks`],
     ['alerts', 'Alerts', view.totals.atRisk],
     ['data', 'Data', 'Add & edit'],
   ];
@@ -228,7 +235,8 @@ export function App() {
             onSetWindow={store.setWindow}
           />
         )}
-        {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}
+{screen === 'planning' && <Planning view={view} initialProjectId={selected?.id ?? null} />}
+                {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}
         {screen === 'data' && (
           <DataManager
             view={view}

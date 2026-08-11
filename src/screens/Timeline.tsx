@@ -35,8 +35,8 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
     <TimelineRow
       key={p.id}
       project={p}
-      left={Math.max(0, Math.min(100, pos(p.startDate)))}
-      right={Math.max(0, Math.min(100, pos(p.endDate)))}
+      left={Math.max(0, Math.min(100, pos(p.spanStart)))}
+      right={Math.max(0, Math.min(100, pos(p.spanEnd)))}
       milestoneLeft={Math.max(0, Math.min(100, pos(p.milestoneDate)))}
       quarters={quarters}
       todayLeft={todayLeft}
@@ -71,6 +71,7 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
           Watch
         </span>
         <span>Hover a bar for its dates and team</span>
+        <span>Bars marked “planned” come from the project's own task plan</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 'var(--space-4)', alignItems: 'end', marginBottom: 'var(--space-2)' }}>
@@ -172,6 +173,16 @@ function TimelineRow({
         <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {project.client}
         </span>
+        {/* Says where the bar came from: a plan built on the Planning screen, rather than
+            the start and end typed on the project. */}
+        {project.planned && (
+          <span
+            title="Drawn from this project's plan"
+            style={{ fontSize: 11, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--color-accent-700)', whiteSpace: 'nowrap' }}
+          >
+            planned
+          </span>
+        )}
       </button>
       <div style={{ position: 'relative', height: 18, cursor: 'pointer' }}>
         <span style={{ position: 'absolute', left: 0, right: 0, top: 8, height: 1, background: 'var(--color-neutral-200)', display: 'block' }} />

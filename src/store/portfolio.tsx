@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Person, Portfolio, Project, ProjectTypeDef } from '../types';
+import type { Allocations, Person, Portfolio, Project, ProjectTypeDef, Task } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
@@ -15,6 +15,10 @@ interface PortfolioStore {
   /** Archiving keeps the data; only the archive screen shows it. */
   setArchived: (id: string, archived: boolean) => void;
   savePerson: (person: Person) => void;
+  /** Adds or replaces one task in a project's plan. */
+  saveTask: (task: Task) => void;
+  /** Removes a task, and any link that pointed at it, so no plan is left dangling. */
+  deleteTask: (id: string) => void;
   /** People are archived, never deleted: their bookings and days off are the record of
       what the team actually did. */
   setPersonArchived: (id: string, archived: boolean) => void;
@@ -64,6 +68,8 @@ export function normalise(p: Portfolio): Portfolio {
     allocations,
     allocationUnit: 'hours',
     leave: p.leave ?? {},
+    // Stores written before planning existed simply have no plans.
+    tasks: (p.tasks ?? []).map((t) => ({ ...t, deps: t.deps ?? [], done: t.done ?? 0 })),
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
@@ -167,6 +173,27 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const saveTask = useCallback((task: Task) => {
+    setPortfolio((prev) => {
+      const exists = prev.tasks.some((t) => t.id === task.id);
+      return {
+        ...prev,
+        tasks: exists ? prev.tasks.map((t) => (t.id === task.id ? task : t)) : [...prev.tasks, task],
+      };
+    });
+  }, []);
+
+  /* Deleting a task also cuts every link that named it. Leaving those behind would give
+     the plan predecessors that cannot be found, which is worse than losing the link. */
+  const deleteTask = useCallback((id: string) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      tasks: prev.tasks
+        .filter((t) => t.id !== id)
+        .map((t) => (t.deps.some((d) => d.id === id) ? { ...t, deps: t.deps.filter((d) => d.id !== id) } : t)),
+    }));
+  }, []);
+
   const setPersonArchived = useCallback((id: string, archived: boolean) => {
     setPortfolio((prev) => ({
       ...prev,
@@ -264,6 +291,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       ...prev,
       projects: [],
       people: [],
+      tasks: [],
       allocations: {},
       leave: {},
       publicHolidays: {},
@@ -277,6 +305,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       savePerson,
+      saveTask,
+      deleteTask,
       setPersonArchived,
       setAllocation,
       setLeave,
@@ -297,6 +327,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       savePerson,
+      saveTask,
+      deleteTask,
       setPersonArchived,
       setAllocation,
       setLeave,
