@@ -19,6 +19,9 @@ a:hover { color: var(--color-accent-600); }
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
 .eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
 .stat-value { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -0.025em; }
+/* The two display sizes live here rather than inline so print can bring them down. */
+.page-title { font-size: 52px; }
+.doc-title { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; }
 .stat-label { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-top: 10px; }
 .stat-sub { font-size: 13px; color: var(--color-neutral-700); margin-top: 3px; }
 .stat-row { display: flex; flex-wrap: wrap; gap: var(--space-8) 72px; margin-bottom: var(--space-8); }
@@ -93,17 +96,30 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .stat-more { display: block; font-size: 12px; color: var(--color-accent); margin-top: 6px; opacity: 0; transition: opacity 120ms; }
 .stat-button:hover .stat-more, .stat-button:focus-visible .stat-more { opacity: 1; }
 
-/* — printing — the project detail page exports as a PDF with every tab expanded — */
+/* — printing — a screen exports as a PDF with every tab expanded — */
 .print-only { display: none; }
+@page { size: A4 portrait; margin: 12mm; }
 @media print {
   .sidebar, .no-print, .tabs, .btn, .drawer-backdrop { display: none !important; }
   .shell, .main { display: block; max-width: none; padding: 0; margin: 0; background: #fff; }
   .print-only { display: block; }
+  /* Sizes chosen for a 1400px window read as billboards on a 190mm page. One scale
+     brings the whole thing down, including the sizes set inline on cards and charts
+     that no stylesheet can reach, and it is applied to layout so pages still break in
+     sensible places. The display type comes down further on top: a page title wants to
+     be a heading on paper, not a poster. */
+  .main { zoom: 0.8; }
+  h1, .page-title { font-size: 30px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 19px; }
+  .doc-title { font-size: 30px; }
+  .stat-value { font-size: 26px; }
+  .stat-row.one-line .stat-value { font-size: 26px; }
   /* Every panel is mounted; print reveals the ones the screen was hiding, each still led
      by its own heading. */
   .printable .tab-panel { display: block !important; page-break-inside: avoid; }
   .printable .tab-panel + .tab-panel { margin-top: var(--space-8); }
   .printable .tab-panel h3 { page-break-after: avoid; }
-  .table { font-size: 11px; }
+  .table { font-size: 13px; }
   a[href]::after { content: ''; }
 }

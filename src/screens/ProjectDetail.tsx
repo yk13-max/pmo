@@ -93,7 +93,7 @@ export function ProjectDetail({
       <div style={{ position: 'relative', paddingLeft: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
         <Stripe project={project} absolute />
         <div className="kicker">{project.client}</div>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 44, lineHeight: 1.05, letterSpacing: '-.025em', marginTop: 6 }}>
+        <div className="doc-title" style={{ marginTop: 6 }}>
           {project.name}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', fontSize: 14, color: 'var(--color-neutral-700)', marginTop: 'var(--space-3)' }}>

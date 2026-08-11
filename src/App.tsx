@@ -125,7 +125,7 @@ export function App() {
       <aside className="sidebar">
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.15 }}>
-            Project Management Office
+            Project Glass (PMO)
           </div>
           <div className="eyebrow" style={{ marginTop: 6 }}>Portfolio tracker</div>
         </div>
@@ -165,7 +165,7 @@ export function App() {
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="kicker">{kicker}</div>
-            <h1 style={{ margin: '8px 0 0', fontSize: 52 }}>{title}</h1>
+            <h1 className="page-title" style={{ margin: '8px 0 0' }}>{title}</h1>
             <p style={{ margin: 'var(--space-3) 0 0', fontSize: 16, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>
               {blurb}
             </p>

@@ -17,7 +17,13 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
 
 
   return (
-    <div>
+    <div className="printable">
+      <div className="no-print" style={{ display: 'flex', marginBottom: 'var(--space-6)' }}>
+        <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
+          Export as PDF
+        </button>
+      </div>
+
       <div className="stat-row">
         <Stat value={atRisk.length} label="Projects at risk" sub="Flagged by their project manager" color="var(--color-accent-2-700)" />
         <Stat value={overbooked.length} label="People overbooked" sub="Committed past a full week" color="var(--color-accent-2-700)" />
@@ -27,6 +33,9 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
 
       <Tabs
         storageKey="alerts"
+        /* Keeps every panel mounted so the PDF carries all four lists, not just the
+           one that happened to be open. */
+        renderAll
         tabs={[
           { id: 'risk', label: 'Projects at risk', count: atRisk.length, render: () => (<>
       <SectionHeading dot="var(--color-accent-2)" title="Projects at risk" note="One bar per phase: solid where a phase is finished, part-filled for the phase in hand." />
