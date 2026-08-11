@@ -154,7 +154,7 @@ export function App() {
             <span style={{ display: 'block' }}>Project</span>
             <span style={{ display: 'block' }}>Glass</span>
           </div>
-          <div className="eyebrow" style={{ marginTop: 6 }}>Portfolio tracker</div>
+          <div className="eyebrow" style={{ marginTop: 6 }}>PMO Portfolio Tracker</div>
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {nav.map(([id, label, count]) => (

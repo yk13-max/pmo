@@ -109,6 +109,9 @@ export interface ProjectView extends Project {
       dates are left alone: a plan informs the views, it does not rewrite the project. */
   plannedStart: string | null;
   plannedEnd: string | null;
+  /** The last day of work in each phase of the plan, index-aligned to the phases. Empty
+      where the plan has nothing in that phase. */
+  planPhaseEnds: string[];
   /** Whether to read the dates above as planned or as entered by hand. */
   planned: boolean;
   /** The span every screen should draw — the plan where there is one, the entered dates
@@ -130,8 +133,10 @@ export function viewProject(
   fx = 1,
   /** Hours this project draws this month, and every hour the portfolio draws in the same month. */
   draw: { hours: number; portfolioHours: number } = { hours: 0, portfolioHours: 0 },
-  /** Where this project's own plan runs, if one has been built for it. */
+  /** Where this project's own plan runs, if one has been built for it, and where each of
+      its phases ends. */
   planSpan: { start: string; end: string } | null = null,
+  planPhaseEnds: string[] = [],
 ): ProjectView {
   const sharePct = draw.portfolioHours ? (draw.hours / draw.portfolioHours) * 100 : 0;
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
@@ -200,6 +205,13 @@ export function viewProject(
     endLabel: monthLabel(end),
     plannedStart: planSpan?.start ?? null,
     plannedEnd: planSpan?.end ?? null,
+    planPhaseEnds,
+    /* Mirroring swaps the typed gates for the plan's own, without touching what was
+       typed — unticking the box gives those dates straight back. */
+    phaseDates:
+      project.mirrorPhases && planPhaseEnds.length
+        ? phases.map((_, i) => planPhaseEnds[i] || project.phaseDates[i] || '')
+        : project.phaseDates,
     planned: Boolean(planSpan),
     spanStart: planSpan?.start ?? project.startDate,
     spanEnd: planSpan?.end ?? project.endDate,
@@ -336,11 +348,20 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     (portfolio.tasks ?? []).forEach((t) => {
       tasksByProject.set(t.projectId, [...(tasksByProject.get(t.projectId) ?? []), t]);
     });
+    const phaseEnds = new Map<string, string[]>();
     tasksByProject.forEach((list, projectId) => {
       const project = portfolio.projects.find((p) => p.id === projectId);
       if (!project?.usesPlan) return;
       const plan = schedule(list, project.startDate);
       if (plan.start && plan.end) planned.set(projectId, { start: plan.start, end: plan.end });
+      // The gate for a phase is the last day of work anywhere inside it.
+      const ends: string[] = [];
+      list.forEach((task) => {
+        const at = plan.byId.get(task.id);
+        if (!at) return;
+        if (!ends[task.phase] || at.endDate > ends[task.phase]) ends[task.phase] = at.endDate;
+      });
+      phaseEnds.set(projectId, ends);
     });
 
     const allProjectViews = portfolio.projects.map((p) =>
@@ -353,6 +374,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         portfolio.fxToBase[p.currency] ?? 1,
         { hours: drawHours(p.id), portfolioHours },
         planned.get(p.id) ?? null,
+        phaseEnds.get(p.id) ?? [],
       ),
     );
     // Archived work keeps its data but is invisible to every screen except the archive.

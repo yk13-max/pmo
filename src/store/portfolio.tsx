@@ -100,6 +100,7 @@ export function normalise(p: Portfolio): Portfolio {
       currency: project.currency ?? 'GBP',
       // Projects that predate planning keep their own dates until they are opted in.
       usesPlan: project.usesPlan ?? false,
+      mirrorPhases: project.mirrorPhases ?? false,
     })),
     people: p.people.map((person) => ({
       ...person,

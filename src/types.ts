@@ -54,6 +54,9 @@ export interface Project {
   /** Whether this project's dates come from a task plan. Off by default: a project keeps
       the start, end and phase dates entered on it until someone chooses to plan it out. */
   usesPlan?: boolean;
+  /** Whether the phase gates follow the plan rather than the dates typed on the project.
+      The typed dates are kept either way, so unticking gives them back. */
+  mirrorPhases?: boolean;
 }
 
 /** The delivery type that carries the sterile question. */

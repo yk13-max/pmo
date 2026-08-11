@@ -11,8 +11,10 @@ import {
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { days, hoursToPct } from '../lib/derive';
-import { addMonths, toISO } from '../lib/dates';
+import { addMonths, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
+import { usePortfolio } from '../store/portfolio';
+import { schedule, type Scheduled } from '../lib/schedule';
 
 type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'billed' | 'load'> & {
   phase: number;
@@ -103,6 +105,7 @@ export function ProjectForm({
   );
   const [alloc, setAlloc] = useState<Record<string, number>>(allocations);
   const [touched, setTouched] = useState(false);
+  const { portfolio } = usePortfolio();
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
@@ -139,6 +142,24 @@ export function ProjectForm({
     errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
 
   const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
+  /* The plan is read live so the gates and the milestone list always show what the Gantt
+     currently says, rather than whatever it said when the form was opened. */
+  const planned = schedule(
+    portfolio.tasks.filter((t) => t.projectId === draft.id),
+    draft.startDate,
+  );
+  const planPhaseEnds: string[] = [];
+  const planTasks = portfolio.tasks
+    .filter((t) => t.projectId === draft.id)
+    .map((t) => ({ task: t, at: planned.byId.get(t.id) }))
+    .filter((x) => x.at)
+    .sort((a, b) => (a.at as Scheduled).earlyFinish - (b.at as Scheduled).earlyFinish);
+  planTasks.forEach(({ task, at }) => {
+    const end = (at as Scheduled).endDate;
+    if (!planPhaseEnds[task.phase] || end > planPhaseEnds[task.phase]) planPhaseEnds[task.phase] = end;
+  });
+  const canMirror = Boolean(draft.usesPlan) && planTasks.length > 0;
+  const mirroring = canMirror && Boolean(draft.mirrorPhases);
   const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
   if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
   if (!internal && invoiceDates.some((d) => d && draft.endDate && d > draft.endDate))
@@ -351,6 +372,35 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-ms">Next thing due</label>
+            {/* A planned project can point at a task rather than retyping its name and
+                date. Custom comes first, because anything not in the plan is still a
+                perfectly good answer — a board date, an audit, a customer visit. */}
+            {canMirror && (
+              <select
+                id="pf-ms-pick"
+                className="input"
+                aria-label="Take the next thing due from the plan"
+                style={{ marginBottom: 6 }}
+                value={planTasks.find((x) => x.task.name === draft.milestone)?.task.id ?? ''}
+                onChange={(e) => {
+                  const picked = planTasks.find((x) => x.task.id === e.target.value);
+                  if (!picked) return;
+                  // Taking the task takes its date too, which is the point of picking one.
+                  setDraft((d) => ({
+                    ...d,
+                    milestone: picked.task.name,
+                    milestoneDate: (picked.at as Scheduled).endDate,
+                  }));
+                }}
+              >
+                <option value="">Custom — type it below</option>
+                {planTasks.map(({ task, at }) => (
+                  <option key={task.id} value={task.id}>
+                    {task.name} · {shortDateYear((at as Scheduled).endDate)}
+                  </option>
+                ))}
+              </select>
+            )}
             <input
               id="pf-ms"
               className="input"
@@ -471,6 +521,33 @@ export function ProjectForm({
 
       <fieldset className="fieldset">
         <legend>Phase dates</legend>
+        {/* Only a project that is planned in the Gantt has anything to mirror, so the tick
+            is offered but not usable until it is. */}
+        <label
+          title={
+            canMirror
+              ? 'Each gate becomes the last day of work in that phase of the plan.'
+              : 'Tick “Plan this project here” on the Planning screen, and add some tasks, before these can be mirrored.'
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            marginBottom: 'var(--space-3)',
+            cursor: canMirror ? 'pointer' : 'not-allowed',
+            color: canMirror ? 'var(--color-text)' : 'var(--color-neutral-500)',
+          }}
+        >
+          <input
+            type="checkbox"
+            disabled={!canMirror}
+            checked={mirroring}
+            onChange={(e) => set('mirrorPhases', e.target.checked)}
+            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+          />
+          Mirror the Gantt chart phase dates
+        </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           {phases.map((phase: string, i: number) => (
             <div className="field" key={phase} style={{ width: 180 }}>
@@ -482,7 +559,8 @@ export function ProjectForm({
                 className="input"
                 type="date"
                 max={MAX_DATE}
-                value={phaseDates[i]}
+                disabled={mirroring}
+                value={mirroring ? planPhaseEnds[i] || phaseDates[i] : phaseDates[i]}
                 onChange={(e) =>
                   setDraft((d) => {
                     const next = phases.map((_: string, j: number) => d.phaseDates[j] ?? '');
@@ -494,7 +572,11 @@ export function ProjectForm({
             </div>
           ))}
         </div>
-        <p className="field-hint">When each phase is planned to complete. Shown on the project detail stepper.</p>
+        <p className="field-hint">
+          {mirroring
+            ? 'Taken from the plan: each gate is the last day of work in that phase. What was typed here is kept, and comes back if this is unticked.'
+            : 'When each phase is planned to complete. Shown on the project detail stepper.'}
+        </p>
       </fieldset>
 
       {!internal && (
