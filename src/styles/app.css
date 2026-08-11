@@ -131,15 +131,22 @@ a:hover { color: var(--color-accent-600); }
 /* The lockup sizes its paper against whatever holds it, so the width is set here. */
 .about > div:first-child { width: 240px; }
 /* The page has the room the menu column does not: the name runs across in one line, a
-   third larger than the 20px it is set at beside the nav. */
-.about .brand-wordmark { font-size: calc(20px * 4 / 3); white-space: nowrap; }
-.about-credit { margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 26px; letter-spacing: 0.02em;
+   third larger than the 20px it is set at beside the nav, and half again on top of that. */
+.about .brand-wordmark { font-size: 36px; white-space: nowrap; }
+/* Laid out rather than run together, so the opening words can be collapsed without the
+   name they sit against moving off its baseline. */
+.about-credit { display: flex; justify-content: center; align-items: baseline;
+  margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 16.9px; letter-spacing: 0.02em;
   transition: color 700ms ease; }
-/* The credit takes the paper's own dark blue while the pointer is on the mark. It is two
-   parents away from the paper, so this reaches it by asking the page whether the mark is
+.about-credit-lead { white-space: pre; overflow: hidden; max-width: 8em;
+  transition: max-width 900ms ease, opacity 900ms ease; }
+/* The credit takes the paint the middle pane is drawn in while the pointer is on the mark,
+   and the words in front of the name fold away to leave it standing alone. Both are two
+   parents away from the paper, so this reaches them by asking the page whether the mark is
    hovered rather than by walking across from it. Quick to arrive, slow to leave, like
    every other part of the hover. */
-.about:has(.brand-paper:hover) .about-credit { color: var(--color-accent-700); transition-duration: 200ms; }
+.about:has(.brand-paper:hover) .about-credit { color: rgba(255, 255, 255, 0.34); transition-duration: 200ms; }
+.about:has(.brand-paper:hover) .about-credit-lead { max-width: 0; opacity: 0; transition-duration: 380ms; }
 .about-hint { margin: 0; font-size: 13px; color: var(--color-accent-300); }
 
 /* Project detail and Planning are the two areas about one project, so its name is said

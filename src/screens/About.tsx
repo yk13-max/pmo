@@ -8,7 +8,13 @@ export function About({ onLeave }: { onLeave: () => void }) {
   return (
     <div className="about">
       <BrandLockup onDoubleClick={onLeave} stacked={false} />
-      <p className="about-credit">Created By Saranan</p>
+      {/* Under the pointer the opening words fold away and the name slides into the middle
+          on its own. The two parts are separate elements because only the first of them
+          moves. */}
+      <p className="about-credit">
+        <span className="about-credit-lead">Created By </span>
+        <span>Saranan</span>
+      </p>
       <p className="about-hint">Double-click the mark to go back.</p>
     </div>
   );
