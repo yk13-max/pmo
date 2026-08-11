@@ -351,7 +351,7 @@ export function ProjectForm({
               value={draft.pct}
               onChange={(e) => set('pct', e.target.value)}
             />
-            <div className="field-hint">How far through the phase above the work is.</div>
+            <div className="field-hint">Progress through the current phase</div>
           </div>
           <div className="field">
             <label htmlFor="pf-start">Started</label>
