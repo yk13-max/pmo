@@ -238,9 +238,6 @@ export function Resourcing({
           { id: 'demand', label: 'People the work needs', count: `${Math.max(0, ...view.demand).toFixed(1)} peak`, render: () => (
             <DemandChart view={view} onSetWindow={onSetWindow} />
           ) },
-          { id: 'leave', label: 'Annual leave', count: `${view.peopleViews.reduce((n, p) => n + p.leaveDays.reduce((a, b) => a + b, 0), 0)}d`, render: () => (
-            <LeaveTable view={view} onSetLeave={onSetLeave} onSetPublicHoliday={onSetPublicHoliday} onSetWindow={onSetWindow} />
-          ) },
           { id: 'roles', label: 'Job titles with no cover', count: view.roleShortages.length, render: () => (<>
 
       <h3 style={{ margin: '0 0 4px' }}>Job titles with no cover</h3>
@@ -427,6 +424,9 @@ export function Resourcing({
         </div>
       )}
       </>) },
+          { id: 'leave', label: 'Annual leave', count: `${view.peopleViews.reduce((n, p) => n + p.leaveDays.reduce((a, b) => a + b, 0), 0)}d`, render: () => (
+            <LeaveTable view={view} onSetLeave={onSetLeave} onSetPublicHoliday={onSetPublicHoliday} onSetWindow={onSetWindow} />
+          ) },
         ]}
       />
     </div>

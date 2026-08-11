@@ -255,6 +255,77 @@ export function DataManager({
       )}
 
       </>) },
+          { id: 'people', label: 'People', count: view.people.length, render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>People</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+        People are archived rather than deleted. Someone who leaves keeps every booking and day off they ever had, so
+        what a project drew stays true; they simply stop being planned forward.
+      </p>
+      <table className="table" style={{ maxWidth: 900 }}>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th style={{ width: 180 }}>Role</th>
+            <th style={{ width: 170 }}>Project types</th>
+            <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
+            <th style={{ textAlign: 'right', width: 110 }}>Non-project</th>
+            <th style={{ textAlign: 'right', width: 90 }}>Leave</th>
+            <th style={{ textAlign: 'right', width: 100 }}>Peak load</th>
+            <th style={{ width: 150 }} />
+          </tr>
+        </thead>
+        <tbody>
+          {view.peopleViews.map((row) => (
+            <tr key={row.person.id}>
+              <td>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>
+              </td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ') || 'All'}</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+                {row.person.overheadPct ? `${row.person.overheadPct}%` : '—'}
+              </td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+                {row.leaveDays.reduce((n, d) => n + d, 0)}d
+              </td>
+              <td
+                style={{
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: row.peak > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
+                }}
+              >
+                {row.peak}%
+              </td>
+              <td>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => onEditPerson(row.person)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Archive ${row.person.name}? They keep every booking and day off and can be restored from the Archive tab.`,
+                        )
+                      ) {
+                        setPersonArchived(row.person.id, true);
+                        setMessage({ tone: 'ok', text: `${row.person.name} archived.` });
+                      }
+                    }}
+                  >
+                    Archive
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </>) },
           { id: 'types', label: 'Project types', count: view.projectTypes.length, render: () => <ProjectTypeEditor view={view} /> },
           { id: 'titles', label: 'Job titles', count: view.roles.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Job titles</h3>
@@ -329,6 +400,87 @@ export function DataManager({
         </span>
       </div>
 
+      </>) },
+          { id: 'settings', label: 'Settings', render: () => (<>
+      <h3 style={{ margin: '0 0 4px' }}>Settings</h3>
+      <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
+        Everything lives in this browser and nowhere else, so the two actions below cannot be undone from inside the
+        tracker. Both take you through three questions and make you download a full CSV backup on the way — import
+        those five files again to put things back as they were.
+      </p>
+
+      <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+        {DANGER_ACTIONS.map((action) => {
+          const open = danger?.kind === action.kind;
+          const step = open ? danger.step : 0;
+          return (
+            <section
+              key={action.kind}
+              style={{
+                border: '1px solid var(--color-divider)',
+                borderLeft: `3px solid ${open ? 'var(--color-accent-2-700)' : 'var(--color-divider)'}`,
+                padding: 'var(--space-4)',
+              }}
+            >
+              <h4 style={{ margin: '0 0 4px', fontSize: 17 }}>{action.title}</h4>
+              <p style={{ margin: 0, fontSize: 15, color: 'var(--color-neutral-700)' }}>{action.blurb}</p>
+
+              {!open ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ marginTop: 'var(--space-3)', color: 'var(--color-accent-2-700)' }}
+                  onClick={() => setDanger({ kind: action.kind, step: 1 })}
+                >
+                  {action.title}
+                </button>
+              ) : (
+                <div style={{ marginTop: 'var(--space-4)', background: 'var(--color-neutral-100)', padding: 'var(--space-4)' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-accent-2-700)' }}>
+                    Ask {step} of 3
+                  </p>
+                  <p style={{ margin: 0, fontSize: 15 }}>
+                    {step === 1 &&
+                      'Take a backup first. Continuing downloads five CSV files — projects, people, allocations, leave and the task plans. They are the only way back, so put them somewhere you will find them again.'}
+                    {step === 2 &&
+                      'Check those five CSVs really did download before you go any further. Nothing has changed yet.'}
+                    {step === 3 &&
+                      `Last chance. ${portfolio.projects.length} project${portfolio.projects.length === 1 ? '' : 's'}, ${portfolio.people.length} ${portfolio.people.length === 1 ? 'person' : 'people'} and ${Object.keys(portfolio.allocations).length} booking${Object.keys(portfolio.allocations).length === 1 ? '' : 's'} ${action.fate}.`}
+                  </p>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ color: 'var(--color-accent-2-700)' }}
+                      onClick={() => {
+                        // The backup is not optional: the first yes downloads it, then the asking goes on.
+                        if (step === 1) exportCsv();
+                        if (step < 3) {
+                          setDanger({ kind: action.kind, step: (step + 1) as 2 | 3 });
+                          return;
+                        }
+                        if (action.kind === 'reset') {
+                          resetToSeed();
+                          setMessage({ tone: 'ok', text: 'Sample portfolio restored.' });
+                        } else {
+                          clearAll();
+                          setMessage({ tone: 'ok', text: 'Everything cleared. Import your CSVs to put it back.' });
+                        }
+                        setDanger(null);
+                      }}
+                    >
+                      {step === 1 ? 'Download the backup and continue' : step === 2 ? 'The backup is safe, continue' : action.confirm}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setDanger(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
       </>) },
           { id: 'archive', label: 'Archive', count: view.archivedProjects.length + view.archivedPeople.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Archived projects</h3>
@@ -423,158 +575,6 @@ export function DataManager({
           </tbody>
         </table>
       )}
-      </>) },
-          { id: 'people', label: 'People', count: view.people.length, render: () => (<>
-      <h3 style={{ margin: '0 0 4px' }}>People</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-        People are archived rather than deleted. Someone who leaves keeps every booking and day off they ever had, so
-        what a project drew stays true; they simply stop being planned forward.
-      </p>
-      <table className="table" style={{ maxWidth: 900 }}>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th style={{ width: 180 }}>Role</th>
-            <th style={{ width: 170 }}>Project types</th>
-            <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
-            <th style={{ textAlign: 'right', width: 110 }}>Non-project</th>
-            <th style={{ textAlign: 'right', width: 90 }}>Leave</th>
-            <th style={{ textAlign: 'right', width: 100 }}>Peak load</th>
-            <th style={{ width: 150 }} />
-          </tr>
-        </thead>
-        <tbody>
-          {view.peopleViews.map((row) => (
-            <tr key={row.person.id}>
-              <td>
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>
-              </td>
-              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
-              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ') || 'All'}</td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
-                {row.person.overheadPct ? `${row.person.overheadPct}%` : '—'}
-              </td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
-                {row.leaveDays.reduce((n, d) => n + d, 0)}d
-              </td>
-              <td
-                style={{
-                  textAlign: 'right',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: row.peak > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
-                }}
-              >
-                {row.peak}%
-              </td>
-              <td>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => onEditPerson(row.person)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Archive ${row.person.name}? They keep every booking and day off and can be restored from the Archive tab.`,
-                        )
-                      ) {
-                        setPersonArchived(row.person.id, true);
-                        setMessage({ tone: 'ok', text: `${row.person.name} archived.` });
-                      }
-                    }}
-                  >
-                    Archive
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </>) },
-          { id: 'settings', label: 'Settings', render: () => (<>
-      <h3 style={{ margin: '0 0 4px' }}>Settings</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
-        Everything lives in this browser and nowhere else, so the two actions below cannot be undone from inside the
-        tracker. Both take you through three questions and make you download a full CSV backup on the way — import
-        those five files again to put things back as they were.
-      </p>
-
-      <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
-        {DANGER_ACTIONS.map((action) => {
-          const open = danger?.kind === action.kind;
-          const step = open ? danger.step : 0;
-          return (
-            <section
-              key={action.kind}
-              style={{
-                border: '1px solid var(--color-divider)',
-                borderLeft: `3px solid ${open ? 'var(--color-accent-2-700)' : 'var(--color-divider)'}`,
-                padding: 'var(--space-4)',
-              }}
-            >
-              <h4 style={{ margin: '0 0 4px', fontSize: 17 }}>{action.title}</h4>
-              <p style={{ margin: 0, fontSize: 15, color: 'var(--color-neutral-700)' }}>{action.blurb}</p>
-
-              {!open ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ marginTop: 'var(--space-3)', color: 'var(--color-accent-2-700)' }}
-                  onClick={() => setDanger({ kind: action.kind, step: 1 })}
-                >
-                  {action.title}
-                </button>
-              ) : (
-                <div style={{ marginTop: 'var(--space-4)', background: 'var(--color-neutral-100)', padding: 'var(--space-4)' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-accent-2-700)' }}>
-                    Ask {step} of 3
-                  </p>
-                  <p style={{ margin: 0, fontSize: 15 }}>
-                    {step === 1 &&
-                      'Take a backup first. Continuing downloads five CSV files — projects, people, allocations, leave and the task plans. They are the only way back, so put them somewhere you will find them again.'}
-                    {step === 2 &&
-                      'Check those five CSVs really did download before you go any further. Nothing has changed yet.'}
-                    {step === 3 &&
-                      `Last chance. ${portfolio.projects.length} project${portfolio.projects.length === 1 ? '' : 's'}, ${portfolio.people.length} ${portfolio.people.length === 1 ? 'person' : 'people'} and ${Object.keys(portfolio.allocations).length} booking${Object.keys(portfolio.allocations).length === 1 ? '' : 's'} ${action.fate}.`}
-                  </p>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ color: 'var(--color-accent-2-700)' }}
-                      onClick={() => {
-                        // The backup is not optional: the first yes downloads it, then the asking goes on.
-                        if (step === 1) exportCsv();
-                        if (step < 3) {
-                          setDanger({ kind: action.kind, step: (step + 1) as 2 | 3 });
-                          return;
-                        }
-                        if (action.kind === 'reset') {
-                          resetToSeed();
-                          setMessage({ tone: 'ok', text: 'Sample portfolio restored.' });
-                        } else {
-                          clearAll();
-                          setMessage({ tone: 'ok', text: 'Everything cleared. Import your CSVs to put it back.' });
-                        }
-                        setDanger(null);
-                      }}
-                    >
-                      {step === 1 ? 'Download the backup and continue' : step === 2 ? 'The backup is safe, continue' : action.confirm}
-                    </button>
-                    <button type="button" className="btn btn-secondary" onClick={() => setDanger(null)}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
       </>) },
         ]}
       />
