@@ -92,6 +92,16 @@
      stays where it is, meaning what it means there: a print separation plate. */
   --color-warning: #d18500;
 
+  /* Quiet text on the chrome — the eyebrow under the name and the footer beneath the menu.
+     It is its own role rather than a step of the accent ramp, because that ramp is turned
+     upside down by the dark theme and this text needs to stay pale on both. */
+  --color-chrome-quiet: var(--color-accent-300);
+
+  /* The mark's paper: pale at rest, navy as it arrives and under the pointer. The dark
+     theme swaps the two, which is all the inversion of the arrival amounts to. */
+  --brand-paper: var(--color-surface);
+  --brand-paper-alt: var(--color-accent-700);
+
   --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
   --font-heading-weight: 600;
   --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
@@ -103,6 +113,97 @@
   --shadow-sm: 0 1px 2px color-mix(in srgb, #0a4b75 16%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #0a4b75 18%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #0a4b75 22%, transparent);
+}
+
+/* — the dark theme —
+
+   Two things keep this to one block of values rather than a second stylesheet.
+
+   It is scoped to `.shell`, so it reaches every screen, drawer and dialog of the tracker
+   and nothing else: the credit page renders instead of the shell, never inside it, and so
+   keeps its navy exactly as drawn. The ground behind the page is set separately below.
+
+   It is inside `@media screen`, so printing — and the PDF export, which is printing —
+   simply does not see it and falls back to the light values above. That is why there is no
+   second copy of the light palette anywhere.
+
+   The neutral ramp is inverted rather than re-picked: components reach for -900 when they
+   want the strongest text and -200 when they want the palest fill, so turning the ladder
+   upside down keeps every one of those meanings intact. The accent ramp is inverted for
+   the same reason — -700 carries eyebrows and small caps on the page ground, so on a dark
+   ground it has to be the light end. */
+@media screen {
+  :root[data-theme='dark'] {
+    /* The strip behind the page, seen when a short screen is over-scrolled. */
+    background: #0a1117;
+    color-scheme: dark;
+  }
+
+  :root[data-theme='dark'] .shell {
+    --color-bg: #111a22;
+    --color-surface: #1b2831;
+    --color-text: #e9eff5;
+    --color-divider: color-mix(in srgb, #8fb8d4 24%, transparent);
+
+    --color-accent: #5cb0e8;
+    --color-accent-100: #0d1b26;
+    --color-accent-200: #123047;
+    --color-accent-300: #1b4a6b;
+    --color-accent-400: #2f7ba8;
+    /* Deeper than the step above it would suggest, and deliberately so: this one carries
+       "other work" in the resourcing bars, right beside days off in --color-accent. On the
+       light theme those two are navy against mid-blue and tell themselves apart easily; a
+       straight inversion put two light blues side by side. */
+    --color-accent-500: #2b6d99;
+    --color-accent-600: #7cc0ef;
+    --color-accent-700: #9fd4f5;
+    --color-accent-800: #c2e6fb;
+    --color-accent-900: #e0f3ff;
+
+    --color-accent-2: #f0737d;
+    --color-accent-2-100: #2a1216;
+    --color-accent-2-200: #3d181d;
+    --color-accent-2-300: #5c2229;
+    --color-accent-2-400: #8d3540;
+    --color-accent-2-500: #c04f5a;
+    --color-accent-2-600: #e8626d;
+    --color-accent-2-700: #f5949c;
+    --color-accent-2-800: #fbc0c5;
+    --color-accent-2-900: #ffe0e3;
+
+    --color-neutral-100: #17212a;
+    --color-neutral-200: #22303b;
+    --color-neutral-300: #334756;
+    --color-neutral-400: #718c9d;
+    --color-neutral-500: #7f97a6;
+    --color-neutral-600: #a7bccb;
+    --color-neutral-700: #c3d5e1;
+    --color-neutral-800: #dbe8f1;
+    --color-neutral-900: #eef5fa;
+
+    --color-warning: #edad3c;
+    --color-process-yellow: #f0c53a;
+
+    /* Ink rather than navy: on a dark ground a tinted shadow does not read as depth. */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 3px 12px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.62);
+
+    --color-chrome-quiet: #92a9ba;
+
+    /* The mark's paper: black at rest, white as it arrives and under the pointer — the
+       light theme's pair, the other way round. */
+    --brand-paper: #08151f;
+    --brand-paper-alt: #f2f6f9;
+  }
+
+  /* The chrome is set in colours rather than tokens above, so it is set again here. */
+  :root[data-theme='dark'] .sidebar { background: #0a1117; color: #ffffff; }
+  :root[data-theme='dark'] .nav-item { color: #c3d5e1; }
+  :root[data-theme='dark'] .nav-item .count { color: #8ba2b3; }
+  :root[data-theme='dark'] .input { background: #16212a; border-color: color-mix(in srgb, #8fb8d4 28%, transparent); }
+  /* A disabled field has to look disabled without disappearing into the ground. */
+  :root[data-theme='dark'] .input:disabled { background: #131c24; color: var(--color-neutral-500); }
 }
 
 body {
@@ -122,7 +223,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar .eyebrow,
 .sidebar > div:last-child {
-  color: var(--color-accent-300);
+  color: var(--color-chrome-quiet);
 }
 .nav-item {
   color: var(--color-accent-200);

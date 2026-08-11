@@ -29,7 +29,7 @@ a:hover { color: var(--color-accent-600); }
    the mark room to be moved about in — sized tight to the mark there would be none. */
 .brand-paper { display: grid; place-items: center;
   width: 85%; aspect-ratio: 1; margin-inline: auto; padding: 22px; border-radius: 28px;
-  background: var(--color-surface); transition: background 700ms ease; }
+  background: var(--brand-paper); transition: background 700ms ease; }
 .brand-grip { display: grid; place-items: center; cursor: grab;
   /* The pointer drives the drag, so the browser must not claim the gesture for scrolling
      or start a text selection halfway through one. */
@@ -43,7 +43,7 @@ a:hover { color: var(--color-accent-600); }
 /* Every part of the hover arrives quickly and leaves slowly, the paper and the cross-fade
    included, so the whole thing recedes at one pace rather than in stages. */
 .brand-paper:hover, .brand-paper:hover svg { transition-duration: 200ms; }
-.brand-paper:hover { background: var(--color-accent-700); }
+.brand-paper:hover { background: var(--brand-paper-alt); }
 /* The name takes the colour of the mark's front pane while the pointer is on the paper —
    the wordmark is the next thing along, so a sibling selector reaches it. */
 .brand-wordmark { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.4;
@@ -60,10 +60,39 @@ a:hover { color: var(--color-accent-600); }
 
    `is-turning` is the same resting rule underneath — the only thing it changes is how long
    the change takes, which is why the hand-over is invisible. */
-.brand-paper.is-arriving { background: var(--color-accent-700); }
+.brand-paper.is-arriving { background: var(--brand-paper-alt); }
 .brand-paper.is-arriving .brand-mark-light { opacity: 0; }
 .brand-paper.is-arriving .brand-mark-dark { opacity: 1; }
 .brand-paper.is-turning, .brand-paper.is-turning svg { transition-duration: var(--brand-reveal); }
+
+/* On the dark theme the whole arrival runs the other way: the panes come in as the light
+   mark on white paper and the paper turns black under them, ending on the dark logo the
+   dark menu wants. The paper colours are swapped by the token pair; these swap the two
+   marks to match, and they are scoped to the shell so the credit page — which is navy
+   whatever the theme — keeps arriving the way it always has.
+
+   The name follows the same idea. It comes in white, turns teal as the paper turns, and
+   goes back to white under the pointer: white and teal trading places, rather than the
+   light theme's white settling and only moving on hover. */
+:root[data-theme='dark'] .shell .brand-mark-light { opacity: 0; }
+:root[data-theme='dark'] .shell .brand-mark-dark { opacity: 1; }
+:root[data-theme='dark'] .shell .brand-paper.is-arriving .brand-mark-light,
+:root[data-theme='dark'] .shell .brand-paper:hover .brand-mark-light { opacity: 1; }
+:root[data-theme='dark'] .shell .brand-paper.is-arriving .brand-mark-dark,
+:root[data-theme='dark'] .shell .brand-paper:hover .brand-mark-dark { opacity: 0; }
+:root[data-theme='dark'] .shell .brand-wordmark { color: var(--color-brand-teal); }
+:root[data-theme='dark'] .shell .brand-paper.is-arriving ~ .brand-wordmark,
+:root[data-theme='dark'] .shell .brand-paper:hover ~ .brand-wordmark { color: #ffffff; }
+/* The name turns over the same stretch as the paper does, so they finish together. */
+.brand-paper.is-turning ~ .brand-wordmark { transition-duration: var(--brand-reveal); }
+
+/* The theme switch: a half-filled disc among the page's other buttons, drawn quietly
+   enough that it is found when looked for rather than noticed first. */
+.theme-toggle { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none;
+  border: 0; border-radius: 3px; background: transparent; cursor: pointer;
+  color: var(--color-neutral-500); transition: color 160ms ease, background 160ms ease; }
+.theme-toggle:hover { color: var(--color-accent); background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.theme-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
 /* On the first paint the three panes fly in from three corners of the paper and settle
    into the mark: the palest from the bottom left, the middle one from the top left, the
@@ -136,58 +165,33 @@ a:hover { color: var(--color-accent-600); }
    larger than the 20px it is set at beside the nav, and half again on top of that. */
 .about .brand-wordmark { font-size: 36px; }
 /* Hung off the bottom of the lockup rather than stacked under it, which is what keeps the
-   mark and the name on the middle of the window. The line is centred inside its own box
-   and the box is what closes, so it folds in from both ends at once rather than being
-   wiped from one side. */
-.about-credit { position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  display: flex; justify-content: center; white-space: nowrap; overflow: hidden; max-width: 14em;
-  margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 16.9px; letter-spacing: 0.02em;
-  /* Coming back it overshoots and settles — the ease carries past 1 and returns. */
-  transition: max-width 760ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 760ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 520ms ease, color 700ms ease; }
-/* Reach for the mark and the credit is off: it dips the other way for a moment, then tips
-   over and slips away behind the mark, taking the paint the middle pane is drawn in with
-   it. The dip is the ease running backwards before it runs forwards, which is what makes
-   it read as a wind-up rather than a fade. It is two parents from the paper, so this asks
-   the page whether the mark is hovered rather than walking across from it. */
-.about:has(.brand-paper:hover) .about-credit {
+   mark and the name on the middle of the window whether or not the credit is showing.
+
+   It is away by default: tipped over, shrunk and folded shut. Nothing on the page says it
+   is there, which is the point — you find it by reaching for the mark. The line is centred
+   inside its own box and the box is what opens, so it unfolds from the middle outwards
+   rather than being wiped in from one side.
+
+   These transitions run when the pointer leaves, so this is the line going: it snaps shut
+   and tips away, the fade held back a moment so the tip is what you see rather than
+   something already gone. */
+.about-credit { position: absolute; top: 100%; left: 50%;
   max-width: 0; opacity: 0; color: rgba(255, 255, 255, 0.34);
   transform: translateX(-50%) translate(13px, 5px) rotate(-9deg) scale(0.86);
-  /* The fade waits for the wind-up before it starts, so what you see is the line tipping
-     over and the box snapping shut rather than a shape that has already gone. */
+  display: flex; justify-content: center; white-space: nowrap; overflow: hidden;
+  margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 14.4px; letter-spacing: 0.02em;
   transition: max-width 340ms cubic-bezier(0.68, -0.6, 0.32, 1), transform 340ms cubic-bezier(0.68, -0.6, 0.32, 1),
-    opacity 260ms ease 120ms, color 200ms ease;
+    opacity 260ms ease 120ms; }
+/* Reach for the mark and it swings out from behind it, overshooting its place before it
+   settles — the ease carries past 1 and comes back. It is two parents from the paper, so
+   this asks the page whether the mark is hovered rather than walking across from it. */
+.about:has(.brand-paper:hover) .about-credit {
+  max-width: 14em; opacity: 1; transform: translateX(-50%);
+  transition: max-width 760ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 760ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 420ms ease;
 }
 
-/* Project detail and Planning are the two areas about one project, so its name is said
-   once for the pair rather than twice: turned on its side in the margin they share,
-   centred on the gap between them.
 
-   A long name cannot grow the menu — the two rows are all the height there is, and at a
-   readable 12px that height holds about eleven characters. So it wraps alongside itself,
-   up to three lines; anything longer than those hold is cut short with an ellipsis before
-   it is drawn, and the full name is on the tooltip either way.
-
-   The gutter is the width of three lines whether or not they are used, so switching to a
-   longer-named project does not shunt the menu items sideways. */
-.nav-pair { position: relative; display: flex; flex-direction: column; gap: 4px; padding-right: 54px; }
-/* The turn swaps the flex axes with everything else: the main axis runs down the pair, so
-   justify-content is what centres the name on the gap between the two items, and
-   align-items is what holds its lines against the menu's edge. */
-.nav-pair-name { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center;
-  /* Bottom to top: vertical-rl turns the line on its side, and the half turn puts its
-     start at the bottom, which is the direction a spine is read in. */
-  writing-mode: vertical-rl; transform: rotate(180deg);
-  font-size: 12px; line-height: 1.35; letter-spacing: 0.04em; color: var(--color-accent-200);
-  /* Along the inline axis, which the turn has made the vertical one: this is what centres
-     the name on the gap between the two items rather than hanging it off one end. */
-  text-align: center;
-  /* In vertical writing a line runs down the pair's height and the next sits alongside it,
-     so a cap on the width is a cap on the number of lines. */
-  /* anywhere rather than break-word, because a word the width of a line to within a pixel
-     counts as fitting under break-word and is then clipped at both ends by the centring.
-     A word carried onto the next line reads; half a word top and bottom does not. */
-  max-width: 50px; overflow: hidden; overflow-wrap: anywhere; pointer-events: none; }
 
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
 .eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }

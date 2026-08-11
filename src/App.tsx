@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { usePortfolio } from './store/portfolio';
 import { usePortfolioView, money } from './lib/derive';
 import { useRoute } from './lib/route';
+import { useTheme } from './lib/theme';
 import { weekNumber } from './lib/dates';
 import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
 import { BrandLockup } from './components/BrandLockup';
+import { ThemeToggle } from './components/ThemeToggle';
 import { About } from './screens/About';
 import { ProjectForm } from './components/ProjectForm';
 import { PersonForm } from './components/PersonForm';
@@ -88,6 +90,7 @@ export function App() {
   const store = usePortfolio();
   const view = usePortfolioView(store.portfolio);
   const [route, go] = useRoute({ screen: 'portfolio', projectId: null });
+  const [theme, toggleTheme] = useTheme();
   const { screen, projectId } = route;
   const [editing, setEditing] = useState<Editing>(null);
   /* The address only names a project on the detail screen, so the last one opened is
@@ -126,15 +129,13 @@ export function App() {
     URL.revokeObjectURL(url);
   };
 
-  /* Project detail and Planning carry no count of their own: the project they are both
-     about is named once, on its side, in the margin the pair share. */
   const nav: [ScreenId, string, string | number][] = [
     ['portfolio', 'Portfolio', view.projects.length],
     ['resources', 'Resourcing', `${view.people.length} people`],
     ['financials', 'Financials', money(view.totals.value)],
     ['timeline', 'Timeline', 'Two years'],
-    ['detail', 'Project detail', ''],
-    ['planning', 'Planning', ''],
+    ['detail', 'Project detail', selected?.name ?? '—'],
+    ['planning', 'Planning', selected?.name ?? '—'],
     ['alerts', 'Alerts', view.totals.atRisk],
     ['data', 'Data', 'Add & edit'],
   ];
@@ -175,28 +176,8 @@ export function App() {
             go({ screen: 'about' });
           }}
         />
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {nav.map((entry) => {
-            const [id] = entry;
-            // Planning is drawn inside the pair below, so it is skipped on its own turn.
-            if (id === 'planning') return null;
-            if (id !== 'detail') return navItem(entry);
-            const name = selected?.name ?? '—';
-            return (
-              <div className="nav-pair" key="detail-planning">
-                {navItem(entry)}
-                {navItem(nav.find(([n]) => n === 'planning')!)}
-                {/* Three lines down the margin hold about this much. Cutting the string
-                    here rather than leaving it to the stylesheet is what puts a visible
-                    ellipsis on the end — a clipped line in vertical writing just stops. */}
-                <span className="nav-pair-name" title={name}>
-                  {name.length > 32 ? `${name.slice(0, 31).trimEnd()}…` : name}
-                </span>
-              </div>
-            );
-          })}
-        </nav>
-        <div style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-accent-300)' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{nav.map(navItem)}</nav>
+        <div style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-chrome-quiet)' }}>
           Week {weekNumber(view.today)} · FY{String(view.today.getFullYear()).slice(2)}
           <br />
           {view.people.length} people · {view.projects.length} projects
@@ -223,7 +204,10 @@ export function App() {
               {blurb}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none', alignItems: 'center' }}>
+            {/* First in the corner, and on every screen, because it is about the whole
+                site rather than the one you happen to be on. */}
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {/* Planning works on one project at a time, so the way into that project's own
                 details belongs with the rest of the actions rather than buried in the grid. */}
             {screen === 'planning' && selected && (
