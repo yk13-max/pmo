@@ -21,18 +21,19 @@ a:hover { color: var(--color-accent-600); }
    the brand navy of the brand file's app icon, because the sidebar is already brand navy
    and paper in that colour would disappear into it instead of reading as dark.
 
-   The paper runs the full width of the side menu and up to its top edge, so it reads as
-   the menu's own header rather than a tile placed on it. The negative margins undo the
-   sidebar's padding; the min-height is what gives the mark room to be moved about in. */
+   The paper is a square taking the side menu's whole content width, which is what leaves
+   the mark room to be moved about in — sized tight to the mark there would be none. */
 .brand-paper { display: grid; place-items: center;
-  margin: calc(var(--space-8) * -1) calc(var(--space-6) * -1) 0;
-  padding: 26px 22px; min-height: 190px;
+  width: 100%; aspect-ratio: 1; padding: 22px; border-radius: 28px;
   background: var(--color-surface); transition: background 700ms ease; }
 .brand-grip { display: grid; place-items: center; cursor: grab;
   /* The pointer drives the drag, so the browser must not claim the gesture for scrolling
      or start a text selection halfway through one. */
-  touch-action: none; user-select: none; }
-.brand-grip.is-held { cursor: grabbing; }
+  touch-action: none; user-select: none;
+  /* Carries the mark home when it is let go. Suspended while held, so the drag itself
+     tracks the pointer exactly instead of easing along behind it. */
+  transition: transform 560ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.brand-grip.is-held { cursor: grabbing; transition: none; }
 .brand-grip > svg { grid-area: 1 / 1; transition: opacity 700ms ease; }
 .brand-mark-dark { opacity: 0; }
 /* Every part of the hover arrives quickly and leaves slowly, the paper and the cross-fade
@@ -43,32 +44,37 @@ a:hover { color: var(--color-accent-600); }
 .brand-paper:hover .brand-mark-dark { opacity: 1; }
 
 /* The panes' resting lean, and the settle back to it. Arriving is quick; leaving takes
-   three times as long, so the mark eases back into place rather than snapping. */
+   three times as long, so the mark eases back into place rather than snapping.
+
+   Every duration below is paired with the distance above it: the panes travel a set
+   number of degrees per second, so widening the movement lengthens the move rather than
+   hurrying it. The paper's own colour change keeps its shorter timing — it has no
+   distance to cover, so the panes now drift home a moment after the colour has. */
 .glass-pane { transform-box: fill-box; transform-origin: center;
-  transition: transform 780ms cubic-bezier(0.22, 0.61, 0.36, 1); }
-.brand-paper:hover .glass-pane { transition-duration: 240ms; }
+  transition: transform 1560ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.brand-paper:hover .glass-pane { transition-duration: 480ms; }
 .glass-pane-a { transform: rotate(-3deg); }
 .glass-pane-c { transform: rotate(4deg); }
 
-/* Under the pointer the stack opens a little — the outer panes slide apart along the
-   diagonal they already lean on — and each pane keeps a small wiggle going. The rects
-   are offset in the cycle so the three never swing together, which is what makes it
-   read as loose panes rather than one rocking object. */
-.brand-paper:hover .glass-pane-a { transform: rotate(-6deg) translate(-2px, 2px); }
-.brand-paper:hover .glass-pane-b { transform: rotate(1.5deg); }
-.brand-paper:hover .glass-pane-c { transform: rotate(7deg) translate(2px, -2px); }
-.brand-paper:hover .glass-pane > rect { animation: glass-wiggle 2.6s ease-in-out infinite; }
-.brand-paper:hover .glass-pane-b > rect { animation-delay: -0.9s; }
-.brand-paper:hover .glass-pane-c > rect { animation-delay: -1.7s; }
+/* Under the pointer the stack opens up — the outer panes slide apart along the diagonal
+   they already lean on — and each pane keeps a slow wiggle going. The rects are offset in
+   the cycle so the three never swing together, which is what makes it read as loose panes
+   rather than one rocking object. */
+.brand-paper:hover .glass-pane-a { transform: rotate(-9deg) translate(-4px, 4px); }
+.brand-paper:hover .glass-pane-b { transform: rotate(3deg); }
+.brand-paper:hover .glass-pane-c { transform: rotate(10deg) translate(4px, -4px); }
+.brand-paper:hover .glass-pane > rect { animation: glass-wiggle 5.2s ease-in-out infinite; }
+.brand-paper:hover .glass-pane-b > rect { animation-delay: -1.8s; }
+.brand-paper:hover .glass-pane-c > rect { animation-delay: -3.4s; }
 .glass-pane > rect { transform-box: fill-box; transform-origin: center; }
 @keyframes glass-wiggle {
   0%, 100% { transform: rotate(0deg); }
-  33% { transform: rotate(1.6deg); }
-  66% { transform: rotate(-1.4deg); }
+  33% { transform: rotate(3.2deg); }
+  66% { transform: rotate(-2.8deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .brand-paper, .brand-grip > svg, .glass-pane { transition: none; }
+  .brand-paper, .brand-grip, .brand-grip > svg, .glass-pane { transition: none; }
   .brand-paper:hover .glass-pane > rect { animation: none; }
 }
 

@@ -4,13 +4,13 @@ import { GlassMark } from './GlassMark';
 /** 2.3x the mark as first drawn in the sidebar. */
 const MARK = 83;
 
-/* The mark on its paper surface — a band across the full width of the side menu rather
-   than a tile sitting inside it. Both variants are drawn, stacked, and cross-faded, so
+/* The mark on its square of paper. Both variants are drawn, stacked, and cross-faded, so
    the mark reads light on paper and switches to the dark version as the paper turns navy
    under the pointer: the light/dark pair the brand file sets out.
 
-   It can also be picked up and moved, but only within its own paper. Nothing is stored:
-   where it is left is a property of this visit, not of the portfolio. */
+   It can be picked up and moved, but only within its own paper, and it eases back to the
+   middle the moment it is let go — the mark has one place it belongs, so being dragged is
+   something you do to it rather than a setting it keeps. */
 export function BrandMark() {
   const paper = useRef<HTMLDivElement>(null);
   const grip = useRef<HTMLDivElement>(null);
@@ -59,6 +59,10 @@ export function BrandMark() {
   const up = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     grip.current?.releasePointerCapture(e.pointerId);
     setHeld(false);
+    /* Letting go returns it to the middle. The transition that carries it back is only
+       on the stylesheet's resting rule, so the drag itself still tracks the pointer
+       exactly rather than lagging behind it. */
+    setAt({ x: 0, y: 0 });
   }, []);
 
   return (
@@ -71,8 +75,7 @@ export function BrandMark() {
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
-        onDoubleClick={() => setAt({ x: 0, y: 0 })}
-        title="Drag me around. Double-click to put me back."
+        title="Drag me around the paper."
       >
         <GlassMark size={MARK} variant="light" className="brand-mark-light" />
         <GlassMark size={MARK} variant="dark" className="brand-mark-dark" />
