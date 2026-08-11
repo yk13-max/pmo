@@ -7,9 +7,11 @@ import { Tabs } from '../components/Tabs';
 import { ProjectTypeEditor } from '../components/ProjectTypeEditor';
 import { ProjectFilters, ProjectHeaders, useProjectsTable } from '../components/ProjectsTable';
 
-/* Whole-portfolio JSON transfer is kept but taken off the toolbar — CSV is what people
-   actually exchange. Set this to true to put the two buttons back. */
-const SHOW_JSON_TRANSFER = false;
+/* CSV is what people exchange, but it is one sheet per kind of thing. The JSON pair moves
+   the portfolio whole — every project, person, booking, day off, plan, delivery type and
+   setting in one file — which is what you want for a backup or for moving between
+   machines. Both are on the toolbar. */
+const SHOW_JSON_TRANSFER = true;
 
 /* The two things on Settings that destroy work. Both are asked three times over, and the
    first yes is what downloads the backup, so nobody can walk past it. */
@@ -101,8 +103,19 @@ export function DataManager({
         throw new Error('missing projects, people or allocations');
       }
       if (!window.confirm(`Replace the current ${portfolio.projects.length} projects with ${parsed.projects.length} from this file?`)) return;
+      /* The file replaces the portfolio entire, so the count says what came in rather than
+         only the two lists — an import that quietly dropped the bookings or the plans
+         would otherwise look like a success. */
       replaceAll({ ...parsed, threshold: parsed.threshold ?? 85 });
-      setMessage({ tone: 'ok', text: `Loaded ${parsed.projects.length} projects and ${parsed.people.length} people.` });
+      const bookings = Object.keys(parsed.allocations ?? {}).length;
+      setMessage({
+        tone: 'ok',
+        text: `Loaded ${parsed.projects.length} projects, ${parsed.people.length} people, ${bookings} booking${
+          bookings === 1 ? '' : 's'
+        }, ${(parsed.tasks ?? []).length} planned task${(parsed.tasks ?? []).length === 1 ? '' : 's'} and ${
+          Object.keys(parsed.leave ?? {}).length
+        } month(s) of leave.`,
+      });
     } catch (e) {
       setMessage({ tone: 'bad', text: `That file could not be read — ${e instanceof Error ? e.message : 'invalid JSON'}.` });
     }
