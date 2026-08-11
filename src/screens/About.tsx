@@ -12,13 +12,8 @@ export function About({ onLeave }: { onLeave: () => void }) {
           push the pair off the middle of the window. */}
       <div className="about-lockup">
         <BrandLockup onDoubleClick={onLeave} />
-        {/* Under the pointer the opening words fold away and the name slides into the
-            middle on its own. The two parts are separate elements because only the first
-            of them moves. */}
-        <p className="about-credit">
-          <span className="about-credit-lead">Created By </span>
-          <span>Saranan</span>
-        </p>
+        {/* Under the pointer the whole line ducks out of the way — see the stylesheet. */}
+        <p className="about-credit">By Saranan</p>
       </div>
     </div>
   );
