@@ -126,16 +126,20 @@ a:hover { color: var(--color-accent-600); }
 }
 
 /* The credit page: nothing but the lockup and the line, in the middle of the navy. */
-.about { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--space-4); background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
-/* The lockup sizes its paper against whatever holds it, so the width is set here. */
-.about > div:first-child { width: 240px; }
-/* The page has the room the menu column does not: the name runs across in one line, a
-   third larger than the 20px it is set at beside the nav, and half again on top of that. */
-.about .brand-wordmark { font-size: 36px; white-space: nowrap; }
-/* Laid out rather than run together, so the opening words can be collapsed without the
-   name they sit against moving off its baseline. */
-.about-credit { display: flex; justify-content: center; align-items: baseline;
+.about { min-height: 100vh; display: grid; place-items: center;
+  background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
+/* The centred thing is the mark and the name — nothing else is in this box, so the grid
+   puts them in the middle of the window on both axes. The lockup sizes its paper against
+   whatever holds it, so the width is set here too. */
+.about-lockup { position: relative; width: 240px; }
+/* A word to a line as everywhere else, but at the size the page has room for: a third
+   larger than the 20px it is set at beside the nav, and half again on top of that. */
+.about .brand-wordmark { font-size: 36px; }
+/* Hung off the bottom of the lockup rather than stacked under it, which is what keeps the
+   mark and the name on the middle of the window. Laid out rather than run together, so the
+   opening words can be collapsed without the name beside them moving off its baseline. */
+.about-credit { position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  display: flex; justify-content: center; align-items: baseline; white-space: nowrap;
   margin: var(--space-6) 0 0; font-family: var(--font-heading); font-weight: 600; font-size: 16.9px; letter-spacing: 0.02em;
   transition: color 700ms ease; }
 .about-credit-lead { white-space: pre; overflow: hidden; max-width: 8em;
@@ -147,7 +151,6 @@ a:hover { color: var(--color-accent-600); }
    every other part of the hover. */
 .about:has(.brand-paper:hover) .about-credit { color: rgba(255, 255, 255, 0.34); transition-duration: 200ms; }
 .about:has(.brand-paper:hover) .about-credit-lead { max-width: 0; opacity: 0; transition-duration: 380ms; }
-.about-hint { margin: 0; font-size: 13px; color: var(--color-accent-300); }
 
 /* Project detail and Planning are the two areas about one project, so its name is said
    once for the pair rather than twice: turned on its side in the margin they share,

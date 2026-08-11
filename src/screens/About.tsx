@@ -7,15 +7,19 @@ import { BrandLockup } from '../components/BrandLockup';
 export function About({ onLeave }: { onLeave: () => void }) {
   return (
     <div className="about">
-      <BrandLockup onDoubleClick={onLeave} stacked={false} />
-      {/* Under the pointer the opening words fold away and the name slides into the middle
-          on its own. The two parts are separate elements because only the first of them
-          moves. */}
-      <p className="about-credit">
-        <span className="about-credit-lead">Created By </span>
-        <span>Saranan</span>
-      </p>
-      <p className="about-hint">Double-click the mark to go back.</p>
+      {/* The mark and the name are what the page is centred on. The credit hangs off the
+          bottom of them rather than sitting in the same column, so its height does not
+          push the pair off the middle of the window. */}
+      <div className="about-lockup">
+        <BrandLockup onDoubleClick={onLeave} />
+        {/* Under the pointer the opening words fold away and the name slides into the
+            middle on its own. The two parts are separate elements because only the first
+            of them moves. */}
+        <p className="about-credit">
+          <span className="about-credit-lead">Created By </span>
+          <span>Saranan</span>
+        </p>
+      </div>
     </div>
   );
 }
