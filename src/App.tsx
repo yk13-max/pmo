@@ -5,7 +5,8 @@ import { useRoute } from './lib/route';
 import { weekNumber } from './lib/dates';
 import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
-import { BrandMark } from './components/BrandMark';
+import { BrandLockup } from './components/BrandLockup';
+import { About } from './screens/About';
 import { ProjectForm } from './components/ProjectForm';
 import { PersonForm } from './components/PersonForm';
 import { PersonDetail } from './components/PersonDetail';
@@ -18,9 +19,11 @@ import { Alerts } from './screens/Alerts';
 import { Planning } from './screens/Planning';
 import { DataManager } from './screens/DataManager';
 
-export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | 'detail' | 'planning' | 'alerts' | 'data';
+export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | 'detail' | 'planning' | 'alerts' | 'data' | 'about';
 
-const HEADS: Record<ScreenId, [kicker: string, title: string, blurb: string]> = {
+/* Every screen that wears the shell. The credit page is not one of them — it takes over
+   the window instead, so it has no header to fill in. */
+const HEADS: Record<Exclude<ScreenId, 'about'>, [kicker: string, title: string, blurb: string]> = {
   portfolio: [
     'Both delivery types',
     'Portfolio',
@@ -97,6 +100,10 @@ export function App() {
   const selected =
     view.projects.find((p) => p.id === (projectId ?? lastProjectId)) ?? view.projects[0] ?? null;
 
+  /* Where the mark was double-clicked from, so double-clicking it again on the credit page
+     puts you back in the area you left rather than at the front. */
+  const [cameFrom, setCameFrom] = useState<ScreenId>('portfolio');
+
   /* Moving between areas closes whatever was open over the top, so going back never
      leaves an edit pane floating above a screen it does not belong to. */
   const setScreen = (id: ScreenId) => {
@@ -119,13 +126,15 @@ export function App() {
     URL.revokeObjectURL(url);
   };
 
+  /* Project detail and Planning carry no count of their own: the project they are both
+     about is named once, on its side, in the margin the pair share. */
   const nav: [ScreenId, string, string | number][] = [
     ['portfolio', 'Portfolio', view.projects.length],
     ['resources', 'Resourcing', `${view.people.length} people`],
     ['financials', 'Financials', money(view.totals.value)],
     ['timeline', 'Timeline', 'Two years'],
-    ['detail', 'Project detail', selected?.name ?? '—'],
-    ['planning', 'Planning', selected?.name ?? '—'],
+    ['detail', 'Project detail', ''],
+    ['planning', 'Planning', ''],
     ['alerts', 'Alerts', view.totals.atRisk],
     ['data', 'Data', 'Add & edit'],
   ];
@@ -137,46 +146,55 @@ export function App() {
       ? view.monthsFor(editing.project)
       : { months: view.months, labels: view.monthLabels };
 
+  /* Double-clicking the mark leads here and double-clicking it again leads back. It takes
+     the whole window: there is no menu on it, because it is not part of the tool. */
+  if (screen === 'about') return <About onLeave={() => go({ screen: cameFrom })} />;
+
   const [kicker, title, blurb] = HEADS[screen];
+
+  const navItem = ([id, label, count]: [ScreenId, string, string | number]) => (
+    <button
+      key={id}
+      type="button"
+      className="nav-item"
+      aria-current={screen === id ? 'page' : undefined}
+      onClick={() => setScreen(id)}
+    >
+      <span>{label}</span>
+      {count !== '' && <span className="count">{count}</span>}
+    </button>
+  );
 
   return (
     <div className="shell">
       <aside className="sidebar">
-        {/* The brand file's stacked lockup: mark on top, name centred beneath it. The
-            eyebrow follows the name's alignment so the whole block reads as one thing. */}
-        <div style={{ textAlign: 'center' }}>
-          <BrandMark />
-          {/* One word per line, as the brand file's stacked lockup sets it, but with the
-              break opened up and the letters tracked out a little. */}
-          <div
-            className="brand-wordmark"
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 600,
-              fontSize: 20,
-              lineHeight: 1.4,
-              letterSpacing: '0.04em',
-              marginTop: 14,
-            }}
-          >
-            <span style={{ display: 'block' }}>Project</span>
-            <span style={{ display: 'block' }}>Glass</span>
-          </div>
-          <div className="eyebrow" style={{ marginTop: 6 }}>PMO Portfolio Tracker</div>
-        </div>
+        <BrandLockup
+          tagline="PMO Portfolio Tracker"
+          onDoubleClick={() => {
+            setCameFrom(screen);
+            go({ screen: 'about' });
+          }}
+        />
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {nav.map(([id, label, count]) => (
-            <button
-              key={id}
-              type="button"
-              className="nav-item"
-              aria-current={screen === id ? 'page' : undefined}
-              onClick={() => setScreen(id)}
-            >
-              <span>{label}</span>
-              <span className="count">{count}</span>
-            </button>
-          ))}
+          {nav.map((entry) => {
+            const [id] = entry;
+            // Planning is drawn inside the pair below, so it is skipped on its own turn.
+            if (id === 'planning') return null;
+            if (id !== 'detail') return navItem(entry);
+            const name = selected?.name ?? '—';
+            return (
+              <div className="nav-pair" key="detail-planning">
+                {navItem(entry)}
+                {navItem(nav.find(([n]) => n === 'planning')!)}
+                {/* Three lines down the margin hold about this much. Cutting the string
+                    here rather than leaving it to the stylesheet is what puts a visible
+                    ellipsis on the end — a clipped line in vertical writing just stops. */}
+                <span className="nav-pair-name" title={name}>
+                  {name.length > 32 ? `${name.slice(0, 31).trimEnd()}…` : name}
+                </span>
+              </div>
+            );
+          })}
         </nav>
         <div style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-accent-300)' }}>
           Week {weekNumber(view.today)} · FY{String(view.today.getFullYear()).slice(2)}

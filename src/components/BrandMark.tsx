@@ -1,8 +1,24 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlassMark } from './GlassMark';
 
 /** 2.3x the mark as first drawn in the sidebar, 80% larger again, 30% smaller, then 10% up. */
 const MARK = 114;
+
+/* The arrival, in milliseconds. One pane's flight, the beat between one pane leaving its
+   corner and the next, how far the paper starts turning before the last pane has quite
+   finished settling, and how long that turn takes.
+
+   These are the only place the timing is written down: the stylesheet reads them as
+   custom properties off the paper, and the phase changes below are set from the same
+   numbers, so the CSS and the JavaScript cannot drift apart. */
+const FLIGHT = 1900;
+const STAGGER = 240;
+const OVERLAP = 160;
+const REVEAL = 1400;
+/** When the paper begins turning from navy to paper — a moment before the last pane lands. */
+const TURN = FLIGHT + STAGGER * 2 - OVERLAP;
+
+type Phase = 'arriving' | 'turning' | 'rest';
 
 /* The mark on its square of paper. Both variants are drawn, stacked, and cross-faded, so
    the mark reads light on paper and switches to the dark version as the paper turns navy
@@ -11,7 +27,7 @@ const MARK = 114;
    It can be picked up and moved, but only within its own paper, and it eases back to the
    middle the moment it is let go — the mark has one place it belongs, so being dragged is
    something you do to it rather than a setting it keeps. */
-export function BrandMark() {
+export function BrandMark({ onDoubleClick }: { onDoubleClick?: () => void }) {
   const paper = useRef<HTMLDivElement>(null);
   const grip = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState({ x: 0, y: 0 });
@@ -56,6 +72,27 @@ export function BrandMark() {
     [held],
   );
 
+  /* The panes fly in as the dark mark on navy paper and only then does the paper turn,
+     so the arrival ends where the resting logo begins rather than cutting to it. Reduced
+     motion skips the whole thing and starts at rest. */
+  const [phase, setPhase] = useState<Phase>(() =>
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'rest' : 'arriving',
+  );
+  useEffect(() => {
+    if (phase === 'rest') return;
+    const turn = window.setTimeout(() => setPhase('turning'), TURN);
+    const done = window.setTimeout(() => setPhase('rest'), TURN + REVEAL);
+    return () => {
+      window.clearTimeout(turn);
+      window.clearTimeout(done);
+    };
+    // Set once: the timers run the arrival through to the end on their own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /* Reaching for the mark ends the arrival there and then. Hover wants the dark mark on
+     navy too, so dropping the arrival mid-flight hands over to it without a jump. */
+  const settle = useCallback(() => setPhase('rest'), []);
+
   const up = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     grip.current?.releasePointerCapture(e.pointerId);
     setHeld(false);
@@ -66,7 +103,18 @@ export function BrandMark() {
   }, []);
 
   return (
-    <div className="brand-paper" ref={paper}>
+    <div
+      className={phase === 'rest' ? 'brand-paper' : `brand-paper is-${phase}`}
+      ref={paper}
+      onPointerEnter={settle}
+      style={
+        {
+          '--brand-flight': `${FLIGHT}ms`,
+          '--brand-stagger': `${STAGGER}ms`,
+          '--brand-reveal': `${REVEAL}ms`,
+        } as React.CSSProperties
+      }
+    >
       <div
         ref={grip}
         className={held ? 'brand-grip is-held' : 'brand-grip'}
@@ -75,7 +123,8 @@ export function BrandMark() {
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
-        title="Drag me around the paper."
+        onDoubleClick={onDoubleClick}
+        title={onDoubleClick ? 'Drag me around the paper. Double-click me.' : 'Drag me around the paper.'}
       >
         <GlassMark size={MARK} variant="light" className="brand-mark-light" />
         <GlassMark size={MARK} variant="dark" className="brand-mark-dark" />
