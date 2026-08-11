@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { GlassMark } from './GlassMark';
 
-/** 2.3x the mark as first drawn in the sidebar, and 80% larger again. */
-const MARK = 149;
+/** 2.3x the mark as first drawn in the sidebar, 80% larger again, then 30% smaller. */
+const MARK = 104;
 
 /* The mark on its square of paper. Both variants are drawn, stacked, and cross-faded, so
    the mark reads light on paper and switches to the dark version as the paper turns navy

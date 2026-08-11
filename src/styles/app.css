@@ -24,7 +24,7 @@ a:hover { color: var(--color-accent-600); }
    The paper is a square taking the side menu's whole content width, which is what leaves
    the mark room to be moved about in — sized tight to the mark there would be none. */
 .brand-paper { display: grid; place-items: center;
-  width: 100%; aspect-ratio: 1; padding: 14px; border-radius: 28px;
+  width: 100%; aspect-ratio: 1; padding: 22px; border-radius: 28px;
   background: var(--color-surface); transition: background 700ms ease; }
 .brand-grip { display: grid; place-items: center; cursor: grab;
   /* The pointer drives the drag, so the browser must not claim the gesture for scrolling
