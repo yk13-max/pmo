@@ -1,21 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { ProjectView } from '../lib/derive';
 import type { PortfolioView } from '../lib/derive';
+import { RAG_ORDER } from '../lib/derive';
+import { SortHeaders, useSortedRows, type Dir, type SortColumn } from './SortHeaders';
 
-const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
-
-type Dir = 'asc' | 'desc';
-
-interface Column {
-  id: string;
-  label: string;
-  width?: number;
-  align?: 'right';
-  /** What this column sorts on. Omitted for the actions column. */
-  sortBy?: (p: ProjectView) => string | number;
-  /** Which way round the first click sorts — biggest first reads better for money. */
-  firstDir?: Dir;
-}
+type Column = SortColumn<ProjectView>;
 
 /* Money columns sort on the base-currency figure so a mixed-currency portfolio ranks
    honestly; the cells still show what each client is billed. */
@@ -48,11 +37,10 @@ const EMPTY: Filters = { search: '', type: 'All', facing: 'All', owner: 'All', r
 
 export function useProjectsTable(projects: ProjectView[]) {
   const [filters, setFilters] = useState<Filters>(EMPTY);
-  const [sort, setSort] = useState<{ id: string; dir: Dir }>({ id: 'name', dir: 'asc' });
 
-  const rows = useMemo(() => {
+  const kept = useMemo(() => {
     const needle = filters.search.trim().toLowerCase();
-    const kept = projects.filter(
+    return projects.filter(
       (p) =>
         (!needle ||
           p.name.toLowerCase().includes(needle) ||
@@ -64,17 +52,9 @@ export function useProjectsTable(projects: ProjectView[]) {
         (filters.owner === 'All' || p.pmName === filters.owner) &&
         (filters.rag === 'All' || p.ragLabel === filters.rag),
     );
-    const by = COLUMNS.find((c) => c.id === sort.id)?.sortBy;
-    if (!by) return kept;
-    const flip = sort.dir === 'asc' ? 1 : -1;
-    // Sorted on a copy, and ties fall back to the name so the order never jitters.
-    return [...kept].sort((a, b) => {
-      const x = by(a);
-      const y = by(b);
-      if (x === y) return a.name.localeCompare(b.name);
-      return (typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y) : Number(x) - Number(y)) * flip;
-    });
-  }, [projects, filters, sort]);
+  }, [projects, filters]);
+
+  const { rows, sort, setSort } = useSortedRows(kept, COLUMNS, { id: 'name', dir: 'asc' }, (p) => p.name);
 
   return { rows, filters, setFilters, sort, setSort, filtered: rows.length !== projects.length };
 }
@@ -167,7 +147,7 @@ function Picker({
   );
 }
 
-/** The header row. Clicking a title sorts by it; clicking again reverses. */
+/** The project list's header row, over the shared sorting behaviour. */
 export function ProjectHeaders({
   sort,
   setSort,
@@ -175,33 +155,5 @@ export function ProjectHeaders({
   sort: { id: string; dir: Dir };
   setSort: (s: { id: string; dir: Dir }) => void;
 }) {
-  return (
-    <tr>
-      {COLUMNS.map((c) => {
-        const active = sort.id === c.id;
-        if (!c.sortBy) return <th key={c.id} style={{ width: c.width }} />;
-        return (
-          <th
-            key={c.id}
-            style={{ width: c.width, textAlign: c.align, padding: 0 }}
-            aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-          >
-            <button
-              type="button"
-              className="sort-header"
-              style={{ justifyContent: c.align === 'right' ? 'flex-end' : 'flex-start' }}
-              onClick={() =>
-                setSort({ id: c.id, dir: active ? (sort.dir === 'asc' ? 'desc' : 'asc') : (c.firstDir ?? 'asc') })
-              }
-            >
-              {c.label}
-              <span aria-hidden style={{ opacity: active ? 1 : 0.25 }}>
-                {active && sort.dir === 'desc' ? '▾' : '▴'}
-              </span>
-            </button>
-          </th>
-        );
-      })}
-    </tr>
-  );
+  return <SortHeaders columns={COLUMNS} sort={sort} setSort={setSort} />;
 }

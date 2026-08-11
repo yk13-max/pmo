@@ -358,14 +358,15 @@ const CHART_W = 1040;
 /** The gutter left of the plot: room for the money labels, and for the delivery type's
     name when a phase scale is on show and it needs writing out in full. */
 const PLOT_LEFT = 70;
-const PLOT_LEFT_NAMED = 190;
 /** Room the money labels take, in pixels — what the axis title stands clear of. */
 const Y_LABEL_W = 46;
 const PLOT_RIGHT = 1020;
 /** Height of the plot box itself. Everything above and below is measured from it. */
 const PLOT_H = 407;
 /** Room for one phase scale, and for the percentage labels under the plot. */
-const BAND_H = 84;
+const BAND_H = 104;
+/** The line above the phase labels that names the delivery type. */
+const TYPE_ROW = 22;
 const TICK_ROW = 26;
 
 /* Round money for the budget axis. Two things keep it relevant: the values come off a
@@ -435,8 +436,10 @@ function Scatter({
   const budgets = projects.map((p) => p.budget).filter((v) => v > 0);
   const maxBudget = Math.max(1, ...budgets);
   const minBudget = budgets.length ? Math.min(...budgets) : 1;
-  // The gutter widens to hold the type's full name whenever the phase scale is on show.
-  const plotLeft = phases.length ? PLOT_LEFT_NAMED : PLOT_LEFT;
+  /* The plot starts in the same place whether or not the phase scale is on show: the
+     type's name sits above the phase labels rather than out to their left, so turning the
+     scale on no longer shunts the whole chart sideways. */
+  const plotLeft = PLOT_LEFT;
   const x = (pct: number) => plotLeft + (pct / 100) * (PLOT_RIGHT - plotLeft);
   const y = (budget: number) => plotBottom - Math.sqrt(budget / maxBudget) * PLOT_H;
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
@@ -495,7 +498,9 @@ function Scatter({
             means the project manager has flagged a problem.
           </p>
         </div>
-        <div style={{ flex: 'none', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+        {/* marginLeft keeps these against the right edge of the chart even when the lede
+            above is long enough to push them onto a line of their own. */}
+        <div style={{ flex: 'none', marginLeft: 'auto', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
@@ -621,7 +626,7 @@ function Scatter({
                 x={x}
                 top={4}
                 height={plotTop - 18}
-                gutter={plotLeft}
+                left={x(0)}
                 chartH={chartH}
               />
             )}
@@ -838,7 +843,7 @@ function PhaseAxis({
   x,
   top,
   height,
-  gutter,
+  left,
   chartH,
 }: {
   type: ProjectTypeDef | undefined;
@@ -847,8 +852,8 @@ function PhaseAxis({
   x: (pct: number) => number;
   top: number;
   height: number;
-  /** How much room there is left of the plot for the type's name. */
-  gutter: number;
+  /** Where the plot starts, so the type's name lines up with the first phase. */
+  left: number;
   /** The canvas height the band is placed against; it changes with the bands on show. */
   chartH: number;
 }) {
@@ -856,24 +861,22 @@ function PhaseAxis({
   const n = type.phases.length;
   return (
     <>
-      {/* The type is named in full here, in the same box the phase labels use, so it sits
-          on the same line as their numbers and titles rather than riding above them. */}
+      {/* The type is named on its own line above the phase labels, starting where the plot
+          starts. Out in a left-hand gutter it would push the whole plot across; here it
+          reads as the heading of the row of phases beneath it and costs nothing sideways. */}
       <span
         style={{
           position: 'absolute',
-          left: 0,
+          left: `${(left / CHART_W) * 100}%`,
           top: `${(top / chartH) * 100}%`,
-          height: `${(height / chartH) * 100}%`,
-          width: `${((gutter - 14) / CHART_W) * 100}%`,
+          height: `${(TYPE_ROW / chartH) * 100}%`,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
-          textAlign: 'right',
           fontSize: 12,
           lineHeight: 1.25,
           letterSpacing: '.06em',
           textTransform: 'uppercase',
-          textWrap: 'balance',
+          whiteSpace: 'nowrap',
           fontWeight: 600,
           color: colour,
         }}
@@ -888,8 +891,8 @@ function PhaseAxis({
             position: 'absolute',
             left: `${(x((i / n) * 100) / CHART_W) * 100}%`,
             width: `${(((x(100) - x(0)) / n) / CHART_W) * 100}%`,
-            top: `${(top / chartH) * 100}%`,
-            height: `${(height / chartH) * 100}%`,
+            top: `${((top + TYPE_ROW) / chartH) * 100}%`,
+            height: `${((height - TYPE_ROW) / chartH) * 100}%`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

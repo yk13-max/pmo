@@ -311,6 +311,9 @@ export interface PortfolioView {
   today: Date;
 }
 
+/** Worst first, so a status column sorts the way a delivery lead reads it. */
+export const RAG_ORDER = { R: 0, A: 1, G: 2 } as const;
+
 export function usePortfolioView(portfolio: Portfolio): PortfolioView {
   return useMemo(() => {
     const today = new Date();

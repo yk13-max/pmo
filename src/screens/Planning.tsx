@@ -43,7 +43,8 @@ export function Planning({
   const chosen = projectId ?? view.projects[0]?.id ?? '';
   const [zoom, setZoom] = useState<Zoom>('Weeks');
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
-  const [showCritical, setShowCritical] = useState(true);
+  // Off to begin with: the critical path is something you ask for, not the default read.
+  const [showCritical, setShowCritical] = useState(false);
 
   const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
 
@@ -152,26 +153,6 @@ export function Planning({
             ))}
           </select>
         </label>
-        {/* Planning is opt-in per project. Left off, the project keeps the start, end and
-            phase dates entered on it, and every other screen reads those as it always did. */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={Boolean(project.usesPlan)}
-            onChange={(e) => saveProject({ ...(project as unknown as Project), usesPlan: e.target.checked })}
-            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
-          />
-          Plan this project here
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={showCritical}
-            onChange={(e) => setShowCritical(e.target.checked)}
-            style={{ accentColor: 'var(--color-accent-2)', width: 15, height: 15 }}
-          />
-          Critical path
-        </label>
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Zoom</span>
           {ZOOMS.map((z) => (
@@ -179,6 +160,30 @@ export function Planning({
               {z.id}
             </button>
           ))}
+        </span>
+        {/* Both switches sit together at the right, away from the project being picked and
+            the zoom that changes what the chart shows. */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'auto' }}>
+          {/* Planning is opt-in per project. Left off, the project keeps the start, end and
+              phase dates entered on it, and every other screen reads those as it always did. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(project.usesPlan)}
+              onChange={(e) => saveProject({ ...(project as unknown as Project), usesPlan: e.target.checked })}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Plan this project here
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={showCritical}
+              onChange={(e) => setShowCritical(e.target.checked)}
+              style={{ accentColor: 'var(--color-accent-2)', width: 15, height: 15 }}
+            />
+            Critical path
+          </label>
         </span>
       </div>
 

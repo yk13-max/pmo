@@ -1,11 +1,34 @@
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import { money } from '../lib/derive';
+import { money, RAG_ORDER } from '../lib/derive';
+import { SortHeaders, useSortedRows, type SortColumn } from '../components/SortHeaders';
 import { BASE_CURRENCY, CURRENCIES } from '../types';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 
+/* The customer table sorts the same way the project list on Data does. Money columns sort
+   on the base-currency figure, so a portfolio billed in three currencies still ranks
+   honestly while each row goes on showing what that client is actually charged. */
+const CUSTOMER_COLUMNS: SortColumn<ProjectView>[] = [
+  { id: 'name', label: 'Project', sortBy: (p) => p.name.toLowerCase() },
+  { id: 'type', label: 'Type', width: 64, sortBy: (p) => p.typeShort },
+  { id: 'budget', label: 'Budget', width: 96, align: 'right', sortBy: (p) => p.budget, firstDir: 'desc' },
+  { id: 'actual', label: 'Spent so far', width: 110, align: 'right', sortBy: (p) => p.actual, firstDir: 'desc' },
+  { id: 'burn', label: 'Budget used', width: 96, align: 'right', sortBy: (p) => p.burn, firstDir: 'desc' },
+  { id: 'currency', label: 'Billed in', width: 82, sortBy: (p) => p.currencyLabel },
+  { id: 'value', label: 'Client agreed', width: 110, align: 'right', sortBy: (p) => p.valueBase, firstDir: 'desc' },
+  { id: 'billed', label: 'Invoiced', width: 96, align: 'right', sortBy: (p) => p.billedBase, firstDir: 'desc' },
+  { id: 'tobill', label: 'Still to invoice', width: 110, align: 'right', sortBy: (p) => p.valueBase - p.billedBase, firstDir: 'desc' },
+  { id: 'rag', label: 'Status', width: 100, sortBy: (p) => RAG_ORDER[p.rag] },
+];
+
 export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const customer = view.projects.filter((p) => p.cust);
+  const { rows: customerRows, sort: customerSort, setSort: setCustomerSort } = useSortedRows(
+    customer,
+    CUSTOMER_COLUMNS,
+    { id: 'name', dir: 'asc' },
+    (p) => p.name,
+  );
   const internal = view.projects.filter((p) => !p.cust);
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
 
@@ -115,21 +138,10 @@ export function Financials({ view, onOpenProject }: { view: PortfolioView; onOpe
       <div style={{ overflowX: 'auto' }}>
         <table className="table" style={{ marginTop: 'var(--space-4)' }}>
           <thead>
-            <tr>
-              <th>Project</th>
-              <th style={{ width: 64 }}>Type</th>
-              <th style={{ textAlign: 'right', width: 96 }}>Budget</th>
-              <th style={{ textAlign: 'right', width: 110 }}>Spent so far</th>
-              <th style={{ textAlign: 'right', width: 96 }}>Budget used</th>
-              <th style={{ width: 82 }}>Billed in</th>
-              <th style={{ textAlign: 'right', width: 110 }}>Client agreed</th>
-              <th style={{ textAlign: 'right', width: 96 }}>Invoiced</th>
-              <th style={{ textAlign: 'right', width: 110 }}>Still to invoice</th>
-              <th style={{ width: 100 }}>Status</th>
-            </tr>
+            <SortHeaders columns={CUSTOMER_COLUMNS} sort={customerSort} setSort={setCustomerSort} />
           </thead>
           <tbody>
-            {customer.map((p) => (
+            {customerRows.map((p) => (
               <tr key={p.id}>
                 <td>
                   <button type="button" className="card-link" onClick={() => onOpenProject(p.id)}>
