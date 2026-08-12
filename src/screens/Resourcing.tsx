@@ -142,7 +142,7 @@ export function Resourcing({
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none', marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: '1 1 100%' }}>
           <label className="field" style={{ margin: 0 }}>
             <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
               Flag over-allocation above {view.threshold}%
@@ -158,7 +158,10 @@ export function Resourcing({
             />
           </label>
           <WindowControls view={view} onSetWindow={onSetWindow} />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, paddingBottom: 6, cursor: 'pointer' }}>
+          <button type="button" className="btn btn-secondary" onClick={onAddPerson}>
+            Add person
+          </button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, paddingBottom: 6, cursor: 'pointer', marginLeft: 'auto' }}>
             <input
               type="checkbox"
               checked={showPct}
@@ -167,9 +170,6 @@ export function Resourcing({
             />
             Show %
           </label>
-          <button type="button" className="btn btn-secondary" onClick={onAddPerson}>
-            Add person
-          </button>
         </div>
       </div>
 

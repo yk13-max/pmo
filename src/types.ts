@@ -57,6 +57,8 @@ export interface Project {
   /** Whether the phase gates follow the plan rather than the dates typed on the project.
       The typed dates are kept either way, so unticking gives them back. */
   mirrorPhases?: boolean;
+  /** Whether the plan books its people, instead of the bookings being typed by hand. */
+  plansResource?: boolean;
 }
 
 /** The delivery type that carries the sterile question. */
@@ -135,8 +137,14 @@ export interface Task {
   /** Which of the project type's phases this sits under. */
   phase: number;
   name: string;
-  /** Who is doing it — a name, not a person on the team. Resourcing is not linked yet. */
+  /** Who is doing it, as typed. Kept alongside `ownerId` so a plan built before people
+      were linked still reads, and so the name survives in an exported sheet. */
   owner: string;
+  /** The person on the team it draws from, when the plan is booking people. */
+  ownerId?: string;
+  /** How much of that person's day the task takes, 0–100. Half of a two-day task is one
+      day of their time — eight hours — not two. */
+  weight?: number;
   /** Working days of work. A task always occupies at least one. */
   days: number;
   /** How this task is pinned to the calendar. */

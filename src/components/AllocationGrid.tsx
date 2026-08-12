@@ -15,6 +15,7 @@ export function AllocationGrid({
   /** Ids of people whose project types do not cover this project. */
   ineligible,
   typeLabel,
+  readOnly,
   onChange,
 }: {
   people: Person[];
@@ -27,6 +28,8 @@ export function AllocationGrid({
   otherLoads: Record<string, number[]>;
   ineligible: Set<string>;
   typeLabel: string;
+  /** Set when the plan is booking these people: the figures still show, but not for editing. */
+  readOnly?: boolean;
   onChange: (personId: string, month: string, hours: number) => void;
 }) {
   if (!people.length) {
@@ -79,13 +82,16 @@ export function AllocationGrid({
                         min={0}
                         max={full}
                         step={0.5}
-                        disabled={barred}
+                        disabled={barred || readOnly}
+                        readOnly={readOnly}
                         aria-label={`${person.name}, ${monthLabels[i]}, hours`}
                         title={
-                          barred
-                            ? `${person.name} is not assigned to ${typeLabel} projects`
-                            : over
-                              ? `${person.name} is booked ${asDays(total)} days across all projects in ${monthLabels[i]}, past their ${asDays(full)}`
+                          readOnly
+                            ? `Booked by the plan: ${asDays(hours)} days in ${monthLabels[i]}`
+                            : barred
+                              ? `${person.name} is not assigned to ${typeLabel} projects`
+                              : over
+                                ? `${person.name} is booked ${asDays(total)} days across all projects in ${monthLabels[i]}, past their ${asDays(full)}`
                               : hours
                                 ? `${asDays(hours)} days`
                                 : undefined

@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { schedule } from './schedule';
+import { effectiveAllocations, planBookedProjects } from './planLoad';
 import { PRIORITY_LABEL } from '../types';
 import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsBetween, monthsFrom, shortDate, shortMonth } from './dates';
 
@@ -301,6 +302,8 @@ export interface PortfolioView {
       it always reaches the project's own end date. Booking has to be possible for every
       month the work actually runs, whatever the window happens to be set to. */
   monthsFor: (project: { startDate: string; endDate: string }) => { months: string[]; labels: string[] };
+  /** Projects whose bookings come from their plan — theirs are read-only. */
+  planBooked: Set<string>;
   allocationsFor: (projectId: string, months?: string[]) => { person: Person; hours: number[]; loads: number[]; totalHours: number }[];
   /** This project's bookings in hours, keyed `${personId}|${month}`, for the edit form. */
   allocationsOf: (projectId: string, months?: string[]) => Record<string, number>;
@@ -321,7 +324,12 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const loadPerMonth = new Map<string, number[]>();
     // Long windows repeat month names across years, so they carry the year too.
     const monthLabels = months.map((m) => (portfolio.window.months > 12 ? monthKeyLabel(m) : shortMonth(m)));
-    const { threshold, allocations } = portfolio;
+    const { threshold } = portfolio;
+    /* One set of bookings for the whole app. Projects booking their people from a plan have
+       their stored bookings set aside and the plan's own put in their place, so resourcing,
+       the alerts and the portfolio's draw all move together when the switch is thrown. */
+    const allocations = effectiveAllocations(portfolio);
+    const planBooked = planBookedProjects(portfolio);
     /* Archived people leave every screen but the archive. Their bookings stay in the
        store, so what a project drew historically is still true; only the planning
        forward stops counting them. The full list is kept for looking up names. */
@@ -590,6 +598,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         ).length,
       },
       monthsFor,
+      planBooked,
       allocationsFor,
       allocationsOf,
       spreadFor,

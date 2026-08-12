@@ -498,10 +498,11 @@ function Scatter({
             means the project manager has flagged a problem.
           </p>
         </div>
-        {/* marginLeft keeps these against the right edge of the chart even when the lede
-            above is long enough to push them onto a line of their own. */}
-        <div style={{ flex: 'none', marginLeft: 'auto', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        {/* Its own full-width line under the lede: the chips sit where they always have, on
+            the left, and only the tick is pushed over to the chart's right edge. */}
+        <div style={{ flex: '1 1 100%', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+          <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
             <input
               type="checkbox"
               checked={showNames}
@@ -510,7 +511,6 @@ function Scatter({
             />
             Name every project
           </label>
-          <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
         </div>
       </div>
       <div style={{ position: 'relative' }}>

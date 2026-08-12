@@ -95,7 +95,7 @@ export function ProjectForm({
   allocations: Record<string, number>;
   /** Each person's load from every other project, for the over-booking warning. */
   otherLoads: Record<string, number[]>;
-  onSave: (project: Project, allocations: Record<string, number>) => void;
+  onSave: (project: Project, allocations?: Record<string, number>) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
 }) {
@@ -142,6 +142,10 @@ export function ProjectForm({
     errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
 
   const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
+  /* Bookings come from the plan while this is on, so the grid below reports rather than
+     accepts. The figures in it are the plan's own — every screen reads the same set. */
+  const planBooked = Boolean(project?.usesPlan && project?.plansResource);
+
   /* The plan is read live so the gates and the milestone list always show what the Gantt
      currently says, rather than whatever it said when the form was opened. */
   const planned = schedule(
@@ -183,7 +187,11 @@ export function ProjectForm({
         phaseDates,
         invoiceDates: internal ? [] : invoiceDates,
       },
-      alloc,
+      /* A plan-booked project's hours come from its tasks, so there is nothing here to
+         save. Sending the grid back would overwrite what was typed by hand with a copy of
+         the plan, and that is exactly what should still be waiting if the switch goes off
+         again. */
+      planBooked ? undefined : alloc,
     );
   };
 
@@ -612,7 +620,15 @@ export function ProjectForm({
       <fieldset className="fieldset">
         <legend>Who is working on it</legend>
         {touched && errors.types && <div className="field-error" style={{ marginBottom: 'var(--space-2)' }}>{errors.types}</div>}
+        {planBooked && (
+          <p className="field-hint" style={{ marginBottom: 'var(--space-3)' }}>
+            Booked from this project&rsquo;s plan — its tasks, their owners and how much of a day each takes. The
+            figures below are what that comes to per person per month; change them on the Planning screen, or untick
+            &ldquo;Book people from this plan&rdquo; there to go back to booking by hand.
+          </p>
+        )}
         <AllocationGrid
+          readOnly={planBooked}
           people={people}
           months={months}
           monthLabels={monthLabels}

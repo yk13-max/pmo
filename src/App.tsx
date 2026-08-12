@@ -169,6 +169,9 @@ export function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
+        {/* In the corner of the chrome rather than the page: it belongs to the whole site,
+            and the menu is the one thing on screen wherever you are. */}
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
         <BrandLockup
           tagline="PMO Portfolio Tracker"
           onDoubleClick={() => {
@@ -205,9 +208,6 @@ export function App() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none', alignItems: 'center' }}>
-            {/* First in the corner, and on every screen, because it is about the whole
-                site rather than the one you happen to be on. */}
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {/* Planning works on one project at a time, so the way into that project's own
                 details belongs with the rest of the actions rather than buried in the grid. */}
             {screen === 'planning' && selected && (

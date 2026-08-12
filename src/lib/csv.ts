@@ -97,6 +97,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'Next milestone',
       'Milestone date',
       'Planned with tasks',
+      'Books people from the plan',
       'Archived',
     ],
     p.projects.map((x) => [
@@ -123,6 +124,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       x.milestone,
       x.milestoneDate,
       x.usesPlan ? 'Yes' : 'No',
+      x.plansResource ? 'Yes' : 'No',
       x.archived ? 'Yes' : 'No',
     ]),
   );
@@ -190,6 +192,7 @@ export function tasksCsv(p: Portfolio): string {
         t.name,
         t.owner,
         t.days,
+        t.weight ?? 100,
         t.constraint,
         t.constraintDate,
         depsToText(t.deps, (id) => numberOf.get(id) ?? null),
@@ -198,7 +201,19 @@ export function tasksCsv(p: Portfolio): string {
     });
   });
   return toCsv(
-    ['Project', 'Phase', 'Task number', 'Task', 'Who', 'Working days', 'Constraint', 'Constraint date', 'Predecessors', '% done'],
+    [
+      'Project',
+      'Phase',
+      'Task number',
+      'Task',
+      'Who',
+      'Working days',
+      '% of their day',
+      'Constraint',
+      'Constraint date',
+      'Predecessors',
+      '% done',
+    ],
     rows,
   );
 }
@@ -298,6 +313,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         usesPlan: headers.some((h) => h.trim().toLowerCase() === 'planned with tasks')
           ? col(r, 'Planned with tasks').toLowerCase() === 'yes'
           : base?.usesPlan,
+        plansResource: headers.some((h) => h.trim().toLowerCase() === 'books people from the plan')
+          ? col(r, 'Books people from the plan').toLowerCase() === 'yes'
+          : base?.plansResource,
         // A file without the column leaves the stored answer alone.
         archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
           ? col(r, 'Archived').toLowerCase() === 'yes'
@@ -347,7 +365,12 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
           phase,
           name: taskName,
           owner: col(r, 'Who'),
+          /* The sheet names people, so the id is looked up here — a name nobody answers to
+             is kept as written and books no time, which is what it did before. */
+          ownerId: portfolio.people.find((x) => x.name.toLowerCase() === col(r, 'Who').trim().toLowerCase())?.id,
           days: Math.max(1, Math.round(num(col(r, 'Working days')) || 1)),
+          // A sheet written before weights existed means the whole day.
+          weight: col(r, '% of their day') ? Math.min(100, Math.max(0, num(col(r, '% of their day')))) : 100,
           /* Files written before constraints existed carry only a start date, which is
              what "start no earlier than" says. */
           constraint: (CONSTRAINT_IDS.find((c) => c === col(r, 'Constraint').toUpperCase()) ?? 'SNET') as ConstraintType,

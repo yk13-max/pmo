@@ -79,6 +79,14 @@ export function normalise(p: Portfolio): Portfolio {
         done: t.done ?? 0,
         constraint: t.constraint ?? 'SNET',
         constraintDate: t.constraintDate ?? old ?? '',
+        /* Owners were free text before the plan could book anyone. A name that matches
+           somebody on the team is taken to mean them, which is what it always meant; one
+           that matches nobody is left as written and simply books no time. */
+        ownerId:
+          t.ownerId ??
+          p.people.find((person) => person.name.toLowerCase() === (t.owner ?? '').trim().toLowerCase())?.id,
+        // A task with no share stated takes the whole of its owner's day.
+        weight: t.weight ?? 100,
       };
     }),
     roles: [...roles, ...new Set(fromPeople)],
@@ -95,6 +103,7 @@ export function normalise(p: Portfolio): Portfolio {
     projects: p.projects.map((project) => ({
       ...project,
       priority: project.priority ?? 3,
+      plansResource: project.plansResource ?? false,
       phaseDates: project.phaseDates ?? [],
       invoiceDates: project.invoiceDates ?? [],
       currency: project.currency ?? 'GBP',

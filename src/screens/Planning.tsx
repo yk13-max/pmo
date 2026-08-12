@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
-import type { ConstraintType, Project, Task } from '../types';
+import type { ConstraintType, Person, Project, Task } from '../types';
 import { CONSTRAINTS } from '../types';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
@@ -175,6 +175,29 @@ export function Planning({
             />
             Plan this project here
           </label>
+          {/* Only offered once the project is planned here: without a plan there is
+              nothing to book anyone from. */}
+          <label
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, whiteSpace: 'nowrap',
+              cursor: project.usesPlan ? 'pointer' : 'not-allowed',
+              opacity: project.usesPlan ? 1 : 0.5,
+            }}
+            title={
+              project.usesPlan
+                ? 'Book each task to its owner: its days times eight hours, at the weight below.'
+                : 'Tick “Plan this project here” first.'
+            }
+          >
+            <input
+              type="checkbox"
+              disabled={!project.usesPlan}
+              checked={Boolean(project.plansResource)}
+              onChange={(e) => saveProject({ ...(project as unknown as Project), plansResource: e.target.checked })}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Book people from this plan
+          </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
@@ -209,14 +232,17 @@ export function Planning({
       <div style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
-        <div style={{ flex: 'none', width: 760, borderRight: '1px solid var(--color-divider)' }}>
+        <div style={{ flex: 'none', width: 830, borderRight: '1px solid var(--color-divider)' }}>
           {/* Same padding and the same gap as a task row, so every heading lands over the
               control it names rather than drifting across the row. */}
           <div style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
             <span style={{ width: 26 }}>#</span>
             <span style={{ flex: 1, minWidth: 0 }}>Task</span>
-            <span style={{ width: 84 }}>Who</span>
+            <span style={{ width: 96 }}>Who</span>
             <span style={{ width: 38, textAlign: 'right' }}>Days</span>
+            <span style={{ width: 46, textAlign: 'right' }} title="Per cent of that person's day, while the task runs">
+              % day
+            </span>
             <span style={{ width: 74 }}>Rule</span>
             <span style={{ width: 116 }}>On</span>
             <span style={{ width: 70, textAlign: 'right' }}>Finish</span>
@@ -256,6 +282,7 @@ export function Planning({
               <TaskRow
                 key={row.key}
                 row={row}
+                people={view.people}
                 numberOf={numberOf}
                 byNumber={byNumber}
                 depDraft={depDraft}
@@ -478,6 +505,7 @@ function Fig({ value, label, sub, color }: { value: string; label: string; sub: 
 
 function TaskRow({
   row,
+  people,
   numberOf,
   byNumber,
   depDraft,
@@ -486,6 +514,7 @@ function TaskRow({
   onDelete,
 }: {
   row: Extract<Row, { kind: 'task' }>;
+  people: Person[];
   numberOf: Map<string, number>;
   byNumber: Map<number, string>;
   depDraft: { id: string; text: string; error: string } | null;
@@ -521,14 +550,26 @@ function TaskRow({
         aria-label={`Task ${row.number} name`}
         onBlur={(e) => e.target.value !== task.name && set({ name: e.target.value })}
       />
-      <input
+      {/* Picked from the team rather than typed, because this is who the task books when
+          the plan is booking people. The name is stored beside the id so an exported sheet
+          still reads, and so a plan built before anyone was linked keeps what it said. */}
+      <select
         className="input"
-        style={{ ...cell, width: 84 }}
-        defaultValue={task.owner}
-        placeholder="Name"
+        style={{ ...cell, width: 96, fontSize: 12 }}
+        value={task.ownerId ?? ''}
         aria-label={`Task ${row.number} owner`}
-        onBlur={(e) => e.target.value !== task.owner && set({ owner: e.target.value })}
-      />
+        onChange={(e) => {
+          const person = people.find((p) => p.id === e.target.value);
+          set({ ownerId: person?.id ?? '', owner: person?.name ?? '' });
+        }}
+      >
+        <option value="">{task.owner && !task.ownerId ? task.owner : '—'}</option>
+        {people.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
       <input
         className="input"
         type="number"
@@ -541,6 +582,24 @@ function TaskRow({
           const days = Math.max(1, Math.round(Number(e.target.value) || 1));
           if (days !== task.days) set({ days });
           e.target.value = String(days);
+        }}
+      />
+      {/* How much of the owner's day it takes while it runs. Half of a two-day task is one
+          day of their time, not two — which is the whole point of having it. */}
+      <input
+        className="input"
+        type="number"
+        min={0}
+        max={100}
+        step={5}
+        style={{ ...cell, width: 46, textAlign: 'right' }}
+        defaultValue={task.weight ?? 100}
+        aria-label={`Task ${row.number} share of the owner's day, per cent`}
+        title="Per cent of that person's day, while the task runs."
+        onBlur={(e) => {
+          const weight = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+          if (weight !== (task.weight ?? 100)) set({ weight });
+          e.target.value = String(weight);
         }}
       />
       <select
