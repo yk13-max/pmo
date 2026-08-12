@@ -2,6 +2,9 @@
    file only covers chrome the design system has no component for. */
 
 body { margin: 0; }
+/* Mobile Safari otherwise inflates the type of a block it decides is too narrow, which on
+   rotating a phone leaves some columns set larger than others. Sizes are chosen here. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 a { color: var(--color-accent); }
 a:hover { color: var(--color-accent-600); }
 
@@ -14,6 +17,18 @@ a:hover { color: var(--color-accent-600); }
 /* margin-inline centres the capped column in the space beside the sidebar, so wide
    displays don't leave the content stranded against the left edge. */
 .main { flex: 1; min-width: 0; padding: var(--space-8); max-width: 1560px; margin-inline: auto; }
+
+/* Title on the left, actions on the right — and on a narrow screen, the actions drop
+   under the title rather than forcing the page wider than the phone. */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--space-8); margin-bottom: var(--space-8); }
+/* The line under every page title. In the stylesheet rather than on the element so a
+   narrow screen can bring it down a size. */
+.page-blurb { margin: var(--space-3) 0 0; font-size: 16px; color: var(--color-neutral-700); text-wrap: pretty; }
+
+.brand-lockup { text-align: center; }
+.brand-word { display: block; }
+.nav-list { display: flex; flex-direction: column; gap: 4px; }
 
 .nav-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 0; cursor: pointer; font-family: var(--font-heading); font-size: 16px; padding: 8px 10px; border-radius: var(--radius-md); background: transparent; color: var(--color-text); }
 .nav-item:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
@@ -169,6 +184,139 @@ a:hover { color: var(--color-accent-600); }
   .team-scroll { --month-min: 0px; max-width: none; overflow: visible; }
 }
 
+/* — phones —
+
+   A 252px menu down the side of a 390px screen leaves the content a column one word wide,
+   so under this size the chrome goes across the top instead: the mark, the name and the
+   theme switch on one line, and the areas as a row of tabs that scrolls sideways under it.
+   The content then has the whole width.
+
+   The height clause is what catches a phone held on its side: 844x390 is wide enough for
+   the old layout but far too short for a menu that runs the height of the window. */
+@media (max-width: 860px), (max-height: 520px) {
+  .shell { flex-direction: column; }
+  .sidebar {
+    position: static; width: auto; height: auto; align-self: stretch;
+    overflow: visible; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+  }
+  /* Mark, name and switch on one line, at a size that leaves room for the work. Scoped to
+     the menu, because the same lockup is the whole of the credit page and is centred and
+     stacked there by that page's own rules. */
+  .sidebar .brand-lockup { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .sidebar .brand-paper { width: 44px; height: 44px; flex: none; margin-inline: 0; padding: 5px; border-radius: 12px; }
+  .sidebar .brand-grip > svg { width: 34px; height: 34px; }
+  .sidebar .brand-wordmark { margin-top: 0; font-size: 17px; line-height: 1.15; }
+  .sidebar .brand-word { display: inline; }
+  .sidebar .brand-word + .brand-word::before { content: ' '; }
+  /* The tagline and the footnote are the first things to go when space is short. */
+  .sidebar .eyebrow, .sidebar-foot { display: none; }
+  /* The switch rejoins the flow and sits at the end of the brand line. */
+  .theme-toggle { position: absolute; top: var(--space-3); right: var(--space-4); left: auto; }
+
+  /* The areas, as one scrolling row. Each keeps a comfortable target and its own line;
+     the counts go, because a label a thumb can hit matters more than the number on it. */
+  .nav-list { flex-direction: row; gap: 6px; overflow-x: auto; scrollbar-width: none;
+    margin-inline: calc(var(--space-4) * -1); padding-inline: var(--space-4); }
+  .nav-list::-webkit-scrollbar { display: none; }
+  .nav-item { width: auto; flex: none; white-space: nowrap; padding: 9px 12px; font-size: 15px; }
+  .nav-item .count { display: none; }
+  .nav-item[aria-current='page']::before { top: auto; bottom: 0; left: 6px; right: 6px; width: auto; height: 2px; }
+
+  /* Stacked, the content area is a flex item across the shell rather than beside the menu,
+     and the automatic side margins that centre it on a desk turn off the stretch that would
+     otherwise hold it to the window — so it sizes itself to its widest content and takes the
+     page sideways with it. Pinning the margins and the width puts it back inside the screen,
+     and the pieces below scroll within it. */
+  .main { padding: var(--space-4); width: 100%; max-width: 100%; margin-inline: 0; }
+  .page-title { font-size: 32px; }
+  .page-head { flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-6); }
+  /* The actions take their own line under the title rather than squeezing the blurb into a
+     column three words wide. The override is needed because the row is sized on the element. */
+  .page-head > * { flex: 1 1 100% !important; }
+
+  /* Fields size themselves to the room there is rather than to a comfortable desktop
+     minimum, which on a phone is wider than the screen. */
+  .input, select.input { min-width: 0 !important; max-width: 100%; }
+  .field { min-width: 0; max-width: 100%; }
+  /* Anything under 16px makes iOS Safari zoom the page when the field takes focus, and it
+     does not zoom back out — so fields are set at the size that leaves the page where it
+     was, and given a target a thumb can hit. */
+  .input, select.input, textarea.input { font-size: 16px; min-height: 42px; }
+
+  /* Rows of tabs and chips scroll instead of forcing the page sideways. */
+  .tabs { overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; flex: none; }
+  .chip-group { flex-wrap: wrap; }
+
+  /* The Gantt is two panes side by side and neither can usefully narrow, so the pair
+     scrolls as one. */
+  .plan-workspace { overflow-x: auto; min-width: 0; }
+  .plan-workspace > * { flex: none; }
+  .team-scroll { max-width: 100%; }
+
+  /* Metrics go two-up rather than five-across; below about 300px they stack. */
+  .stat-row.one-line > * { flex: 1 1 130px; }
+  .stat-row { gap: var(--space-4) var(--space-6); }
+
+  /* A line of controls is written as one row because a desk has room for it. Here it wraps,
+     the switch that was pushed to the far right rejoins the flow, and the fields give up the
+     comfortable minimum that is wider than the screen. */
+  .control-row { flex: 1 1 100% !important; flex-wrap: wrap; align-items: flex-start !important;
+    gap: var(--space-3) var(--space-4) !important; }
+  .control-row > * { margin-left: 0 !important; min-width: 0; max-width: 100%; }
+  .control-row .picker { flex: 1 1 100%; }
+  /* Three tick boxes kept on one line at the right of a desktop row; here they wrap with
+     everything else and each label stays whole. */
+  .control-row .switches { flex: 1 1 100%; flex-wrap: wrap; gap: var(--space-3) var(--space-4) !important; }
+  .control-row .picker select.input { flex: 1 1 0; }
+
+  /* Anything laid out as columns of a fixed minimum has to be allowed to go narrower than
+     that minimum on a phone, or the page itself starts scrolling sideways. */
+  .cards-grid, .person-grid { grid-template-columns: 1fr !important; }
+
+  /* The money bars unstack: the name has the first line and the bar the second, so the two
+     figures keep their own line and stay readable at the ends of it. */
+  .money-row { grid-template-columns: auto auto !important; justify-content: space-between;
+    gap: 6px var(--space-4) !important; }
+  .money-row > :nth-child(1), .money-row > :nth-child(2) { grid-column: 1 / -1; }
+
+  /* An alert reads name-then-chart down the card rather than side by side. */
+  .alert-card { flex-direction: column; gap: var(--space-3) !important; }
+  .alert-card > div { flex: none !important; min-width: 0 !important; width: 100%; }
+
+  /* A table of any width scrolls within its own box instead of carrying the page with it.
+     Making it a block is what gives it a box to scroll; the rows still lay out as a table
+     inside. */
+  .table, .alloc-table { display: block; overflow-x: auto; scrollbar-width: thin; }
+  .drawer { padding: var(--space-4); overflow-x: hidden; }
+  /* A fieldset refuses by default to be narrower than its widest content, which would take
+     the whole pane sideways rather than letting the month grid inside it scroll. */
+  .drawer fieldset, .fieldset { min-width: 0; }
+  .drawer-backdrop { padding: var(--space-2); align-items: flex-start; }
+
+  /* — the panels that follow the pointer —
+
+     A tap counts as a hover, so these still open on a phone; what they cannot do is hang
+     off the side of a screen a fraction of the width they were drawn for.
+
+     A metric's panel is measured from the row rather than from the tile, so it opens under
+     the whole row at the left edge instead of half off the screen. */
+  .stat-row { position: relative; }
+  .stat { position: static !important; }
+  .hover-card { min-width: 0 !important; max-width: 100% !important; }
+  /* Inside a table that scrolls sideways a floating panel would be clipped, so this one
+     opens in the row itself. */
+  .driver-card { position: static !important; margin-top: 6px !important;
+    box-shadow: none !important; border: 1px solid var(--color-divider); }
+  /* The timeline's card takes the width of the track it belongs to. */
+  .timeline-card { left: 0 !important; transform: none !important;
+    min-width: 0 !important; max-width: 100% !important; width: 100%; }
+  /* The chart's card centres on the chart rather than on the dot, which on a small screen
+     is often within half a card of an edge. */
+  .chart-tip { left: 50% !important; min-width: 0 !important; width: min(260px, 100%); }
+}
+
 /* The credit page: nothing but the lockup and the line, in the middle of the navy. */
 .about { min-height: 100vh; display: grid; place-items: center;
   background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
@@ -292,6 +440,54 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .stat-button:hover .stat-more, .stat-button:focus-visible .stat-more { opacity: 1; }
 
 /* — printing — a screen exports as a PDF with every tab expanded — */
+/* — the type scale on a phone —
+
+   Sizes picked for a wide window turn the top of every screen into a poster: on a 390px
+   phone the kicker, title and blurb alone filled two thirds of the window before a single
+   figure appeared. This brings the display type down and puts the metrics two to a line, so
+   a page opens on its numbers rather than on its heading. It sits after the rules it
+   overrides, which is how it reaches the ones written for tablets. */
+@media (max-width: 640px) {
+  .page-title { font-size: 30px; }
+  .doc-title { font-size: 26px; }
+  .page-blurb { font-size: 15px; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 18px; }
+  .stat-value, .stat-row.one-line .stat-value { font-size: 26px; }
+  /* More air between the rows than between the columns, so a metric's sub-line is read with
+     the figure above it rather than with the one below. */
+  .stat-row, .stat-row.one-line { gap: var(--space-6) var(--space-4); margin-bottom: var(--space-6); }
+  .stat-row > *, .stat-row.one-line > * { flex: 1 1 140px; min-width: 0; }
+  .stat-sub { font-size: 12px; }
+  /* Two metrics to a line leaves a tile narrower than a figure and its sparkline together,
+     so the sparkline gives way rather than pushing the tile past the screen. */
+  .spark { flex: 0 1 78px !important; min-width: 0; }
+  /* Card and chart footnotes written as one line give up and wrap. */
+  .card-money { flex-wrap: wrap; }
+  .chart-note { flex: 0 1 auto !important; }
+
+  /* The timeline is a name column beside two years of track. Side by side on a phone the
+     track gets eighty pixels and the quarter labels print on top of each other, so the name
+     takes its own line and the bar runs the full width under it. */
+  .timeline-row { grid-template-columns: 1fr !important; gap: 2px !important; padding: 9px 0 !important; }
+  /* Stacked, the column heading would sit on the "today" marker, and the bars name
+     themselves anyway. */
+  .timeline-head > :first-child { display: none; }
+
+  /* The chart's labels are placed in the chart's own units but drawn at a fixed size, so on
+     a screen this narrow they are both illegible and long enough to hang off the side. The
+     dots stay, and a tap still names the project behind one; the tick that turns the labels
+     on goes with them, rather than sitting there doing nothing. */
+  .chart-callout, .names-toggle { display: none; }
+
+  /* Seven phases across the page give each name a column narrower than the word in it, so
+     the strip turns on its side: one phase per line, its bar beside its name. */
+  .phase-strip { flex-direction: column; gap: var(--space-3) !important; }
+  .phase-strip > div { flex-direction: row !important; flex-wrap: wrap;
+    align-items: baseline; gap: 3px 10px !important; }
+  .phase-strip > div > span:first-child { flex: 0 0 56px; align-self: center; }
+}
+
 .print-only { display: none; }
 @page { size: A4 portrait; margin: 12mm; }
 @media print {

@@ -74,7 +74,7 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
         <span>Bars marked “planned” come from the project's own task plan</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 'var(--space-4)', alignItems: 'end', marginBottom: 'var(--space-2)' }}>
+      <div className="timeline-row timeline-head" style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 'var(--space-4)', alignItems: 'end', marginBottom: 'var(--space-2)' }}>
         <div className="eyebrow">Project</div>
         <div style={{ position: 'relative', height: 22 }}>
           {quarters.map((q) => (
@@ -161,6 +161,7 @@ function TimelineRow({
   const width = Math.max(0.8, right - left);
   return (
     <div
+      className="timeline-row"
       style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 'var(--space-4)', alignItems: 'center', padding: '7px 0' }}
       onMouseEnter={() => onHover(project.id)}
       onMouseLeave={() => onHover(null)}
@@ -196,6 +197,7 @@ function TimelineRow({
         />
         {hovered && (
           <div
+            className="timeline-card"
             style={{
               position: 'absolute',
               left: `${right}%`,

@@ -35,6 +35,7 @@ export function Stat({
 
   return (
     <div
+      className="stat"
       style={{ position: 'relative' }}
       onMouseEnter={() => hover && setShowing(true)}
       onMouseLeave={() => hover && setShowing(false)}
@@ -54,6 +55,7 @@ export function Stat({
       )}
       {hover && showing && (
         <div
+          className="hover-card"
           style={{
             position: 'absolute',
             left: 0,
@@ -79,7 +81,7 @@ export function Stat({
 /** The small bar cluster that sits beside a portfolio metric. */
 export function Spark({ cells, gap = 3 }: { cells: { flex: number; height: number; bg: string; title?: string }[]; gap?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: `${gap}px`, width: 78, height: 22, flex: 'none', paddingBottom: 5 }}>
+    <div className="spark" style={{ display: 'flex', alignItems: 'flex-end', gap: `${gap}px`, width: 78, height: 22, flex: 'none', paddingBottom: 5 }}>
       {cells.map((c, i) => (
         <span
           key={i}

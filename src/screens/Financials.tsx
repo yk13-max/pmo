@@ -236,7 +236,7 @@ function MoneyBar({
   onOpen: () => void;
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '236px 1fr 108px 100px', alignItems: 'center', gap: 'var(--space-4)' }}>
+    <div className="money-row" style={{ display: 'grid', gridTemplateColumns: '236px 1fr 108px 100px', alignItems: 'center', gap: 'var(--space-4)' }}>
       <button type="button" className="card-link" onClick={onOpen}>
         <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
           {project.name}

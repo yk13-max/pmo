@@ -62,8 +62,8 @@ export function ProjectDetail({
 
   return (
     <div className="printable">
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+      <div className="no-print control-row" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
+        <div className="picker" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <label className="eyebrow" htmlFor="pd-project">
             Project
           </label>
@@ -139,7 +139,7 @@ export function ProjectDetail({
         Currently in {project.phaseName} — phase {project.phaseStep}, {project.pct}% through it, and {project.overallPct}%
         through the project overall. Next due: {project.milestone} on {project.msDateLabel}.
       </p>
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch', marginBottom: 'var(--space-8)' }}>
+      <div className="phase-strip" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch', marginBottom: 'var(--space-8)' }}>
         {project.phases.map((name, i) => (
           <div key={name} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* Each phase's own bar, part-filled for the one in hand. */}
@@ -272,6 +272,8 @@ export function ProjectDetail({
 /** Roughly how tall the hover panel is, used only to decide which side of the cell it
     goes on. Being a little out just means it flips a row earlier than it had to. */
 const TIP_HEIGHT = 190;
+/** How wide it is drawn, kept inside the window on a phone. */
+const TIP_WIDTH = 230;
 
 function TeamGrid({
   view,
@@ -294,6 +296,7 @@ function TeamGrid({
      window rather than the cell, because the grid scrolls sideways and a scrolling box
      clips anything hanging out of it — which is what hid the panel on the lower rows. */
   const [hover, setHover] = useState<{ key: string; left: number; top: number; bottom: number } | null>(null);
+  const tipWidth = Math.min(TIP_WIDTH, window.innerWidth - 20);
   /* Each month keeps enough room for its own label whatever the span: a project running
      three years has as many columns as it has months, and squeezing those into a fixed
      width turned the headings into a smear and the bars into slivers. Past the width
@@ -321,7 +324,7 @@ function TeamGrid({
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
+        <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <WindowControls view={view} onSetWindow={onSetWindow} />
         </div>
       </div>
@@ -372,14 +375,20 @@ function TeamGrid({
                       <div
                         style={{
                           position: 'fixed',
-                          left: hover.left,
+                          /* Centred on the cell, but never past either edge of the window —
+                             on a phone a cell near the end of the row would otherwise put
+                             half the panel off the screen. */
+                          left: Math.min(
+                            Math.max(hover.left, tipWidth / 2 + 10),
+                            window.innerWidth - tipWidth / 2 - 10,
+                          ),
                           /* Below the cell normally; above it when the cell is low enough
                              that the panel would run off the bottom of the window. */
                           ...(hover.bottom + TIP_HEIGHT > window.innerHeight
                             ? { top: hover.top - TIP_HEIGHT - 6 }
                             : { top: hover.bottom + 6 }),
                           transform: 'translateX(-50%)',
-                          minWidth: 210,
+                          width: tipWidth,
                           padding: 'var(--space-3)',
                           background: 'var(--color-bg)',
                           boxShadow: 'var(--shadow-lg)',

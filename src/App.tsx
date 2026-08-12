@@ -179,8 +179,8 @@ export function App() {
             go({ screen: 'about' });
           }}
         />
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{nav.map(navItem)}</nav>
-        <div style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-chrome-quiet)' }}>
+        <nav className="nav-list">{nav.map(navItem)}</nav>
+        <div className="sidebar-foot" style={{ marginTop: 'auto', fontSize: 12, lineHeight: 1.6, color: 'var(--color-chrome-quiet)' }}>
           Week {weekNumber(view.today)} · FY{String(view.today.getFullYear()).slice(2)}
           <br />
           {view.people.length} people · {view.projects.length} projects
@@ -191,21 +191,11 @@ export function App() {
 
       <main className="main">
        <div style={{ maxWidth: SCREEN_WIDTH[screen], marginInline: 'auto' }}>
-        <header
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            gap: 'var(--space-8)',
-            marginBottom: 'var(--space-8)',
-          }}
-        >
+        <header className="page-head">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="kicker">{kicker}</div>
             <h1 className="page-title" style={{ margin: '8px 0 0' }}>{title}</h1>
-            <p style={{ margin: 'var(--space-3) 0 0', fontSize: 16, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>
-              {blurb}
-            </p>
+            <p className="page-blurb">{blurb}</p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none', alignItems: 'center' }}>
             {/* Planning works on one project at a time, so the way into that project's own

@@ -183,7 +183,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           </select>
         </label>
         {/* Both halves of the stripe, named: the type on top, who it is for beneath. */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+        <div className="legend" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
           {view.projectTypes.map((t, i) => (
             <span key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <StripeSwatch type={typeColour(i)} facing="var(--color-neutral-200)" />
@@ -207,7 +207,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
       {shown.length === 0 ? (
         <p className="empty">Nothing matches these filters.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(376px,1fr))', gap: 'var(--space-6) 64px' }}>
+        <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(376px,1fr))', gap: 'var(--space-6) 64px' }}>
           {shown.map((p) => (
             <ProjectCard key={p.id} project={p} onOpen={() => onOpenProject(p.id)} />
           ))}
@@ -328,7 +328,7 @@ function FilterChips({
   onChange: (v: string) => void;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <div className="chip-group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
       <span className="eyebrow">{label}</span>
       {options.map((o) => (
         <button key={o} type="button" className="chip" aria-pressed={value === o} onClick={() => onChange(o)}>
@@ -500,9 +500,9 @@ function Scatter({
         </div>
         {/* Its own full-width line under the lede: the chips sit where they always have, on
             the left, and only the tick is pushed over to the chart's right edge. */}
-        <div style={{ flex: '1 1 100%', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+        <div className="control-row" style={{ flex: '1 1 100%', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
           <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+          <label className="names-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
             <input
               type="checkbox"
               checked={showNames}
@@ -600,6 +600,7 @@ function Scatter({
               callouts.map((c) => (
                 <span
                   key={`co-${c.p.id}`}
+                  className="chart-callout"
                   style={{
                     position: 'absolute',
                     left: `${(c.x / CHART_W) * 100}%`,
@@ -678,6 +679,7 @@ function Scatter({
             ))}
             {hovered && (
               <div
+                className="chart-tip"
                 style={{
                   position: 'absolute',
                   left: `${(x(xValue(hovered)) / CHART_W) * 100}%`,
@@ -805,7 +807,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
           <span style={{ color: 'var(--color-neutral-600)' }}>Next</span> {project.milestone}{' '}
           <span style={{ color: 'var(--color-neutral-600)' }}>· {project.msDateLabel}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%', marginTop: 'var(--space-1)' }}>
+        <div className="card-money" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%', marginTop: 'var(--space-1)' }}>
           <div>
             <div className="eyebrow">{project.moneyLabel}</div>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, marginTop: 3 }}>{project.moneyMain}</div>

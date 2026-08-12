@@ -36,7 +36,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       {atRisk.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nothing flagged at risk.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
+        <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
           {atRisk.map((p) => (
             <div key={p.id} style={{ position: 'relative', paddingLeft: 'var(--space-4)' }}>
               <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 3, background: 'var(--color-accent-2)', display: 'block' }} />
@@ -80,11 +80,11 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       {overbooked.length === 0 ? (
         <p className="empty" style={{ marginBottom: 'var(--space-8)' }}>Nobody is booked past a full week.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(420px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
+        <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(420px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
           {overbooked.map((p) => {
             const months = p.committed.map((v, i) => (v > p.person.capacity ? view.monthLabels[i] : null)).filter(Boolean);
             return (
-              <div key={p.person.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)', position: 'relative', paddingLeft: 'var(--space-4)' }}>
+              <div key={p.person.id} className="alert-card" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)', position: 'relative', paddingLeft: 'var(--space-4)' }}>
                 <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 3, background: 'var(--color-accent-2)', display: 'block' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.15 }}>{p.person.name}</div>
@@ -111,7 +111,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 1040, marginBottom: 'var(--space-8)' }}>
           {nearlySpent.map((p) => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '250px 1fr 150px 110px', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <div key={p.id} className="money-row" style={{ display: 'grid', gridTemplateColumns: '250px 1fr 150px 110px', alignItems: 'center', gap: 'var(--space-4)' }}>
               <button type="button" className="card-link" onClick={() => onOpenProject(p.id)}>
                 <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
                   {p.name}
@@ -142,7 +142,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 1040 }}>
           {unbilled.map((p) => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '250px 1fr 150px 130px', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <div key={p.id} className="money-row" style={{ display: 'grid', gridTemplateColumns: '250px 1fr 150px 130px', alignItems: 'center', gap: 'var(--space-4)' }}>
               <button type="button" className="card-link" onClick={() => onOpenProject(p.id)}>
                 <div className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, lineHeight: 1.2 }}>
                   {p.name}

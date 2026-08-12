@@ -133,8 +133,8 @@ export function Planning({
 
   return (
     <div>
-      <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+      <div className="no-print control-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+        <label className="picker" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Planning</span>
           <select
             id="pl-project"
@@ -153,7 +153,7 @@ export function Planning({
             ))}
           </select>
         </label>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <span className="chip-group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Zoom</span>
           {ZOOMS.map((z) => (
             <button key={z.id} type="button" className="chip" aria-pressed={zoom === z.id} onClick={() => setZoom(z.id)}>
@@ -163,7 +163,7 @@ export function Planning({
         </span>
         {/* Both switches sit together at the right, away from the project being picked and
             the zoom that changes what the chart shows. */}
-        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'auto' }}>
+        <span className="switches" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'auto' }}>
           {/* Planning is opt-in per project. Left off, the project keeps the start, end and
               phase dates entered on it, and every other screen reads those as it always did. */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -229,7 +229,7 @@ export function Planning({
 
       <PlanSummary project={project} plan={plan} tasks={tasks} numberOf={numberOf} />
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
+      <div className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
         <div style={{ flex: 'none', width: 830, borderRight: '1px solid var(--color-divider)' }}>

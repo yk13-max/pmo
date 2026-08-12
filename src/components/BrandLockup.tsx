@@ -18,15 +18,15 @@ export function BrandLockup({
   stacked?: boolean;
 }) {
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div className="brand-lockup">
       <BrandMark onDoubleClick={onDoubleClick} />
       {/* Everything about how the name is set lives in the stylesheet, so a page with more
           room to give it can say so in one rule. */}
       <div className="brand-wordmark">
         {stacked ? (
           <>
-            <span style={{ display: 'block' }}>Project</span>
-            <span style={{ display: 'block' }}>Glass</span>
+            <span className="brand-word">Project</span>
+            <span className="brand-word">Glass</span>
           </>
         ) : (
           'Project Glass'

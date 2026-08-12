@@ -252,7 +252,7 @@ export function PersonBars({
         <span style={{ color: 'var(--color-text)', fontSize: 12, textWrap: 'pretty' }}>
           {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
         </span>
-        <span style={{ flex: 'none' }}>
+        <span className="chart-note" style={{ flex: 'none' }}>
           top of chart = {top}%{full !== 100 && ` · full month for them = ${full}%`}
         </span>
       </div>

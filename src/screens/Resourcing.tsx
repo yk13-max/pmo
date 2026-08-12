@@ -142,7 +142,7 @@ export function Resourcing({
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: '1 1 100%' }}>
+        <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: '1 1 100%' }}>
           <label className="field" style={{ margin: 0 }}>
             <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
               Flag over-allocation above {view.threshold}%
@@ -176,7 +176,7 @@ export function Resourcing({
       {view.peopleViews.length === 0 ? (
         <p className="empty">No one on the team yet. Add a person to start booking time.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(408px,1fr))', gap: 'var(--space-8) 64px' }}>
+        <div className="person-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(408px,1fr))', gap: 'var(--space-8) 64px' }}>
           {view.peopleViews.map((p) => {
             return (
               <div key={p.person.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -355,6 +355,7 @@ export function Resourcing({
                               )}
                               {hoverDriver === key && (
                                 <div
+                                  className="hover-card driver-card"
                                   style={{
                                     position: 'absolute',
                                     left: 0,
@@ -461,7 +462,7 @@ function LeaveTable({
             person books themselves. Both feed straight into the graphs and available capacity.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
+        <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <WindowControls view={view} onSetWindow={onSetWindow} />
         </div>
       </div>
@@ -581,7 +582,7 @@ function DemandChart({
             the shortfall. Click a month for the full breakdown; a long window scrolls sideways.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
+        <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <WindowControls view={view} onSetWindow={onSetWindow} />
         </div>
       </div>
