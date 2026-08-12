@@ -272,7 +272,11 @@ function TeamGrid({
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
   const [hover, setHover] = useState<string | null>(null);
-  const cols = `180px repeat(${span.months.length}, 1fr) 70px`;
+  /* Each month keeps enough room for its own label whatever the span: a project running
+     three years has as many columns as it has months, and squeezing those into a fixed
+     width turned the headings into a smear and the bars into slivers. Past the width
+     below, the grid scrolls sideways instead of shrinking. */
+  const cols = `180px repeat(${span.months.length}, minmax(var(--month-min), 1fr)) 70px`;
   // What the whole team draws each month, so each person's share of it can be worked out.
   const monthTotals = span.months.map((_, i) => team.reduce((n, r) => n + r.hours[i], 0));
   const beyondWindow = span.months.length - view.months.length;
@@ -305,11 +309,15 @@ function TeamGrid({
           Nobody booked yet. Open “Edit project” to book people onto it.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 700, marginBottom: 'var(--space-8)' }}>
+        <div className="team-scroll" style={{ marginBottom: 'var(--space-8)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minWidth: 'min-content' }}>
           <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 'var(--space-2)', alignItems: 'end' }}>
-            <span />
+            <span style={{ position: 'sticky', left: 0, background: 'var(--color-bg)', zIndex: 1 }} />
             {span.labels.map((m) => (
-              <span key={m} style={{ fontSize: 12, color: 'var(--color-neutral-600)', textAlign: 'center' }}>
+              /* Clipped rather than allowed to run into its neighbour: on paper the columns
+                 are squeezed to fit the page, and a truncated month reads better than two
+                 of them printed on top of each other. */
+              <span key={m} style={{ fontSize: 12, color: 'var(--color-neutral-600)', textAlign: 'center', overflow: 'hidden' }}>
                 {m}
               </span>
             ))}
@@ -320,7 +328,7 @@ function TeamGrid({
               key={row.person.id}
               style={{ display: 'grid', gridTemplateColumns: cols, gap: 'var(--space-2)', alignItems: 'center' }}
             >
-              <div>
+              <div style={{ position: 'sticky', left: 0, background: 'var(--color-bg)', zIndex: 1 }}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{row.person.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{row.person.role}</div>
               </div>
@@ -395,6 +403,7 @@ function TeamGrid({
               </div>
             </div>
           ))}
+        </div>
         </div>
       )}
     </>

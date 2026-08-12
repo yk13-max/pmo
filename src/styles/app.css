@@ -157,6 +157,18 @@ a:hover { color: var(--color-accent-600); }
   .brand-paper:hover .glass-pane > rect, .glass-pane { animation: none; }
 }
 
+/* The team grid on the project detail screen. A project running three years has thirty-odd
+   month columns; squeezed into a fixed width they turn into a smear, so each month holds a
+   minimum and the grid scrolls sideways past it. The person's name is pinned as it goes, so
+   a row never becomes anonymous.
+
+   On paper there is nothing to scroll, so the minimum is dropped and every month is made to
+   fit the page instead. */
+.team-scroll { --month-min: 34px; max-width: 1040px; overflow-x: auto; }
+@media print {
+  .team-scroll { --month-min: 0px; max-width: none; overflow: visible; }
+}
+
 /* The credit page: nothing but the lockup and the line, in the middle of the navy. */
 .about { min-height: 100vh; display: grid; place-items: center;
   background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
