@@ -27,10 +27,15 @@ export function ProjectDetail({
 
   const cdmo = view.projects.filter((p) => p.type === 'CDMO');
   const cs = view.projects.filter((p) => p.type === 'CS');
-  /* Booking runs to the project's own end, not just to the end of the six months
-     resourcing is looking at, so there is a column for every month the work is live. */
-  const span = view.monthsFor(project);
+  /* The grid shows the window the controls are set to and nothing else — "for 6 months"
+     has to mean six columns. Bookings can still be entered right up to the project's own
+     end in the edit pane; anything landing outside the window is counted below and the
+     control beside the grid widens the view to reach it. */
+  const span = { months: view.months, labels: view.monthLabels };
   const team = view.allocationsFor(project.id, span.months);
+  const everything = view.allocationsFor(project.id, view.monthsFor(project).months);
+  const hoursOutside =
+    everything.reduce((n, r) => n + r.totalHours, 0) - team.reduce((n, r) => n + r.totalHours, 0);
 
   /* Invoices are not apportioned — what each one is worth is agreed project by project. A
      stage counts as raised once its date has passed. */
@@ -236,7 +241,14 @@ export function ProjectDetail({
       ) }]
             : []),
           { id: 'team', label: 'Who is working on it', count: team.length, render: () => (
-            <TeamGrid view={view} team={team} span={span} project={project} onSetWindow={onSetWindow} />
+            <TeamGrid
+          view={view}
+          team={team}
+          span={span}
+          project={project}
+          hoursOutside={hoursOutside}
+          onSetWindow={onSetWindow}
+        />
           ) },
           { id: 'watch', label: 'What to watch', count: notes.length, render: () => (<>
       <h3 style={{ margin: '0 0 var(--space-3)' }}>What to watch</h3>
@@ -262,13 +274,16 @@ function TeamGrid({
   team,
   span,
   project,
+  hoursOutside,
   onSetWindow,
 }: {
   view: PortfolioView;
   team: ReturnType<PortfolioView['allocationsFor']>;
-  /** The months this project can be booked over — the window, stretched to its end date. */
+  /** The months on show — the window the controls are set to. */
   span: { months: string[]; labels: string[] };
   project: ProjectView;
+  /** Hours booked on this project that fall outside those months. */
+  hoursOutside: number;
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
   const [hover, setHover] = useState<string | null>(null);
@@ -279,7 +294,6 @@ function TeamGrid({
   const cols = `180px repeat(${span.months.length}, minmax(var(--month-min), 1fr)) 70px`;
   // What the whole team draws each month, so each person's share of it can be worked out.
   const monthTotals = span.months.map((_, i) => team.reduce((n, r) => n + r.hours[i], 0));
-  const beyondWindow = span.months.length - view.months.length;
 
   return (
     <>
@@ -291,11 +305,11 @@ function TeamGrid({
           <p className="lede" style={{ margin: 0 }}>
             Share of each person&rsquo;s working week committed to this project, month by month. Hover a month for the
             hours behind it.
-            {beyondWindow > 0 && (
+            {hoursOutside > 0 && (
               <>
                 {' '}
-                The last {beyondWindow} {beyondWindow === 1 ? 'month runs' : 'months run'} past the window resourcing is
-                set to, because the project does — people can be booked right up to {shortDateYear(project.endDate)}.
+                Another {hoursToDays(hoursOutside).toFixed(1)} days is booked outside these months — the project runs to{' '}
+                {shortDateYear(project.endDate)}. Widen the window to bring it into view.
               </>
             )}
           </p>
