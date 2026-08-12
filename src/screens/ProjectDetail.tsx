@@ -269,6 +269,10 @@ export function ProjectDetail({
 /* Each person's commitment to this project, month by month. Hovering a month opens the
    detail behind the bar: the hours booked, and — the figure the tab is really asking for —
    how much of everything the project draws that month is theirs. */
+/** Roughly how tall the hover panel is, used only to decide which side of the cell it
+    goes on. Being a little out just means it flips a row earlier than it had to. */
+const TIP_HEIGHT = 190;
+
 function TeamGrid({
   view,
   team,
@@ -286,7 +290,10 @@ function TeamGrid({
   hoursOutside: number;
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
-  const [hover, setHover] = useState<string | null>(null);
+  /* Which cell is hovered, and where it is on screen. The panel is placed against the
+     window rather than the cell, because the grid scrolls sideways and a scrolling box
+     clips anything hanging out of it — which is what hid the panel on the lower rows. */
+  const [hover, setHover] = useState<{ key: string; left: number; top: number; bottom: number } | null>(null);
   /* Each month keeps enough room for its own label whatever the span: a project running
      three years has as many columns as it has months, and squeezing those into a fixed
      width turned the headings into a smear and the bars into slivers. Past the width
@@ -353,25 +360,31 @@ function TeamGrid({
                 return (
                   <div
                     key={i}
-                    onMouseEnter={() => setHover(key)}
+                    onMouseEnter={(e) => {
+                      const at = e.currentTarget.getBoundingClientRect();
+                      setHover({ key, left: at.left + at.width / 2, top: at.top, bottom: at.bottom });
+                    }}
                     onMouseLeave={() => setHover(null)}
                     style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative', cursor: hours ? 'help' : 'default' }}
                   >
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, v)}%`, background: 'var(--color-text)' }} />
-                    {hover === key && (
+                    {hover?.key === key && (
                       <div
                         style={{
-                          position: 'absolute',
-                          left: '50%',
-                          top: '100%',
+                          position: 'fixed',
+                          left: hover.left,
+                          /* Below the cell normally; above it when the cell is low enough
+                             that the panel would run off the bottom of the window. */
+                          ...(hover.bottom + TIP_HEIGHT > window.innerHeight
+                            ? { top: hover.top - TIP_HEIGHT - 6 }
+                            : { top: hover.bottom + 6 }),
                           transform: 'translateX(-50%)',
-                          marginTop: 6,
                           minWidth: 210,
                           padding: 'var(--space-3)',
                           background: 'var(--color-bg)',
                           boxShadow: 'var(--shadow-lg)',
                           borderRadius: 'var(--radius-md)',
-                          zIndex: 6,
+                          zIndex: 20,
                           pointerEvents: 'none',
                         }}
                       >
