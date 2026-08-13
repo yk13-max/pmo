@@ -325,6 +325,18 @@ function TeamGrid({
   const cols = `180px repeat(${span.months.length}, minmax(var(--month-min), 1fr)) 70px`;
   // What the whole team draws each month, so each person's share of it can be worked out.
   const monthTotals = span.months.map((_, i) => team.reduce((n, r) => n + r.hours[i], 0));
+  /* How full each person's month is across everything they carry, not just this project —
+     the same reading the resourcing screen gives, brought here so a month that is a problem
+     for the person shows as one while their booking on this project is being looked at. The
+     months line up because this grid and the resourcing window are the same set. */
+  const state = (personId: string, i: number): 'over' | 'watch' | 'clear' => {
+    const pv = view.peopleViews.find((p) => p.person.id === personId);
+    if (!pv) return 'clear';
+    const total = pv.committed[i] ?? 0;
+    if (total > pv.person.capacity) return 'over';
+    return total >= (pv.person.capacity * view.threshold) / 100 ? 'watch' : 'clear';
+  };
+  const anyFlagged = team.some((r) => span.months.some((_, i) => state(r.person.id, i) !== 'clear'));
 
   return (
     <>
@@ -334,8 +346,9 @@ function TeamGrid({
         <div>
           <h3 style={{ margin: '0 0 4px' }}>Who is working on it</h3>
           <p className="lede" style={{ margin: 0 }}>
-            Share of each person&rsquo;s working week committed to this project, month by month. Hover a month for the
-            hours behind it.
+            Share of each person&rsquo;s working week committed to this project, month by month. A column is coloured by
+            how full that person&rsquo;s month is across everything they carry, not just this project. Hover a month for
+            the hours behind it.
             {hoursOutside > 0 && (
               <>
                 {' '}
@@ -344,6 +357,20 @@ function TeamGrid({
               </>
             )}
           </p>
+          {anyFlagged && (
+            <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
+              <span>
+                <span style={{ width: 14, height: 12, background: 'color-mix(in srgb, var(--color-accent-2) 30%, var(--color-bg))', display: 'block' }} />
+                Booked past a full month
+              </span>
+              <span>
+                <span
+                  style={{ width: 14, height: 12, background: 'color-mix(in srgb, var(--color-warning) 26%, var(--color-bg))', display: 'block' }}
+                />
+                At or above {view.threshold}% of it
+              </span>
+            </div>
+          )}
         </div>
         <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: 'none' }}>
           <WindowControls view={view} onSetWindow={onSetWindow} />
@@ -381,6 +408,7 @@ function TeamGrid({
                 const key = `${row.person.id}-${i}`;
                 const hours = row.hours[i];
                 const share = monthTotals[i] ? (hours / monthTotals[i]) * 100 : 0;
+                const how = state(row.person.id, i);
                 return (
                   <div
                     key={i}
@@ -389,9 +417,35 @@ function TeamGrid({
                       setHover({ key, left: at.left + at.width / 2, top: at.top, bottom: at.bottom });
                     }}
                     onMouseLeave={() => setHover(null)}
-                    style={{ height: 12, background: 'var(--color-neutral-200)', position: 'relative', cursor: hours ? 'help' : 'default' }}
+                    style={{
+                      height: 12,
+                      /* The track carries the state of the person's whole month, so a column
+                         is coloured even where their booking on this project is small. */
+                      background:
+                        how === 'over'
+                          ? 'color-mix(in srgb, var(--color-accent-2) 30%, var(--color-bg))'
+                          : how === 'watch'
+                            ? 'color-mix(in srgb, var(--color-warning) 26%, var(--color-bg))'
+                            : 'var(--color-neutral-200)',
+                      position: 'relative',
+                      cursor: hours ? 'help' : 'default',
+                    }}
                   >
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, v)}%`, background: 'var(--color-text)' }} />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: `${Math.min(100, v)}%`,
+                        background:
+                          how === 'over'
+                            ? 'var(--color-accent-2)'
+                            : how === 'watch'
+                              ? 'var(--color-warning)'
+                              : 'var(--color-text)',
+                      }}
+                    />
                     {hover?.key === key && (
                       <div
                         style={{
@@ -424,6 +478,12 @@ function TeamGrid({
                         <DetailRow label="Hours booked" value={`${hours}h`} />
                         <DetailRow label="In days" value={`${hoursToDays(hours).toFixed(1)}d`} />
                         <DetailRow label="Of their month" value={`${v}%`} />
+                        {/* Everything they carry that month, which is what the colour of the
+                            track is reporting. */}
+                        <DetailRow
+                          label="All their work that month"
+                          value={`${view.peopleViews.find((p) => p.person.id === row.person.id)?.committed[i] ?? v}%`}
+                        />
                         <div
                           style={{
                             display: 'flex',

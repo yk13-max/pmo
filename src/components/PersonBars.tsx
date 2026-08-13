@@ -141,7 +141,7 @@ export function PersonBars({
           const total = person.committed[i];
           const hTotal = h(total);
           const hLeave = Math.min(h(person.leaveLoads[i]), hTotal);
-          const hGone = Math.min(h(person.leaveLoads[i] + person.overheadLoad), hTotal);
+          const hGone = Math.min(h(person.leaveLoads[i] + person.overheadLoads[i]), hTotal);
           return (
             <g key={i}>
               {hLeave > 0 && (
@@ -264,6 +264,10 @@ export function PersonBars({
 function monthDetail(person: PersonView, i: number, label: string): string {
   const parts = [`${person.loads[i]}% project work`];
   if (person.leaveDays[i]) parts.push(`${person.leaveDays[i]}d off`);
-  if (person.overheadLoad) parts.push(`${person.overheadLoad}% other work`);
-  return `${label}: ${person.committed[i]}% committed — ${parts.join(' + ')}`;
+  if (person.overheadLoads[i]) parts.push(`${person.overheadLoads[i]}% other work`);
+  /* Said plainly when the month has squeezed the other work, rather than leaving the reader
+     to work out why the sum is short of their usual figure. */
+  const squeezed = person.overheadLoad - person.overheadLoads[i];
+  const note = squeezed > 0 ? ` · ${squeezed}% of their other work will not fit` : '';
+  return `${label}: ${person.committed[i]}% committed — ${parts.join(' + ')}${note}`;
 }

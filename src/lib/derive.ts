@@ -246,8 +246,12 @@ export interface PersonView {
   ownLeaveDays: number[];
   /** That leave as a share of the month. */
   leaveLoads: number[];
-  /** Meetings, admin and the rest, as a share of a full-time month. The same every month. */
+  /** Meetings, admin and the rest, as a share of a full-time month. The same every month —
+      what this person does in a month with room for it. */
   overheadLoad: number;
+  /** What is left for that non-project work once the projects and the days off have taken
+      their share: the same figure, cut back where the month would otherwise go past full. */
+  overheadLoads: number[];
   /** Project work plus leave plus non-project work — what consumes the person's month. */
   committed: number[];
   peak: number;
@@ -445,7 +449,16 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       /* Non-project work is a share of this person's own time, so a part-timer's 20% is
          20% of their shorter month. Held as a share of a full month like everything else. */
       const overheadLoad = Math.round((person.capacity * (person.overheadPct ?? 0)) / 100);
-      const committed = loads.map((v, i) => v + leaveLoads[i] + overheadLoad);
+      /* Meetings and admin are the elastic part of a month: they are what a person drops
+         when the projects and their days off have taken the rest of it. So the standing
+         figure above is what they would do in a quiet month, and this is what is actually
+         left for it once everything fixed has been counted — which stops a month reading as
+         over-committed when the only thing spilling over is work that would simply not
+         happen. A month past full here means the projects and the leave alone are past it. */
+      const overheadLoads = loads.map((v, i) =>
+        Math.max(0, Math.min(overheadLoad, person.capacity - v - leaveLoads[i])),
+      );
+      const committed = loads.map((v, i) => v + leaveLoads[i] + overheadLoads[i]);
       const peak = committed.length ? Math.max(...committed) : 0;
       return {
         person,
@@ -455,6 +468,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         ownLeaveDays,
         leaveLoads,
         overheadLoad,
+        overheadLoads,
         committed,
         peak,
         peakMonthIndex: committed.indexOf(peak),

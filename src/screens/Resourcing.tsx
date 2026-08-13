@@ -818,7 +818,8 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
                   {p.leaveDays[index] ? `${p.leaveDays[index]}d` : '—'}
                 </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-600)' }}>
-                  {p.overheadLoad ? asDays(p.overheadLoad) : '—'}
+                  {/* What actually fits this month, so the row adds up to what is committed. */}
+                  {p.overheadLoads[index] ? asDays(p.overheadLoads[index]) : '—'}
                 </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {p.loads[index] ? asDays(p.loads[index]) : '—'}
