@@ -11,8 +11,9 @@ import {
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { days, hoursToPct } from '../lib/derive';
-import { addMonths, shortDateYear, toISO } from '../lib/dates';
+import { addMonths, monthKey, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
+import { DEFAULT_MONTHS } from './WindowControls';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, type Scheduled } from '../lib/schedule';
 
@@ -107,9 +108,18 @@ export function ProjectForm({
   const [touched, setTouched] = useState(false);
   /* Which stretch of the project's months the booking grid shows. It is only a view of the
      grid: every month is still held in `alloc` and still saved, whether on show or not.
-     Nought months means all of them, which is where it opens. */
-  const [bookFrom, setBookFrom] = useState(0);
-  const [bookCount, setBookCount] = useState(0);
+     Nought months means all of them.
+
+     It opens on this month and the five after it — the half year anyone editing a booking is
+     almost always editing — falling back to the whole run when the project is shorter than
+     that, and to either end of it for work that is entirely behind or entirely ahead. */
+  const [bookCount, setBookCount] = useState(() => (months.length > DEFAULT_MONTHS ? DEFAULT_MONTHS : 0));
+  const [bookFrom, setBookFrom] = useState(() => {
+    const thisMonth = monthKey(new Date());
+    const found = months.indexOf(thisMonth);
+    const wanted = found >= 0 ? found : thisMonth > (months[months.length - 1] ?? '') ? months.length : 0;
+    return Math.max(0, Math.min(wanted, months.length - DEFAULT_MONTHS));
+  });
   const { portfolio } = usePortfolio();
 
   const start = Math.min(bookFrom, Math.max(0, months.length - 1));
@@ -699,7 +709,9 @@ export function ProjectForm({
                   {n} months
                 </option>
               ))}
-              <option value={0}>All {months.length} months</option>
+              {/* Nought is a length, like the rest: everything from the month chosen to the
+                  end of the project. */}
+              <option value={0}>Every month to the end</option>
             </select>
           </div>
           {shownMonths.length < months.length && (
@@ -714,6 +726,9 @@ export function ProjectForm({
           people={people}
           months={shownMonths}
           monthLabels={shownLabels}
+          /* Each person's total is of the whole project, not of the months on show, so
+             sliding the view does not move a number called Total. */
+          totalMonths={months}
           value={alloc}
           threshold={threshold}
           otherLoads={shownLoads}

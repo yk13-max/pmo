@@ -9,6 +9,7 @@ export function AllocationGrid({
   people,
   months,
   monthLabels,
+  totalMonths,
   value,
   threshold,
   otherLoads,
@@ -21,6 +22,9 @@ export function AllocationGrid({
   people: Person[];
   months: string[];
   monthLabels: string[];
+  /** The months a row's total counts, when the grid is showing only some of them. Left out,
+      the total is of what is on screen. */
+  totalMonths?: string[];
   /** `${personId}|${month}` → hours booked on this project. */
   value: Record<string, number>;
   threshold: number;
@@ -49,14 +53,14 @@ export function AllocationGrid({
                 {m}
               </th>
             ))}
-            <th className="month-col" style={{ width: 90 }}>
+            <th className="month-col" style={{ width: 90 }} title={totalMonths ? 'Across every month of the project, including any not on show' : undefined}>
               Total
             </th>
           </tr>
         </thead>
         <tbody>
           {people.map((person) => {
-            const rowTotal = months.reduce((n, m) => n + (value[`${person.id}|${m}`] ?? 0), 0);
+            const rowTotal = (totalMonths ?? months).reduce((n, m) => n + (value[`${person.id}|${m}`] ?? 0), 0);
             const barred = ineligible.has(person.id);
             const full = monthHours(person);
             return (
@@ -127,7 +131,12 @@ export function AllocationGrid({
               );
             })}
             <td className="month-col" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 600 }}>
-              {asDays(months.reduce((n, m) => n + people.reduce((s, p) => s + (value[`${p.id}|${m}`] ?? 0), 0), 0))}d
+              {asDays(
+                (totalMonths ?? months).reduce(
+                  (n, m) => n + people.reduce((s, p) => s + (value[`${p.id}|${m}`] ?? 0), 0),
+                  0,
+                ),
+              )}d
             </td>
           </tr>
         </tbody>
