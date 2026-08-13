@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import type { ConstraintType, Person, Project, Task } from '../types';
 import { CONSTRAINTS } from '../types';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
 import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
+import { PRINT_CHART_WIDTH, printGantt } from '../lib/printGantt';
 
 /** How much of the chart one day takes, at each way of looking at it. */
 const ZOOMS = [
@@ -45,6 +46,11 @@ export function Planning({
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
   // Off to begin with: the critical path is something you ask for, not the default read.
   const [showCritical, setShowCritical] = useState(false);
+  /* Set while the plan is on its way to the printer. The chart is redrawn at the width of a
+     page for the length of it, which is why this is state rather than something the print
+     stylesheet could do on its own. */
+  const [printing, setPrinting] = useState(false);
+  const workspace = useRef<HTMLDivElement>(null);
 
   const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
 
@@ -53,6 +59,13 @@ export function Planning({
     [portfolio.tasks, project],
   );
   const plan = useMemo(() => schedule(tasks, project?.startDate), [tasks, project?.startDate]);
+
+  /* Printing happens once the chart has been redrawn at the width of a page, which is a
+     render away from the click — so the click sets the state and this sends it to the
+     printer, and putting it back is what closing the dialog does. */
+  useEffect(() => {
+    if (printing) printGantt(workspace.current, () => setPrinting(false));
+  }, [printing]);
 
   if (!project) return <p className="empty">No projects yet. Add one before planning it.</p>;
 
@@ -81,7 +94,7 @@ export function Planning({
   });
   const byNumber = new Map([...numberOf].map(([id, num]) => [num, id]));
 
-  const px = ZOOMS.find((z) => z.id === zoom)?.px ?? 8;
+  const zoomPx = ZOOMS.find((z) => z.id === zoom)?.px ?? 8;
   /* The chart opens on the plan, so adding a task shows it rather than leaving the bars
      off to the right of a project that started months earlier. With nothing planned yet
      it falls back to the project's own start, which is where the first task will land. */
@@ -91,6 +104,10 @@ export function Planning({
   const chartFrom = plan.end && plan.end > (plan.start ?? '') ? plan.end : last;
   const chartStart = addDays(first, -7);
   const totalDays = Math.max(30, Math.round((fromISO(chartFrom).getTime() - fromISO(chartStart).getTime()) / DAY_MS) + 21);
+  /* On paper a day is worth whatever makes the whole plan reach the right edge of the page,
+     rather than what the zoom says: the zoom is for reading a stretch of the plan on screen,
+     and a printed plan has to arrive whole. */
+  const px = printing ? PRINT_CHART_WIDTH / totalDays : zoomPx;
   const chartW = totalDays * px;
   const x = (iso: string) => (Math.round((fromISO(iso).getTime() - fromISO(chartStart).getTime()) / DAY_MS)) * px;
   const barEnd = (iso: string) => x(iso) + px;
@@ -130,9 +147,27 @@ export function Planning({
       cursor.setMonth(cursor.getMonth() + 1);
     }
   }
+  /* Every month keeps its grid line; how many of them can say their name depends on how wide
+     a month has come out. Squeezed onto a page, a long plan names one in three rather than
+     printing them on top of each other. */
+  const labelEvery = Math.max(1, Math.ceil(52 / Math.max(1, px * 30.4)));
+
 
   return (
     <div>
+      {/* Only on paper: the screen says which project this is in the menu and the picker
+          below, neither of which prints, and a plan handed to somebody has to name itself. */}
+      <div className="print-only plan-print-head">
+        <div className="kicker">{project.client} · {project.typeLabel}</div>
+        <h2 style={{ margin: '2px 0 0' }}>{project.name}</h2>
+        <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+          {plan.start ? `Plan runs ${shortDateYear(plan.start)} → ${shortDateYear(plan.end as string)}` : 'Nothing planned yet'}
+          {' · '}
+          {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across {project.phases.length} phases
+          {' · '}
+          Printed {shortDateYear(toISO(view.today))}
+        </p>
+      </div>
       <div className="no-print control-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
         <label className="picker" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Planning</span>
@@ -161,6 +196,16 @@ export function Planning({
             </button>
           ))}
         </span>
+        {/* Beside the zoom, because what it puts on the page is what the zoom is showing. */}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          title="The plan as it is on screen, on a landscape page"
+          disabled={printing}
+          onClick={() => setPrinting(true)}
+        >
+          {printing ? 'Printing…' : 'Export the plan as PDF'}
+        </button>
         {/* Both switches sit together at the right, away from the project being picked and
             the zoom that changes what the chart shows. */}
         <span className="switches" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'auto' }}>
@@ -229,13 +274,13 @@ export function Planning({
 
       <PlanSummary project={project} plan={plan} tasks={tasks} numberOf={numberOf} />
 
-      <div className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
+      <div ref={workspace} className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
-        <div style={{ flex: 'none', width: 830, borderRight: '1px solid var(--color-divider)' }}>
+        <div className="plan-grid" style={{ flex: 'none', width: 830, borderRight: '1px solid var(--color-divider)' }}>
           {/* Same padding and the same gap as a task row, so every heading lands over the
               control it names rather than drifting across the row. */}
-          <div style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+          <div className="plan-grid-head" style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
             <span style={{ width: 26 }}>#</span>
             <span style={{ flex: 1, minWidth: 0 }}>Task</span>
             <span style={{ width: 96 }}>Who</span>
@@ -299,11 +344,13 @@ export function Planning({
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
           <div style={{ position: 'relative', width: chartW, minWidth: '100%' }}>
             <div style={{ height: ROW * 2, position: 'relative', borderBottom: '1px solid var(--color-divider)' }}>
-              {months.map((m) => (
-                <span key={m.key} style={{ position: 'absolute', left: m.x, bottom: 6, fontSize: 12, color: 'var(--color-neutral-700)', paddingLeft: 4, whiteSpace: 'nowrap' }}>
-                  {m.label}
-                </span>
-              ))}
+              {months.map((m, i) =>
+                i % labelEvery === 0 ? (
+                  <span key={m.key} style={{ position: 'absolute', left: m.x, bottom: 6, fontSize: 12, color: 'var(--color-neutral-700)', paddingLeft: 4, whiteSpace: 'nowrap' }}>
+                    {m.label}
+                  </span>
+                ) : null,
+              )}
             </div>
             <svg
               width={chartW}
@@ -531,6 +578,7 @@ function TaskRow({
 
   return (
     <div
+      className="task-row"
       style={{
         display: 'flex',
         alignItems: 'center',

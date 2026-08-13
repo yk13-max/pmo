@@ -518,4 +518,53 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   .printable .tab-panel h3 { page-break-after: avoid; }
   .table { font-size: 13px; }
   a[href]::after { content: ''; }
+
+  /* — the plan, on its own page —
+
+     Printing the Gantt is a different job from printing a screen: it is one wide picture
+     that has to arrive whole. The page is turned on its side and the plan scaled to its
+     width by printGantt, which can measure what a stylesheet cannot; everything here is
+     what has to be true around that. Nothing in this block applies to an ordinary print. */
+  :root[data-print='gantt'] .main { zoom: 1; padding: 0; }
+  /* Only the plan and the line naming it. The page title, the picker, the summary figures
+     and the key all belong to the screen. */
+  :root[data-print='gantt'] .page-head,
+  :root[data-print='gantt'] .stat-row,
+  :root[data-print='gantt'] .legend { display: none !important; }
+  :root[data-print='gantt'] .plan-print-head { margin-bottom: 8px; }
+  /* Both panes in full: on screen the chart is a window onto a wider drawing, and it is the
+     drawing that goes on the page. */
+  :root[data-print='gantt'] .plan-workspace,
+  :root[data-print='gantt'] .plan-workspace > div,
+  :root[data-print='gantt'] .plan-workspace > div > div { overflow: visible !important; }
+  :root[data-print='gantt'] .plan-workspace { max-width: none; }
+  /* The task list keeps what a reader needs — the task, who has it, how long it takes and
+     when it lands — and drops the columns that are there for editing: the share of a day,
+     the scheduling rule and its date, what it waits on, and the float. They are the fifth,
+     sixth, seventh, ninth, tenth and eleventh cell of a row, and the heading above sets out
+     its columns in the same order, so one rule covers both. */
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(5),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(6),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(7),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(9),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(10),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(11),
+  :root[data-print='gantt'] .task-row > :nth-child(5),
+  :root[data-print='gantt'] .task-row > :nth-child(6),
+  :root[data-print='gantt'] .task-row > :nth-child(7),
+  :root[data-print='gantt'] .task-row > :nth-child(9),
+  :root[data-print='gantt'] .task-row > :nth-child(10),
+  :root[data-print='gantt'] .task-row > :nth-child(11) { display: none !important; }
+  /* Narrower without those, which is what leaves the chart half the page. */
+  :root[data-print='gantt'] .plan-grid { width: 500px !important; }
+
+  /* The grid is built from form controls, which on paper would print as a page of empty
+     boxes. Here they are just the text they hold. */
+  :root[data-print='gantt'] .plan-workspace input,
+  :root[data-print='gantt'] .plan-workspace select {
+    border: 0 !important; background: transparent !important; padding: 0 2px !important;
+    -webkit-appearance: none; appearance: none; color: var(--color-text);
+  }
+  /* A plan longer than a page breaks between rows rather than through one. */
+  :root[data-print='gantt'] .plan-workspace .task-row { page-break-inside: avoid; }
 }

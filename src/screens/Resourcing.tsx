@@ -671,7 +671,13 @@ function DemandChart({
             {view.months.map((m, i) => {
               const mid = DEMAND_GUTTER + i * slot + slot / 2;
               const d = view.demand[i];
-              const top = DEMAND_BASE - scale(d) - 22;
+              /* The figure sits above its own bar, except where the time already gone —
+                 days off in navy, other work in the blue above it — stands taller than the
+                 work does. Printed at its own height there it would land dark on dark, so
+                 in a month with a lot of leave booked and little work to do it steps up and
+                 clears the colour instead. */
+              const gone = Math.max(0, scale(cap) - scale(view.capacityByMonth[i]));
+              const top = DEMAND_BASE - Math.max(scale(d), gone) - 22;
               // Long windows leave no room for "people" beside every figure.
               const compact = slot < 110;
               return (
