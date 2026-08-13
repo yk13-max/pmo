@@ -146,9 +146,20 @@ export function viewProject(
   const burn = project.budget ? Math.round((project.actual / project.budget) * 100) : 0;
   const pm = people.find((p) => p.id === project.pmId);
   const start = fromISO(project.startDate);
-  const end = fromISO(project.endDate);
+  /* The gates, after mirroring has had its say: the plan's own dates while that is ticked,
+     otherwise what was typed on the project. */
+  const gates =
+    project.mirrorPhases && planPhaseEnds.length
+      ? phases.map((_, i) => planPhaseEnds[i] || project.phaseDates[i] || '')
+      : project.phaseDates;
+  /* The last gate is the date the last phase completes, which is the date the project
+     finishes — so once it is filled in it stands in for the end date typed on the project.
+     The typed date is kept and comes back the moment the gate is cleared. */
+  const endDate = (phases.length ? gates[phases.length - 1] : '') || project.endDate;
+  const end = fromISO(endDate);
   return {
     ...project,
+    endDate,
     phases,
     phaseName: phases[project.phase] ?? phases[0] ?? '—',
     phaseStep: `${project.phase + 1} of ${phases.length}`,
@@ -209,13 +220,10 @@ export function viewProject(
     planPhaseEnds,
     /* Mirroring swaps the typed gates for the plan's own, without touching what was
        typed — unticking the box gives those dates straight back. */
-    phaseDates:
-      project.mirrorPhases && planPhaseEnds.length
-        ? phases.map((_, i) => planPhaseEnds[i] || project.phaseDates[i] || '')
-        : project.phaseDates,
+    phaseDates: gates,
     planned: Boolean(planSpan),
     spanStart: planSpan?.start ?? project.startDate,
-    spanEnd: planSpan?.end ?? project.endDate,
+    spanEnd: planSpan?.end ?? endDate,
     durationMonths: monthSpan(start, end),
   };
 }
@@ -301,7 +309,10 @@ export interface PortfolioView {
   /** The months a project can be booked across: the planning window, stretched forward so
       it always reaches the project's own end date. Booking has to be possible for every
       month the work actually runs, whatever the window happens to be set to. */
-  monthsFor: (project: { startDate: string; endDate: string }) => { months: string[]; labels: string[] };
+  monthsFor: (project: { id?: string; startDate: string; endDate: string }) => {
+    months: string[];
+    labels: string[];
+  };
   /** Projects whose bookings come from their plan — theirs are read-only. */
   planBooked: Set<string>;
   allocationsFor: (projectId: string, months?: string[]) => { person: Person; hours: number[]; loads: number[]; totalHours: number }[];
@@ -310,7 +321,7 @@ export interface PortfolioView {
   /** One person's booking across every project they touch, month by month. */
   spreadFor: (personId: string) => { project: ProjectView; hours: number[]; loads: number[]; totalHours: number }[];
   /** Everyone's booked hours with one project left out, so the form can warn on unsaved edits. */
-  loadsExcluding: (projectId: string) => Record<string, number[]>;
+  loadsExcluding: (projectId: string, forMonths?: string[]) => Record<string, number[]>;
   today: Date;
 }
 
@@ -516,13 +527,25 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       totalHours: hours.reduce((n, v) => n + v, 0),
     });
 
-    /* A project runs to its own end date, which may be well past the six months resourcing
-       happens to be looking at. Its grid runs to whichever is later, so there is always a
-       column for every month the work is live. */
-    const monthsFor = (project: { startDate: string; endDate: string }) => {
-      const endMonth = project.endDate.slice(0, 7);
-      const wanted = Math.max(portfolio.window.months, monthsBetween(months[0], endMonth) + 1);
-      const full = wanted > portfolio.window.months ? monthsFrom(months[0], Math.min(wanted, 240)) : months;
+    /* Every month a project could have a booking in: its own life, the resourcing window,
+       and anything already booked outside both — a project whose dates were pulled in after
+       the work was booked still has those hours, and the edit pane speaks for every month it
+       shows, so a month left out of it would be dropped on the next save. */
+    const monthsFor = (project: { id?: string; startDate: string; endDate: string }) => {
+      let first = project.startDate.slice(0, 7);
+      let last = project.endDate.slice(0, 7);
+      if (months[0] < first) first = months[0];
+      if (months[months.length - 1] > last) last = months[months.length - 1];
+      if (project.id) {
+        const prefix = `${project.id}|`;
+        Object.keys(allocations).forEach((key) => {
+          if (!key.startsWith(prefix)) return;
+          const month = key.split('|')[2];
+          if (month < first) first = month;
+          if (month > last) last = month;
+        });
+      }
+      const full = monthsFrom(first, Math.min(monthsBetween(first, last) + 1, 240));
       return {
         months: full,
         labels: full.map((m) => (full.length > 12 ? monthKeyLabel(m) : shortMonth(m))),
@@ -551,13 +574,22 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         .filter((r) => r.totalHours > 0)
         .sort((a, b) => b.totalHours - a.totalHours);
 
-    /** Hours each person carries from every *other* project, so the form can warn live. */
-    const loadsExcluding = (projectId: string) => {
+    /** Hours each person carries from every *other* project, so the form can warn live.
+        The months are given, because the edit pane covers the project's own life rather
+        than the resourcing window and the two rarely line up. */
+    const loadsExcluding = (projectId: string, forMonths: string[] = months) => {
       const out: Record<string, number[]> = {};
+      const at = new Map(forMonths.map((m, i) => [m, i]));
       people.forEach((person) => {
-        const own = months.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0);
-        const total = loadIndex.get(person.id) ?? months.map(() => 0);
-        out[person.id] = total.map((v, i) => v - own[i]);
+        out[person.id] = forMonths.map(() => 0);
+      });
+      Object.entries(allocations).forEach(([key, hours]) => {
+        const [pid, personId, month] = key.split('|');
+        if (pid === projectId || !projectById.has(pid)) return;
+        const i = at.get(month);
+        const row = out[personId];
+        if (i === undefined || !row) return;
+        row[i] += hours;
       });
       return out;
     };

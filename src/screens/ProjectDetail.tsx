@@ -6,7 +6,7 @@ import { Tabs } from '../components/Tabs';
 import { Stripe } from '../components/Stripe';
 import { WindowControls } from '../components/WindowControls';
 import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_TYPE } from '../types';
-import { shortDate, shortDateYear, toISO } from '../lib/dates';
+import { shortDateYear, toISO } from '../lib/dates';
 
 export function ProjectDetail({
   view,
@@ -135,13 +135,30 @@ export function ProjectDetail({
         tabs={[
           { id: 'progress', label: 'Progress & money', render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where it has got to</h3>
-      <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+      <p className="lede" style={{ margin: 0 }}>
         Currently in {project.phaseName} — phase {project.phaseStep}, {project.pct}% through it, and {project.overallPct}%
-        through the project overall. Next due: {project.milestone} on {project.msDateLabel}.
+        through the project overall.
       </p>
-      <div className="phase-strip" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch', marginBottom: 'var(--space-8)' }}>
+      {/* The one thing to act on gets its own line, in the page's own weight rather than the
+          lede's, so it is not read as the tail of the sentence above. */}
+      <p style={{ margin: 'var(--space-2) 0 var(--space-4)', fontWeight: 600 }}>
+        Next due: {project.milestone} on {project.msDateLabel}
+      </p>
+      {/* A grid rather than a row of columns, so the four lines of every phase — bar, name,
+          date, where it has got to — sit on the same four rows across the strip. A name that
+          takes two lines then pushes every date down together instead of only its own. */}
+      <div
+        className="phase-strip"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${project.phases.length}, minmax(0, 1fr))`,
+          gridTemplateRows: 'auto auto auto auto',
+          gap: '8px var(--space-2)',
+          marginBottom: 'var(--space-8)',
+        }}
+      >
         {project.phases.map((name, i) => (
-          <div key={name} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div key={name} style={{ display: 'grid', gridTemplateRows: 'subgrid', gridRow: 'span 4', gap: 8, minWidth: 0 }}>
             {/* Each phase's own bar, part-filled for the one in hand. */}
             <span style={{ position: 'relative', display: 'block', height: 6, background: 'var(--color-neutral-300)' }}>
               {project.pips[i]?.fill > 0 && (
@@ -158,19 +175,23 @@ export function ProjectDetail({
                 />
               )}
             </span>
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, lineHeight: 1.2, textWrap: 'pretty' }}>{name}</span>
-            {project.phaseDates[i] && (
-              <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{shortDate(project.phaseDates[i])}</span>
-            )}
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, lineHeight: 1.2, textWrap: 'pretty', alignSelf: 'start' }}>{name}</span>
+            {/* Always drawn, even with no date on the gate: an empty line here is what keeps
+                the row below it level with the rest. The year is carried because a project
+                can run across three of them. */}
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', alignSelf: 'end' }}>
+              {project.phaseDates[i] ? shortDateYear(project.phaseDates[i]) : '—'}
+            </span>
             <span
               style={{
                 fontSize: 12,
                 letterSpacing: '.07em',
                 textTransform: 'uppercase',
+                alignSelf: 'end',
                 color: i === project.phase ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
               }}
             >
-              {i < project.phase ? 'Done' : i === project.phase ? 'In progress' : 'To come'}
+              {i < project.phase ? 'Completed' : i === project.phase ? 'In progress' : 'Not started'}
             </span>
           </div>
         ))}

@@ -105,7 +105,23 @@ export function ProjectForm({
   );
   const [alloc, setAlloc] = useState<Record<string, number>>(allocations);
   const [touched, setTouched] = useState(false);
+  /* Which stretch of the project's months the booking grid shows. It is only a view of the
+     grid: every month is still held in `alloc` and still saved, whether on show or not.
+     Nought months means all of them, which is where it opens. */
+  const [bookFrom, setBookFrom] = useState(0);
+  const [bookCount, setBookCount] = useState(0);
   const { portfolio } = usePortfolio();
+
+  const start = Math.min(bookFrom, Math.max(0, months.length - 1));
+  const shownMonths = months.slice(start, bookCount > 0 ? start + bookCount : undefined);
+  const shownLabels = monthLabels.slice(start, bookCount > 0 ? start + bookCount : undefined);
+  const shownLoads = useMemo(() => {
+    const out: Record<string, number[]> = {};
+    Object.entries(otherLoads).forEach(([id, row]) => {
+      out[id] = row.slice(start, bookCount > 0 ? start + bookCount : undefined);
+    });
+    return out;
+  }, [otherLoads, start, bookCount]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
@@ -127,25 +143,8 @@ export function ProjectForm({
     (p) => ineligible.has(p.id) && months.some((m) => (alloc[`${p.id}|${m}`] ?? 0) > 0),
   );
   const internal = draft.facing === 'I';
-  const errors: Record<string, string> = {};
-  if (!draft.name.trim()) errors.name = 'Give the project a name.';
-  if (!draft.client.trim()) errors.client = internal ? 'Name the owning function.' : 'Name the client.';
-  if (!draft.pmId) errors.pmId = 'Pick a project manager.';
-  if (num(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
-  if (draft.endDate <= draft.startDate) errors.endDate = 'The end date must come after the start date.';
-  if (!internal && num(draft.billed) > num(draft.value)) errors.billed = 'Invoiced cannot exceed the agreed value.';
-  if (draft.milestoneDate && draft.endDate && draft.milestoneDate > draft.endDate)
-    errors.milestoneDate = `The next thing due falls after the project ends (${draft.endDate}). Move it earlier, or push the end date out.`;
-  if (draft.milestoneDate && draft.startDate && draft.milestoneDate < draft.startDate)
-    errors.milestoneDate = 'The next thing due falls before the project starts.';
-  if (strandedBookings.length)
-    errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
 
   const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
-  /* Bookings come from the plan while this is on, so the grid below reports rather than
-     accepts. The figures in it are the plan's own — every screen reads the same set. */
-  const planBooked = Boolean(project?.usesPlan && project?.plansResource);
-
   /* The plan is read live so the gates and the milestone list always show what the Gantt
      currently says, rather than whatever it said when the form was opened. */
   const planned = schedule(
@@ -164,9 +163,38 @@ export function ProjectForm({
   });
   const canMirror = Boolean(draft.usesPlan) && planTasks.length > 0;
   const mirroring = canMirror && Boolean(draft.mirrorPhases);
+  /* What each gate reads as on screen: the plan's dates while mirroring, otherwise typed. */
+  const gates = phases.map((_, i) => (mirroring ? planPhaseEnds[i] || phaseDates[i] : phaseDates[i]));
+  /* The last phase completing is the project finishing, so once that gate is filled in it
+     is the end date, here and on every screen. The typed date is left alone and comes back
+     if the gate is cleared. */
+  const lastGate = phases.length ? gates[phases.length - 1] : '';
+  const effectiveEnd = lastGate || draft.endDate;
+
+  const errors: Record<string, string> = {};
+  if (!draft.name.trim()) errors.name = 'Give the project a name.';
+  if (!draft.client.trim()) errors.client = internal ? 'Name the owning function.' : 'Name the client.';
+  if (!draft.pmId) errors.pmId = 'Pick a project manager.';
+  if (num(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
+  if (effectiveEnd <= draft.startDate)
+    errors.endDate = lastGate
+      ? 'The last phase completes on or before the start date.'
+      : 'The end date must come after the start date.';
+  if (!internal && num(draft.billed) > num(draft.value)) errors.billed = 'Invoiced cannot exceed the agreed value.';
+  if (draft.milestoneDate && effectiveEnd && draft.milestoneDate > effectiveEnd)
+    errors.milestoneDate = `The next thing due falls after the project ends (${effectiveEnd}). Move it earlier, or push the end date out.`;
+  if (draft.milestoneDate && draft.startDate && draft.milestoneDate < draft.startDate)
+    errors.milestoneDate = 'The next thing due falls before the project starts.';
+  if (strandedBookings.length)
+    errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
+
+  /* Bookings come from the plan while this is on, so the grid below reports rather than
+     accepts. The figures in it are the plan's own — every screen reads the same set. */
+  const planBooked = Boolean(project?.usesPlan && project?.plansResource);
+
   const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
   if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
-  if (!internal && invoiceDates.some((d) => d && draft.endDate && d > draft.endDate))
+  if (!internal && invoiceDates.some((d) => d && effectiveEnd && d > effectiveEnd))
     errors.invoiceDates = 'An invoice is dated after the project ends.';
 
   const submit = () => {
@@ -372,11 +400,19 @@ export function ProjectForm({
               className="input"
               type="date"
               max={MAX_DATE}
-              value={draft.endDate}
+              /* A date on the last phase is the project finishing, so it takes this field
+                 over rather than sitting beside it disagreeing. */
+              disabled={Boolean(lastGate)}
+              value={effectiveEnd}
               aria-invalid={invalid('endDate')}
               onChange={(e) => set('endDate', e.target.value)}
             />
             {err('endDate')}
+            {lastGate && (
+              <div className="field-hint">
+                From the last phase date below. What was typed here is kept, and comes back if that is cleared.
+              </div>
+            )}
           </div>
           <div className="field">
             <label htmlFor="pf-ms">Next thing due</label>
@@ -423,7 +459,7 @@ export function ProjectForm({
               id="pf-msdate"
               className="input"
               type="date"
-              max={draft.endDate || MAX_DATE}
+              max={effectiveEnd || MAX_DATE}
               value={draft.milestoneDate}
               aria-invalid={invalid('milestoneDate')}
               onChange={(e) => set('milestoneDate', e.target.value)}
@@ -434,7 +470,7 @@ export function ProjectForm({
                 type="button"
                 className="btn btn-ghost"
                 style={{ paddingInline: 0 }}
-                onClick={() => set('milestoneDate', draft.endDate)}
+                onClick={() => set('milestoneDate', effectiveEnd)}
               >
                 Set it to the end date
               </button>
@@ -568,7 +604,7 @@ export function ProjectForm({
                 type="date"
                 max={MAX_DATE}
                 disabled={mirroring}
-                value={mirroring ? planPhaseEnds[i] || phaseDates[i] : phaseDates[i]}
+                value={gates[i]}
                 onChange={(e) =>
                   setDraft((d) => {
                     const next = phases.map((_: string, j: number) => d.phaseDates[j] ?? '');
@@ -583,7 +619,8 @@ export function ProjectForm({
         <p className="field-hint">
           {mirroring
             ? 'Taken from the plan: each gate is the last day of work in that phase. What was typed here is kept, and comes back if this is unticked.'
-            : 'When each phase is planned to complete. Shown on the project detail stepper.'}
+            : 'When each phase is planned to complete. Shown on the project detail stepper.'}{' '}
+          A date on the last phase is when the project finishes, and stands in for the end date above.
         </p>
       </fieldset>
 
@@ -627,14 +664,59 @@ export function ProjectForm({
             &ldquo;Book people from this plan&rdquo; there to go back to booking by hand.
           </p>
         )}
+        {/* The same two controls as the Resourcing screen, over this project's own months:
+            a long project is two dozen columns wide, and most edits are to one stretch of
+            it. Only what is on show changes — every month keeps its bookings either way. */}
+        <div
+          className="control-row"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 'var(--space-3) var(--space-4)', minWidth: 0, marginBottom: 'var(--space-3)' }}
+        >
+          <div className="field" style={{ margin: 0, width: 150 }}>
+            <label htmlFor="pf-book-from">Plan from</label>
+            <select
+              id="pf-book-from"
+              className="input"
+              value={months[start] ?? ''}
+              onChange={(e) => setBookFrom(Math.max(0, months.indexOf(e.target.value)))}
+            >
+              {months.map((m, i) => (
+                <option key={m} value={m}>
+                  {monthLabels[i]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ margin: 0, width: 150 }}>
+            <label htmlFor="pf-book-for">For</label>
+            <select
+              id="pf-book-for"
+              className="input"
+              value={bookCount}
+              onChange={(e) => setBookCount(Number(e.target.value))}
+            >
+              {[...new Set([3, 6, 12, 18, 24].filter((n) => n < months.length))].map((n) => (
+                <option key={n} value={n}>
+                  {n} months
+                </option>
+              ))}
+              <option value={0}>All {months.length} months</option>
+            </select>
+          </div>
+          {shownMonths.length < months.length && (
+            <p className="field-hint" style={{ margin: '0 0 8px' }}>
+              {months.length - shownMonths.length} of the project&rsquo;s months are out of view. Anything booked in
+              them is kept, and counts in the totals.
+            </p>
+          )}
+        </div>
         <AllocationGrid
           readOnly={planBooked}
           people={people}
-          months={months}
-          monthLabels={monthLabels}
+          months={shownMonths}
+          monthLabels={shownLabels}
           value={alloc}
           threshold={threshold}
-          otherLoads={otherLoads}
+          otherLoads={shownLoads}
           ineligible={ineligible}
           typeLabel={typeDef?.label ?? draft.type}
           onChange={(personId, month, pct) =>

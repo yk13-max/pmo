@@ -290,9 +290,6 @@ a:hover { color: var(--color-accent-600); }
      inside. */
   .table, .alloc-table { display: block; overflow-x: auto; scrollbar-width: thin; }
   .drawer { padding: var(--space-4); overflow-x: hidden; }
-  /* A fieldset refuses by default to be narrower than its widest content, which would take
-     the whole pane sideways rather than letting the month grid inside it scroll. */
-  .drawer fieldset, .fieldset { min-width: 0; }
   .drawer-backdrop { padding: var(--space-2); align-items: flex-start; }
 
   /* — the panels that follow the pointer —
@@ -395,7 +392,10 @@ a:hover { color: var(--color-accent-600); }
 /* A field that is filled in from somewhere else should look it, rather than inviting a
    typed answer it will only throw away. */
 .input:disabled { background: var(--color-surface); color: var(--color-neutral-700); cursor: not-allowed; }
-.fieldset { border: 0; padding: 0; margin: 0 0 var(--space-6); }
+/* min-width because a fieldset otherwise refuses to be narrower than its widest content,
+   which would take the pane it sits in sideways rather than letting a wide grid inside it
+   scroll on its own. */
+.fieldset { border: 0; padding: 0; margin: 0 0 var(--space-6); min-width: 0; }
 .fieldset > legend { padding: 0; font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-600); margin-bottom: var(--space-3); }
 
 /* Centred in the viewport rather than pinned to an edge — the edit pane is a modal. */
@@ -408,8 +408,11 @@ a:hover { color: var(--color-accent-600); }
 .alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
 .alloc-table .num { width: 58px; text-align: right; padding: 4px 4px; min-height: 30px; }
 /* Month columns carry the same width on the heading and the cell, so the labels sit
-   directly over the boxes they name however many months are on show. */
-.alloc-table th.month-col, .alloc-table td.month-col { width: 76px; text-align: right; }
+   directly over the boxes they name however many months are on show. The floor is what
+   stops a project two years long squeezing its columns down to a few characters: past that
+   the table is wider than the pane and scrolls sideways inside it. */
+.alloc-table th.month-col, .alloc-table td.month-col { width: 76px; min-width: 64px; text-align: right; }
+.alloc-table th:first-child, .alloc-table td:first-child { min-width: 140px; }
 .alloc-table td.month-col .num { width: 100%; }
 .alloc-table input[type='number']::-webkit-inner-spin-button { margin-left: 2px; }
 
@@ -481,11 +484,13 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   .chart-callout, .names-toggle { display: none; }
 
   /* Seven phases across the page give each name a column narrower than the word in it, so
-     the strip turns on its side: one phase per line, its bar beside its name. */
-  .phase-strip { flex-direction: column; gap: var(--space-3) !important; }
-  .phase-strip > div { flex-direction: row !important; flex-wrap: wrap;
+     the strip turns on its side: one phase per line, its bar beside its name. The rows no
+     longer line up across phases because there is only one phase to a line. */
+  .phase-strip { display: flex !important; flex-direction: column; gap: var(--space-3) !important; }
+  .phase-strip > div { display: flex !important; flex-direction: row; flex-wrap: wrap;
     align-items: baseline; gap: 3px 10px !important; }
-  .phase-strip > div > span:first-child { flex: 0 0 56px; align-self: center; }
+  .phase-strip > div > span { align-self: baseline !important; }
+  .phase-strip > div > span:first-child { flex: 0 0 56px; align-self: center !important; }
 }
 
 .print-only { display: none; }

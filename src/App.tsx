@@ -141,10 +141,12 @@ export function App() {
   ];
 
   /* Bookings run to the project's own end date, so the grid in the edit pane covers every
-     month the work is live rather than stopping at the resourcing window. */
+     month the work is live rather than stopping at the resourcing window. The derived
+     project is used rather than the stored one, so a last phase gate that stands in for the
+     end date carries the grid out to it. */
   const editSpan =
     editing?.kind === 'project' && editing.project
-      ? view.monthsFor(editing.project)
+      ? view.monthsFor(view.projects.find((p) => p.id === editing.project?.id) ?? editing.project)
       : { months: view.months, labels: view.monthLabels };
 
   /* Double-clicking the mark leads here and double-clicking it again leads back. It takes
@@ -275,7 +277,7 @@ export function App() {
             threshold={view.threshold}
             projectTypes={view.projectTypes}
             allocations={editing.project ? view.allocationsOf(editing.project.id, editSpan.months) : {}}
-            otherLoads={view.loadsExcluding(editing.project?.id ?? '')}
+            otherLoads={view.loadsExcluding(editing.project?.id ?? '', editSpan.months)}
             onSave={(project, allocations) => {
               store.saveProject(project, allocations);
               if (!projectId) go({ projectId: project.id });
