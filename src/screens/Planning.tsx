@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import type { ConstraintType, Person, Project, Task } from '../types';
-import { CONSTRAINTS } from '../types';
+import { CONSTRAINTS, WORKING_HOURS_PER_DAY } from '../types';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
 import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
@@ -292,6 +292,11 @@ export function Planning({
           {/* Same padding and the same gap as a task row, so every heading lands over the
               control it names rather than drifting across the row. */}
           <div className="plan-grid-head" style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
+            {/* Over the tick. A checklist reads down its left edge, so the box that says a
+                task is finished is the first thing on the row. */}
+            <span style={{ width: 16, textAlign: 'center' }} title="Done">
+              ✓
+            </span>
             <span style={{ width: 26 }}>#</span>
             <span style={{ flex: 1, minWidth: 0 }}>Task</span>
             <span style={{ width: 96 }}>Who</span>
@@ -434,7 +439,7 @@ export function Planning({
                   )}
                   {row.kind === 'task' && row.at && (
                     <span
-                      title={`${row.task.name}: ${shortDateYear(row.at.startDate)} → ${shortDateYear(row.at.endDate)}${row.at.critical ? ' · on the critical path' : ` · ${row.at.float} days of float`}`}
+                      title={`${row.task.name}: ${shortDateYear(row.at.startDate)} → ${shortDateYear(row.at.endDate)}${row.task.done >= 100 ? ' · complete' : row.at.critical ? ' · on the critical path' : ` · ${row.at.float} days of float`}`}
                       style={{
                         position: 'absolute',
                         left: x(row.at.startDate),
@@ -456,6 +461,25 @@ export function Planning({
                             width: `${Math.min(100, row.task.done)}%`,
                             background: 'color-mix(in srgb, var(--color-text) 45%, transparent)',
                             borderRadius: '3px 0 0 3px',
+                            display: 'block',
+                          }}
+                        />
+                      )}
+                      {/* Ruled through, the way a finished line on a list is. A part-done
+                          task is the shaded stretch above and nothing more; the line means
+                          the whole bar is behind you, and it reads at any zoom, where a bar
+                          a pixel and a half wide has no room to show shading at all. */}
+                      {row.task.done >= 100 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 1,
+                            right: 1,
+                            top: '50%',
+                            height: 2,
+                            marginTop: -1,
+                            background: 'var(--color-bg)',
+                            borderRadius: 1,
                             display: 'block',
                           }}
                         />
@@ -483,6 +507,12 @@ export function Planning({
           On the critical path
         </span>
         <span>
+          <span style={{ width: 26, height: 10, background: 'var(--color-accent)', display: 'grid', alignItems: 'center' }}>
+            <span style={{ height: 2, background: 'var(--color-bg)', display: 'block' }} />
+          </span>
+          Complete
+        </span>
+        <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
           Today
         </span>
@@ -507,6 +537,24 @@ function PlanSummary({
 }) {
   const critical = plan.ordered.filter((s) => s.critical).length;
   const name = (id: string) => tasks.find((t) => t.id === id)?.name ?? id;
+  /* What the plan asks of people, rather than how long it takes to happen. A task of four
+     days at a quarter of somebody's day is one day of work, not four — the same arithmetic
+     the plan books people by — so this is the sum of every task at its own share of a day.
+     End to end is still on the page either side of it, as the two dates the plan runs
+     between. */
+  const scheduledDays = tasks.reduce((n, t) => n + t.days * ((t.weight ?? 100) / 100), 0);
+  const scheduledHours = scheduledDays * WORKING_HOURS_PER_DAY;
+  /* Credited as far as each task has got, so a plan half way through a long task is not
+     rounded down to nothing. The tick sets a task to all or none of it; a sheet can bring
+     in anything in between, and this counts that too. */
+  const doneHours = tasks.reduce(
+    (n, t) => n + t.days * ((t.weight ?? 100) / 100) * WORKING_HOURS_PER_DAY * (Math.min(100, Math.max(0, t.done)) / 100),
+    0,
+  );
+  const complete = tasks.filter((t) => t.done >= 100).length;
+  /** Whole where it is whole, one place where it is not — 27 rather than 27.0, 27.5 as it is. */
+  const trim = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? Math.round(n) : Number(n.toFixed(1)));
+  const hours = (n: number) => Math.round(n).toLocaleString('en-GB');
   return (
     <>
       <div className="stat-row one-line" style={{ marginBottom: 'var(--space-4)' }}>
@@ -524,7 +572,16 @@ function PlanSummary({
           }
           color={plan.end && plan.end > project.endDate ? 'var(--color-accent-2-700)' : undefined}
         />
-        <Fig value={String(plan.span)} label="Working days end to end" sub="Weekends not counted" />
+        <Fig
+          value={String(trim(scheduledDays))}
+          label="Working days scheduled"
+          sub="Every task's days at its share of a day"
+        />
+        <Fig
+          value={hours(doneHours)}
+          label="Hours complete"
+          sub={`Of ${hours(scheduledHours)} scheduled · ${complete} of ${tasks.length} tasks ticked off`}
+        />
         <Fig
           value={String(critical)}
           label="Tasks that cannot slip"
@@ -599,12 +656,24 @@ function TaskRow({
         borderBottom: '1px solid var(--color-divider)',
       }}
     >
+      {/* Done or not done. The model keeps how far through a task is as a percentage, which
+          a sheet can still import at anything in between and the bar still draws; from here
+          it is the two ends of it, because that is the question anybody running a plan is
+          answering — is this finished. */}
+      <input
+        type="checkbox"
+        checked={task.done >= 100}
+        aria-label={`Task ${row.number} complete`}
+        title={task.done >= 100 ? 'Complete' : task.done > 0 ? `${task.done}% done — tick to complete` : 'Tick when this is finished'}
+        style={{ width: 16, height: 16, flex: 'none', accentColor: 'var(--color-accent)', margin: 0 }}
+        onChange={(e) => set({ done: e.target.checked ? 100 : 0 })}
+      />
       <span style={{ width: 26, fontSize: 12, color: 'var(--color-neutral-600)', fontVariantNumeric: 'tabular-nums' }}>
         {row.number}
       </span>
       <input
         className="input"
-        style={{ ...cell, flex: 1, minWidth: 0 }}
+        style={{ ...cell, flex: 1, minWidth: 0, textDecoration: task.done >= 100 ? 'line-through' : undefined }}
         defaultValue={task.name}
         aria-label={`Task ${row.number} name`}
         onBlur={(e) => e.target.value !== task.name && set({ name: e.target.value })}

@@ -612,24 +612,28 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   :root[data-print='gantt'] .plan-workspace > div > div { overflow: visible !important; }
   :root[data-print='gantt'] .plan-workspace { max-width: none; }
   /* The task list keeps what a reader needs — the task, who has it, how long it takes and
-     when it lands — and drops the columns that are there for editing: the share of a day,
-     the scheduling rule and its date, what it waits on, and the float. They are the fifth,
-     sixth, seventh, ninth, tenth and eleventh cell of a row, and the heading above sets out
-     its columns in the same order, so one rule covers both. */
-  :root[data-print='gantt'] .plan-grid-head > :nth-child(5),
+     when it lands — and drops the columns that are there for editing: the tick, the share of
+     a day, the scheduling rule and its date, what it waits on, and the float. They are the
+     first, sixth, seventh, tenth, eleventh and twelfth cell of a row, and the heading above
+     sets out its columns in the same order, so one rule covers both. A tick box would print
+     as an empty square whether or not it was ticked; what says a task is done on paper is
+     its name ruled through, and its bar ruled through with it. */
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(1),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(6),
-  :root[data-print='gantt'] .plan-grid-head > :nth-child(9),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(7),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(10),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(11),
-  :root[data-print='gantt'] .task-row > :nth-child(5),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(12),
+  :root[data-print='gantt'] .task-row > :nth-child(1),
   :root[data-print='gantt'] .task-row > :nth-child(6),
-  :root[data-print='gantt'] .task-row > :nth-child(9),
+  :root[data-print='gantt'] .task-row > :nth-child(7),
   :root[data-print='gantt'] .task-row > :nth-child(10),
-  :root[data-print='gantt'] .task-row > :nth-child(11) { display: none !important; }
+  :root[data-print='gantt'] .task-row > :nth-child(11),
+  :root[data-print='gantt'] .task-row > :nth-child(12) { display: none !important; }
   /* The start column stays, but as the date the plan starts rather than as a field to type
      a rule into: a printed plan has no rule column to read the typed date against. */
   :root[data-print='gantt'] .task-start input { display: none !important; }
-  :root[data-print='gantt'] .plan-grid-head > :nth-child(7),
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(8),
   :root[data-print='gantt'] .task-start { width: 62px !important; flex: none; }
   /* Narrower without those, which is what leaves the chart half the page. */
   :root[data-print='gantt'] .plan-grid { width: 560px !important; }
