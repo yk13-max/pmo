@@ -3,7 +3,7 @@ import { usePortfolio } from './store/portfolio';
 import { usePortfolioView, money } from './lib/derive';
 import { useRoute } from './lib/route';
 import { useTheme } from './lib/theme';
-import { weekNumber } from './lib/dates';
+import { fileStamp, weekNumber } from './lib/dates';
 import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
 import { BrandLockup } from './components/BrandLockup';
@@ -124,7 +124,7 @@ export function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pmo-portfolio-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `pmo-portfolio-${fileStamp()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

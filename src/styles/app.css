@@ -23,13 +23,27 @@ a:hover { color: var(--color-accent-600); }
    the measure the rest of the site is set to, and sits centred in the window as it does on
    every other screen, so the title lands in the same place whichever screen you came from.
    The chart alone runs out past them to both sides. */
-.main-wide { max-width: none; }
 /* 1480 rather than 1560 because this is the content, and elsewhere the 1560 is the column
    with its padding — take the padding off and the title lands in exactly the same place as
    it does on the screen you came from. */
+.main-wide { max-width: none; --plan-measure: 1480px; }
 .main-wide .page-head,
-.main-wide .plan-page > * { max-width: 1480px; margin-inline: auto; }
-.main-wide .plan-page > .plan-workspace { max-width: none; margin-inline: 0; }
+.main-wide .plan-page > * { max-width: var(--plan-measure); margin-inline: auto; }
+/* The chart is the one thing let past that measure, but not all the way to the edge of an
+   ultrawide window: given the room it stands off the menu and the right-hand edge by twice
+   what everything else does, so a chart three thousand pixels wide still reads as something
+   sitting on the page rather than as something filling the screen.
+
+   Only given the room. Where the window has nothing spare the chart is as wide as it ever
+   was, and it is never drawn narrower than the plan's own figures above it — a chart pulled
+   in past its own summary would look like a mistake. Those two are what the min and the max
+   are for: the max holds the floor at the measure, the min stops it exceeding what is there,
+   and between them the inset only appears once there is width to spend on it. */
+.main-wide .plan-page > .plan-workspace {
+  max-width: none;
+  margin-inline: auto;
+  width: min(100%, max(var(--plan-measure), 100% - var(--space-8) * 2));
+}
 /* Prose keeps its own measure, at the left of the column rather than in the middle of it. */
 .main-wide .page-blurb, .main-wide .lede { max-width: 76ch; }
 .plan-note > span { display: block; max-width: 76ch; }

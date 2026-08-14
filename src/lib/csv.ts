@@ -1,7 +1,7 @@
 import type { ConstraintType, CurrencyCode, Portfolio, Task } from '../types';
 import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_FAMILY, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
-import { monthKeyLabel } from './dates';
+import { fileStamp, monthKeyLabel } from './dates';
 import { depsToText, parseDeps } from './schedule';
 
 /* CSVs are written to be read by a person, not just re-imported: words rather than codes
@@ -227,7 +227,7 @@ export function tasksCsv(p: Portfolio): string {
 }
 
 export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = fileStamp();
   return [
     { name: `pmo-projects-${stamp}.csv`, content: projectsCsv(p, months) },
     { name: `pmo-people-${stamp}.csv`, content: peopleCsv(p) },

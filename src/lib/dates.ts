@@ -17,6 +17,19 @@ export function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * `2026-08-14-1405` — what goes in the name of a file being exported.
+ *
+ * The date on its own could not tell two exports of the same day apart, and a day is exactly
+ * when a portfolio is exported more than once: a change, a look at it, another change. Local
+ * time rather than UTC, because it is being read against the clock on the wall; no colons,
+ * because they are not allowed in a filename on Windows.
+ */
+export function fileStamp(d = new Date()): string {
+  const at = `${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${toISO(d)}-${at}`;
+}
+
 export function fromISO(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);

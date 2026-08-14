@@ -12,8 +12,12 @@ export function About({ onLeave }: { onLeave: () => void }) {
           push the pair off the middle of the window. */}
       <div className="about-lockup">
         <BrandLockup onDoubleClick={onLeave} />
-        {/* Under the pointer the whole line ducks out of the way — see the stylesheet. */}
-        <p className="about-credit">By Saranan</p>
+        {/* Under the pointer the whole line swings out from behind the mark — see the
+            stylesheet. The count is of the source the app is built from, and it is counted
+            at the moment it is built rather than typed here, so it is never out of date. */}
+        <p className="about-credit">
+          By Saranan · {__SOURCE_LINES__.toLocaleString('en-GB')} lines
+        </p>
       </div>
     </div>
   );
