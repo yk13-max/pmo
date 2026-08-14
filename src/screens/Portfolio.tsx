@@ -403,12 +403,12 @@ const BAND_H = 104;
 const TYPE_ROW = 22;
 const TICK_ROW = 26;
 
-/* Round money for the budget axis. Two things keep it relevant: the values come off a
+/* Round money for the vertical axis. Two things keep it relevant: the values come off a
    1-2-5 ladder so they read as money rather than as arithmetic, and the ladder is clipped
-   to the budgets actually on the chart — a tick below the smallest project labels empty
+   to the amounts actually on the chart — a tick below the smallest project labels empty
    space. The scale is a square root, so anything landing too close to the tick below it is
    dropped as well, which stops the top of the axis crowding. */
-function budgetTicks(min: number, max: number, y: (v: number) => number): number[] {
+function moneyTicks(min: number, max: number, y: (v: number) => number): number[] {
   const ladder: number[] = [];
   for (let e = 0; e <= 9; e += 1) {
     for (const m of [1, 2, 5]) {
@@ -471,38 +471,59 @@ function Scatter({
   const plotBottom = plotTop + PLOT_H;
   const chartH = plotBottom + TICK_ROW + 6;
 
-  const budgets = projects.map((p) => p.budget).filter((v) => v > 0);
-  const maxBudget = Math.max(1, ...budgets);
-  const minBudget = budgets.length ? Math.min(...budgets) : 1;
+  /* What a project is worth, which is a different question for the two kinds of work.
+     Customer work is worth what can be invoiced for it — the whole agreed contract value,
+     converted to the base currency so a dollar job and a euro job sit on the same axis
+     rather than on the same number. Internal work has nobody to invoice, so it is worth
+     what was approved to spend on it, which is what the axis has always shown.
+
+     They share an axis because they are the same kind of quantity: the money the project
+     is carrying. Reading a customer project against its budget instead would have put a
+     four-million-pound contract on the chart at whatever it happened to cost to run. */
+  const worth = (p: ProjectView) => (p.cust ? p.valueBase : p.budget);
+  const worths = projects.map(worth).filter((v) => v > 0);
+  const maxWorth = Math.max(1, ...worths);
+  const minWorth = worths.length ? Math.min(...worths) : 1;
+  /* Named for what is actually on it. Filtered to one kind of work the axis has one
+     meaning, and saying both would be telling the reader about projects that are not
+     there; with both kinds up it has to say both. */
+  const anyCustomer = projects.some((p) => p.cust);
+  const anyInternal = projects.some((p) => !p.cust);
+  const yTitle =
+    anyCustomer && anyInternal
+      ? 'Invoiceable, or budget for internal'
+      : anyCustomer
+        ? 'Total invoiceable'
+        : 'Approved budget';
   /* The plot starts in the same place whether or not the phase scale is on show: the
      type's name sits above the phase labels rather than out to their left, so turning the
      scale on no longer shunts the whole chart sideways. */
   const plotLeft = PLOT_LEFT;
   const x = (pct: number) => plotLeft + (pct / 100) * (PLOT_RIGHT - plotLeft);
-  const y = (budget: number) => plotBottom - Math.sqrt(budget / maxBudget) * PLOT_H;
+  const y = (amount: number) => plotBottom - Math.sqrt(amount / maxWorth) * PLOT_H;
   // Sized against the heaviest project in view so bubbles stay legible whatever the range.
   const maxLoad = Math.max(1, ...projects.map((p) => p.load));
   const radius = (load: number) => 5 + (load / maxLoad) * 8;
 
   const xTicks = [0, 25, 50, 75, 100];
   const xMinor = [12.5, 37.5, 62.5, 87.5];
-  const yTicks = budgetTicks(minBudget, maxBudget, y);
+  const yTicks = moneyTicks(minWorth, maxWorth, y);
 
   /* Two ways to label the plot. Left alone it calls out only what a delivery lead would
      stop on — anything at risk, plus priority 1-2 — and says why. Switched to names it
      labels every project with its name alone, so the chart can be read as a map.
      Either way a label is placed only where it will not collide with one already there,
-     biggest budget first, so a crowded corner stays readable. */
+     biggest first, so a crowded corner stays readable. */
   const callouts: { p: ProjectView; x: number; y: number; text: string; anchor: 'start' | 'end' }[] = [];
   const placed: { x: number; y: number; w: number }[] = [];
   (showNames
-    ? [...projects].sort((a, b) => b.budget - a.budget)
+    ? [...projects].sort((a, b) => worth(b) - worth(a))
     : [...projects]
         .filter((p) => p.rag === 'R' || p.priority <= 2)
-        .sort((a, b) => a.priority - b.priority || b.budget - a.budget)
+        .sort((a, b) => a.priority - b.priority || worth(b) - worth(a))
   ).forEach((p) => {
     const cx = x(xValue(p));
-    const cy = y(p.budget);
+    const cy = y(worth(p));
     const text = showNames
       ? p.name
       : p.rag === 'R' && p.burn > 90
@@ -532,8 +553,9 @@ function Scatter({
             {overall
               ? 'how far a project has got overall'
               : 'how far through its current phase a project is, whichever phase that is'}
-            , bottom to top for how big its budget is. Big and top-right means expensive work that is nearly done; red
-            means the project manager has flagged a problem.
+            , bottom to top for what it is worth — the whole invoiceable value on customer work, the
+            approved budget on internal. Big and top-right means valuable work that is nearly done; red means the
+            project manager has flagged a problem.
           </p>
         </div>
         {/* Its own full-width line under the lede: the chips sit where they always have, on
@@ -556,7 +578,7 @@ function Scatter({
               viewBox={`0 0 ${CHART_W} ${chartH}`}
               style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
               role="img"
-              aria-label={`Every project by ${axisTitle.replace(/ →$/, '').toLowerCase()} against its approved budget`}
+              aria-label={`Every project by ${axisTitle.replace(/ →$/, '').toLowerCase()} against ${yTitle.toLowerCase()}`}
             >
               <rect
                 x={plotLeft}
@@ -613,7 +635,7 @@ function Scatter({
                 <circle
                   key={p.id}
                   cx={x(xValue(p))}
-                  cy={y(p.budget)}
+                  cy={y(worth(p))}
                   r={radius(p.load) + (hovered?.id === p.id ? 4 : 0)}
                   fill={p.cust ? ragColor(p.rag) : 'none'}
                   stroke={ragColor(p.rag)}
@@ -625,7 +647,7 @@ function Scatter({
                 <circle
                   key={`hit-${p.id}`}
                   cx={x(xValue(p))}
-                  cy={y(p.budget)}
+                  cy={y(worth(p))}
                   r={radius(p.load) + 9}
                   fill="transparent"
                   style={{ cursor: 'pointer', pointerEvents: 'all' }}
@@ -697,8 +719,10 @@ function Scatter({
                 fontSize: 14,
               }}
             >
+              {/* Both readings, because the axis is both: what a customer project can
+                  invoice, what an internal one was approved to spend. */}
               <span style={{ display: 'block', writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap' }}>
-                Approved budget →
+                {yTitle} →
               </span>
             </span>
             {yTicks.map((t) => (
@@ -722,7 +746,7 @@ function Scatter({
                 style={{
                   position: 'absolute',
                   left: `${(x(xValue(hovered)) / CHART_W) * 100}%`,
-                  top: `${((y(hovered.budget) - 18) / chartH) * 100}%`,
+                  top: `${((y(worth(hovered)) - 18) / chartH) * 100}%`,
                   transform: 'translate(-50%,-100%)',
                   minWidth: 236,
                   padding: 'var(--space-3)',
