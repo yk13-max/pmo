@@ -7,10 +7,9 @@ import {
   MAX_DATE,
   PRIORITY_LABEL,
   PRIORITY_LEVELS,
-  STERILE_FAMILY,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
-import { days, hoursToPct } from '../lib/derive';
+import { days, hoursToPct, ragColor } from '../lib/derive';
 import { addMonths, monthKey, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 import { DEFAULT_MONTHS } from './WindowControls';
@@ -345,24 +344,6 @@ export function ProjectForm({
             </select>
             <div className="field-hint">Internal work draws on a budget pool and carries no invoice side.</div>
           </div>
-          {draftFamily === STERILE_FAMILY && (
-            <div className="field">
-              <label htmlFor="pf-sterile">Sterile product</label>
-              <select
-                id="pf-sterile"
-                className="input"
-                value={draft.sterile ? 'yes' : 'no'}
-                onChange={(e) => set('sterile', e.target.value === 'yes')}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-              <div className="field-hint">
-                Asked of {families.find((f) => f.id === STERILE_FAMILY)?.label ?? STERILE_FAMILY} work only — sterile
-                products carry extra validation.
-              </div>
-            </div>
-          )}
           <div className="field">
             <label htmlFor="pf-pm">Project manager</label>
             <select
@@ -399,9 +380,29 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-rag">Status</label>
-            <select id="pf-rag" className="input" value={draft.rag} onChange={(e) => set('rag', e.target.value as Rag)}>
+            {/* The field carries the colour of the status it is set to — the same three the
+                dots use everywhere else — as an edge and a wash behind it rather than as
+                coloured text, which at these values would be the one thing on the form that
+                could not be read. */}
+            <select
+              id="pf-rag"
+              className="input"
+              value={draft.rag}
+              style={{
+                borderLeft: `5px solid ${ragColor(draft.rag)}`,
+                background: `color-mix(in srgb, ${ragColor(draft.rag)} 12%, var(--color-surface))`,
+              }}
+              onChange={(e) => set('rag', e.target.value as Rag)}
+            >
               {(Object.keys(RAG_LABEL) as Rag[]).map((r) => (
-                <option key={r} value={r}>
+                <option
+                  key={r}
+                  value={r}
+                  style={{
+                    background: `color-mix(in srgb, ${ragColor(r)} 14%, var(--color-bg))`,
+                    color: 'var(--color-text)',
+                  }}
+                >
                   {RAG_LABEL[r]}
                 </option>
               ))}

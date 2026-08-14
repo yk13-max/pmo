@@ -5,7 +5,7 @@ import { hoursToDays } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
 import { Stripe } from '../components/Stripe';
 import { WindowControls } from '../components/WindowControls';
-import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_FAMILY } from '../types';
+import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
 import { shortDateYear, toISO } from '../lib/dates';
 
 export function ProjectDetail({
@@ -114,7 +114,6 @@ export function ProjectDetail({
             P{project.priority} {PRIORITY_LABEL[project.priority]}
           </span>
           <span>{project.facingLabel}</span>
-          {project.family === STERILE_FAMILY && <span>{project.sterileLabel}</span>}
           <span>Run by {project.pmName}</span>
           <span>
             {project.startLabel} → {project.endLabel}
