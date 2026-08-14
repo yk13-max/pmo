@@ -276,6 +276,7 @@ export function App() {
             monthLabels={editSpan.labels}
             threshold={view.threshold}
             projectTypes={view.projectTypes}
+            families={view.families}
             allocations={editing.project ? view.allocationsOf(editing.project.id, editSpan.months) : {}}
             otherLoads={view.loadsExcluding(editing.project?.id ?? '', editSpan.months)}
             onSave={(project, allocations) => {
@@ -304,7 +305,7 @@ export function App() {
           <PersonForm
             person={editing.person}
             roles={view.roles}
-            projectTypes={view.projectTypes}
+            families={view.families}
             months={view.months}
             monthLabels={view.monthLabels}
             leaveDays={

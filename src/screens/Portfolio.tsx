@@ -16,7 +16,11 @@ const RAG_FILTERS = ['All', 'On track', 'Watch', 'At risk'] as const;
 
 export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const [showShortfall, setShowShortfall] = useState(false);
-  const [type, setType] = useState<string>('All');
+  /* The kind of work, and — once a kind is chosen and there is more than one way of running
+     it — which way. Picking a different kind clears the category, because a category belongs
+     to one family and would otherwise leave nothing on the chart. */
+  const [family, setFamily] = useState<string>('All');
+  const [category, setCategory] = useState<string>('All');
   const [rag, setRag] = useState<string>('All');
   const [pm, setPm] = useState<string>('All');
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -27,7 +31,8 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   const shown = view.projects
     .filter(
       (p) =>
-        (type === 'All' || p.typeLabel === type) &&
+        (family === 'All' || p.family === family) &&
+        (category === 'All' || p.type === category) &&
         (rag === 'All' || p.ragLabel === rag) &&
         (pm === 'All' || p.pmName === pm),
     )
@@ -38,6 +43,13 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
     );
 
   const managers = [...new Set(view.people.filter((p) => p.role === 'Project manager').map((p) => p.name))];
+  const categories = family === 'All' ? [] : view.categoriesOf(family);
+  /* The phase scale can only be drawn when everything on the chart follows the same set of
+     phases — otherwise "phase 3" means a different thing from one dot to the next. That is
+     true whenever one category is left standing, whether it was chosen or whether it is
+     simply the only one its family has. */
+  const onShow = [...new Set(shown.map((p) => p.type))];
+  const single = onShow.length === 1 ? view.projectTypes.find((t) => t.id === onShow[0]) : undefined;
   const notAtRiskPct = view.projects.length
     ? Math.round(((view.projects.length - view.totals.atRisk) / view.projects.length) * 100)
     : 100;
@@ -139,8 +151,9 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
       <Scatter
         projects={shown}
-        types={view.projectTypes}
-        activeType={type}
+        single={single}
+        familyLabel={view.families.find((f) => f.id === single?.family)?.label ?? ''}
+        colour={typeColour(view.families.findIndex((f) => f.id === single?.family))}
         xMode={xMode}
         onXMode={setXMode}
         showNames={showNames}
@@ -158,7 +171,27 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           marginBottom: 'var(--space-6)',
         }}
       >
-        <FilterChips label="Type" options={['All', ...view.projectTypes.map((t) => t.label)]} value={type} onChange={setType} />
+        <FilterChips
+          label="Type"
+          options={['All', ...view.families.map((f) => f.label)]}
+          value={view.families.find((f) => f.id === family)?.label ?? 'All'}
+          onChange={(label) => {
+            setFamily(label === 'All' ? 'All' : (view.families.find((f) => f.label === label)?.id ?? 'All'));
+            setCategory('All');
+          }}
+        />
+        {/* Only worth asking once a kind of work is chosen and it is run more than one way.
+            Narrowing to one is also what lets the chart draw its phase scale. */}
+        {categories.length > 1 && (
+          <FilterChips
+            label="Category"
+            options={['All', ...categories.map((c) => c.label)]}
+            value={categories.find((c) => c.id === category)?.label ?? 'All'}
+            onChange={(label) =>
+              setCategory(label === 'All' ? 'All' : (categories.find((c) => c.label === label)?.id ?? 'All'))
+            }
+          />
+        )}
         <FilterChips label="Status" options={RAG_FILTERS} value={rag} onChange={setRag} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Rank by</span>
@@ -182,12 +215,13 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
             ))}
           </select>
         </label>
-        {/* Both halves of the stripe, named: the type on top, who it is for beneath. */}
+        {/* Both halves of the stripe, named: the kind of work on top, who it is for beneath.
+            The colour belongs to the kind, so every way of running it reads the same. */}
         <div className="legend" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
-          {view.projectTypes.map((t, i) => (
-            <span key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          {view.families.map((f, i) => (
+            <span key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <StripeSwatch type={typeColour(i)} facing="var(--color-neutral-200)" />
-              {t.label}
+              {f.label}
             </span>
           ))}
           <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -392,8 +426,9 @@ function budgetTicks(min: number, max: number, y: (v: number) => number): number
 
 function Scatter({
   projects,
-  types,
-  activeType,
+  single,
+  familyLabel,
+  colour,
   xMode,
   onXMode,
   showNames,
@@ -402,9 +437,11 @@ function Scatter({
   onHover,
 }: {
   projects: ProjectView[];
-  types: ProjectTypeDef[];
-  /** The type filter's current value, by label, or 'All'. */
-  activeType: string;
+  /** The one category every project on the chart follows, where there is one. */
+  single: ProjectTypeDef | undefined;
+  /** The kind of work that category belongs to, for the line above the phases. */
+  familyLabel: string;
+  colour: string;
   xMode: XMode;
   onXMode: (mode: XMode) => void;
   /** Name every project on the plot, not just the ones worth stopping on. */
@@ -418,15 +455,16 @@ function Scatter({
   const overall = xMode === X_MODES[0];
   const xValue = (p: ProjectView) => (overall ? p.overallPct : p.pct);
   const axisTitle = overall ? 'How far through the whole project →' : 'How far through the current phase →';
-  /* The horizontal scale is progress through a whole project, so a delivery type's phases
+  /* The horizontal scale is progress through a whole project, so one category's phases
      divide it evenly — which is what turns a bare percentage into "it is in validation".
-     Only the type being filtered on gets a scale: phases of one type say nothing about a
-     project of another. Whichever type it is, the names sit above the plot.
+     They can only be drawn when every project on the chart follows that same category:
+     phases of one way of running the work say nothing about a project run another way, and
+     a phase number would be comparing two different things.
 
      The scale only lines up under the whole-project reading. Against phase progress the
      axis means something different for every project, so there is nothing to name. */
-  const selected = overall && activeType !== 'All' ? types.find((t) => t.label === activeType) : undefined;
-  const phaseColour = selected ? typeColour(types.indexOf(selected)) : '';
+  const selected = overall ? single : undefined;
+  const phaseColour = selected ? colour : '';
   const phases = selected?.phases ?? [];
 
   const plotTop = phases.length ? BAND_H : 10;
@@ -623,6 +661,7 @@ function Scatter({
             {selected && (
               <PhaseAxis
                 type={selected}
+                familyLabel={familyLabel}
                 colour={phaseColour}
                 x={x}
                 top={4}
@@ -841,6 +880,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectView; onOpen: () => 
    position reads straight off as the phase it is in. */
 function PhaseAxis({
   type,
+  familyLabel,
   colour,
   x,
   top,
@@ -849,6 +889,8 @@ function PhaseAxis({
   chartH,
 }: {
   type: ProjectTypeDef | undefined;
+  /** The kind of work the category belongs to, said first. */
+  familyLabel: string;
   colour: string;
   /** The same scale the plot uses, so the bands line up with the grid. */
   x: (pct: number) => number;
@@ -883,12 +925,14 @@ function PhaseAxis({
           color: colour,
         }}
       >
-        {type.fullName ?? type.label}
+        {/* Both, because the phases below belong to one way of running one kind of work,
+            and the scale means nothing without knowing which. */}
+        {familyLabel} · {type.label}
       </span>
       {type.phases.map((name, i) => (
         <span
           key={name}
-          title={`${type.label} · phase ${i + 1} of ${n}: ${name}`}
+          title={`${familyLabel} · ${type.label} · phase ${i + 1} of ${n}: ${name}`}
           style={{
             position: 'absolute',
             left: `${(x((i / n) * 100) / CHART_W) * 100}%`,

@@ -101,7 +101,9 @@ export function ProjectFilters({
           onChange={(e) => set({ search: e.target.value })}
         />
       </div>
-      <Picker label="Type" value={filters.type} onChange={(v) => set({ type: v })} options={view.projectTypes.map((t) => t.id)} />
+      {/* The kind of work, which is what the column shows — the way each project is run is
+          in the project's own pane. */}
+      <Picker label="Type" value={filters.type} onChange={(v) => set({ type: v })} options={view.families.map((f) => f.label)} />
       <Picker label="For" value={filters.facing} onChange={(v) => set({ facing: v })} options={['Customer', 'Internal']} />
       <Picker label="Owner" value={filters.owner} onChange={(v) => set({ owner: v })} options={owners} width={150} />
       <Picker label="Status" value={filters.rag} onChange={(v) => set({ rag: v })} options={['On track', 'Watch', 'At risk']} />

@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Person, Portfolio, Project, ProjectTypeDef, Task } from '../types';
+import type { Allocations, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
-import { DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
+import { DEFAULT_CATEGORY, DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
 import { planningMonths } from '../lib/dates';
 
 const STORAGE_KEY = 'pmo-tracker:portfolio:v1';
@@ -35,6 +35,9 @@ interface PortfolioStore {
   setPublicHoliday: (month: string, days: number) => void;
   saveProjectType: (def: ProjectTypeDef) => void;
   removeProjectType: (id: string) => void;
+  /** Adds or renames a family. A new one arrives with a category under it. */
+  saveFamily: (family: ProjectFamily) => void;
+  removeFamily: (id: string) => void;
   replaceAll: (portfolio: Portfolio) => void;
   resetToSeed: () => void;
   /** Empties the portfolio, keeping only the scaffolding needed to start entering work. */
@@ -46,6 +49,44 @@ const Ctx = createContext<PortfolioStore | null>(null);
 function isPortfolio(value: unknown): value is Portfolio {
   const p = value as Portfolio | null;
   return Boolean(p && Array.isArray(p.projects) && Array.isArray(p.people) && p.allocations);
+}
+
+/* Types used to be flat: one list, each with its own phases, and a project pointed straight
+   at one of them. They are two levels now — a family, and the categories under it that each
+   carry a set of phases.
+
+   A store from before that has no families, so every type it holds becomes a family of its
+   own, with the phases it already had kept as a category called Full. The category keeps the
+   type's id, so every project still points at the thing it always pointed at, and the family
+   takes the same id, so a person assigned to CDMO work is assigned to the CDMO family. From
+   the outside nothing has moved; there is simply somewhere to add a second way of running
+   the same kind of work. */
+function typesAndFamilies(p: Portfolio): Pick<Portfolio, 'families' | 'projectTypes'> {
+  const types = p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES;
+  if (p.families?.length) {
+    const known = new Set(p.families.map((f) => f.id));
+    return {
+      families: p.families,
+      projectTypes: types.map((t) => ({
+        ...t,
+        // A category whose family has gone joins the first one rather than disappearing.
+        family: known.has(t.family) ? t.family : p.families[0].id,
+      })),
+    };
+  }
+  return {
+    families: types.map((t) => ({
+      id: t.id,
+      label: t.label,
+      fullName: t.fullName ?? DEFAULT_PROJECT_TYPES.find((d) => d.id === t.id)?.fullName ?? t.label,
+    })),
+    projectTypes: types.map((t) => ({
+      ...t,
+      label: DEFAULT_CATEGORY,
+      fullName: DEFAULT_PROJECT_TYPES.find((d) => d.id === t.id)?.fullName ?? `The full ${t.label} route`,
+      family: t.id,
+    })),
+  };
 }
 
 /** Fills in fields added after a portfolio was first saved, so older stores still load. */
@@ -92,12 +133,7 @@ export function normalise(p: Portfolio): Portfolio {
     roles: [...roles, ...new Set(fromPeople)],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
-    projectTypes: (p.projectTypes?.length ? p.projectTypes : DEFAULT_PROJECT_TYPES).map((t) => ({
-      ...t,
-      /* Stores written before types had a long form fall back to the shipped one for the
-         types we know, and to the short label for anything the user added themselves. */
-      fullName: t.fullName ?? DEFAULT_PROJECT_TYPES.find((d) => d.id === t.id)?.fullName ?? t.label,
-    })),
+    ...typesAndFamilies(p),
     publicHolidays: p.publicHolidays ?? {},
     fxToBase: { ...{ GBP: 1, USD: 0.79, EUR: 0.85 }, ...(p.fxToBase ?? {}) },
     projects: p.projects.map((project) => ({
@@ -277,17 +313,55 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** Refuses while projects still use the type, so none is left without phases. */
+  /** Refuses while projects still use the category, so none is left without phases. Nor will
+      it take the last one out of a family, which would leave the family unusable. */
   const removeProjectType = useCallback((id: string) => {
-    setPortfolio((prev) =>
-      prev.projects.some((p) => p.type === id) || prev.projectTypes.length <= 1
-        ? prev
-        : {
-            ...prev,
-            projectTypes: prev.projectTypes.filter((t) => t.id !== id),
-            people: prev.people.map((p) => ({ ...p, types: p.types.filter((t) => t !== id) })),
-          },
-    );
+    setPortfolio((prev) => {
+      const going = prev.projectTypes.find((t) => t.id === id);
+      const siblings = prev.projectTypes.filter((t) => t.family === going?.family).length;
+      if (!going || siblings <= 1 || prev.projects.some((p) => p.type === id)) return prev;
+      return { ...prev, projectTypes: prev.projectTypes.filter((t) => t.id !== id) };
+    });
+  }, []);
+
+  const saveFamily = useCallback((family: ProjectFamily) => {
+    setPortfolio((prev) => {
+      const exists = prev.families.some((f) => f.id === family.id);
+      return {
+        ...prev,
+        families: exists ? prev.families.map((f) => (f.id === family.id ? family : f)) : [...prev.families, family],
+        /* A new family arrives with one way of running it, so it can be picked the moment it
+           exists rather than being a name with nothing under it. */
+        projectTypes: exists
+          ? prev.projectTypes
+          : [
+              ...prev.projectTypes,
+              {
+                id: `${family.id}-full`,
+                label: DEFAULT_CATEGORY,
+                fullName: `The full ${family.label} route`,
+                family: family.id,
+                phases: ['Phase 1'],
+                milestones: ['Phase 1 complete'],
+              },
+            ],
+      };
+    });
+  }, []);
+
+  /** Refuses while any project is on one of its categories, and never takes the last family.
+      Its categories go with it, which is why nothing may still be using them. */
+  const removeFamily = useCallback((id: string) => {
+    setPortfolio((prev) => {
+      const mine = new Set(prev.projectTypes.filter((t) => t.family === id).map((t) => t.id));
+      if (prev.families.length <= 1 || prev.projects.some((p) => mine.has(p.type))) return prev;
+      return {
+        ...prev,
+        families: prev.families.filter((f) => f.id !== id),
+        projectTypes: prev.projectTypes.filter((t) => t.family !== id),
+        people: prev.people.map((p) => ({ ...p, types: p.types.filter((t) => t !== id) })),
+      };
+    });
   }, []);
 
   const setPublicHoliday = useCallback((month: string, days: number) => {
@@ -340,6 +414,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setPublicHoliday,
       saveProjectType,
       removeProjectType,
+      saveFamily,
+      removeFamily,
       replaceAll,
       resetToSeed,
       clearAll,
@@ -362,6 +438,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setPublicHoliday,
       saveProjectType,
       removeProjectType,
+      saveFamily,
+      removeFamily,
       replaceAll,
       resetToSeed,
       clearAll,

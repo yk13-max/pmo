@@ -5,7 +5,7 @@ import { hoursToDays } from '../lib/derive';
 import { Tabs } from '../components/Tabs';
 import { Stripe } from '../components/Stripe';
 import { WindowControls } from '../components/WindowControls';
-import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_TYPE } from '../types';
+import { INVOICE_STAGES, PRIORITY_LABEL, STERILE_FAMILY } from '../types';
 import { shortDateYear, toISO } from '../lib/dates';
 
 export function ProjectDetail({
@@ -25,8 +25,7 @@ export function ProjectDetail({
     return <p className="empty">No projects yet. Add the first one from the Data screen.</p>;
   }
 
-  const cdmo = view.projects.filter((p) => p.type === 'CDMO');
-  const cs = view.projects.filter((p) => p.type === 'CS');
+  // Grouped by the kind of work, which is what the picker is scanned by.
   /* The grid shows the window the controls are set to and nothing else — "for 6 months"
      has to mean six columns. Bookings can still be entered right up to the project's own
      end in the edit pane; anything landing outside the window is counted below and the
@@ -74,20 +73,18 @@ export function ProjectDetail({
             value={project.id}
             onChange={(e) => onSelect(e.target.value)}
           >
-            <optgroup label="CDMO">
-              {cdmo.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.facingLabel.toLowerCase()} · {p.client}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Client Solutions">
-              {cs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.facingLabel.toLowerCase()} · {p.client}
-                </option>
-              ))}
-            </optgroup>
+            {view.families.map((family) => {
+              const mine = view.projects.filter((p) => p.family === family.id);
+              return mine.length ? (
+                <optgroup key={family.id} label={family.label}>
+                  {mine.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} · {p.facingLabel.toLowerCase()} · {p.client}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null;
+            })}
           </select>
         </div>
         <button type="button" className="btn btn-secondary" onClick={() => onEdit(project)}>
@@ -117,7 +114,7 @@ export function ProjectDetail({
             P{project.priority} {PRIORITY_LABEL[project.priority]}
           </span>
           <span>{project.facingLabel}</span>
-          {project.type === STERILE_TYPE && <span>{project.sterileLabel}</span>}
+          {project.family === STERILE_FAMILY && <span>{project.sterileLabel}</span>}
           <span>Run by {project.pmName}</span>
           <span>
             {project.startLabel} → {project.endLabel}

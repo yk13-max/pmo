@@ -1,5 +1,5 @@
 import type { ConstraintType, CurrencyCode, Portfolio, Task } from '../types';
-import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_TYPE, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
+import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_FAMILY, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { monthKeyLabel } from './dates';
 import { depsToText, parseDeps } from './schedule';
@@ -78,6 +78,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'Project',
       'Client or function',
       'Delivery type',
+      'Category',
       'For',
       'Sterile',
       'Priority',
@@ -103,10 +104,11 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
     p.projects.map((x) => [
       x.name,
       x.client,
-      p.projectTypes.find((t) => t.id === x.type)?.label ?? x.type,
+      familyOf(p, x.type)?.label ?? x.type,
+      p.projectTypes.find((t) => t.id === x.type)?.label ?? '',
       x.facing === 'C' ? 'Customer' : 'Internal',
       // Only Client Solutions work is asked the question, so the rest stay blank.
-      x.type === STERILE_TYPE ? (x.sterile ? 'Yes' : 'No') : '',
+      familyOf(p, x.type)?.id === STERILE_FAMILY ? (x.sterile ? 'Yes' : 'No') : '',
       x.priority,
       PRIORITY_LABEL[x.priority] ?? '',
       RAG_LABEL[x.rag],
@@ -130,13 +132,19 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
   );
 }
 
+/** The kind of work a project's category belongs to. */
+function familyOf(p: Portfolio, typeId: string) {
+  const category = p.projectTypes.find((t) => t.id === typeId);
+  return p.families.find((f) => f.id === category?.family);
+}
+
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
     ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
     p.people.map((x) => [
       x.name,
       x.role,
-      x.types.map((id) => p.projectTypes.find((t) => t.id === id)?.label ?? id).join('; ') || 'All',
+      x.types.map((id) => p.families.find((f) => f.id === id)?.label ?? id).join('; ') || 'All',
       x.workingDays,
       x.capacity,
       x.overheadPct ?? 0,
@@ -276,10 +284,19 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
     body.forEach((r) => {
       const name = col(r, 'Project');
       if (!name) return;
-      const typeLabel = col(r, 'Delivery type');
+      /* The kind of work names the family; the category names the way it is run. A sheet
+         written before categories existed carries only the first, and lands on whichever way
+         that kind is run first — which is the only way it was run when the sheet was made. */
+      const typeLabel = col(r, 'Delivery type').toLowerCase();
+      const categoryLabel = col(r, 'Category').toLowerCase();
+      const family =
+        portfolio.families.find((f) => f.label.toLowerCase() === typeLabel) ??
+        portfolio.families.find((f) => f.id.toLowerCase() === typeLabel);
+      const withinFamily = portfolio.projectTypes.filter((t) => !family || t.family === family.id);
       const typeDef =
-        portfolio.projectTypes.find((t) => t.label.toLowerCase() === typeLabel.toLowerCase()) ??
-        portfolio.projectTypes.find((t) => t.id.toLowerCase() === typeLabel.toLowerCase()) ??
+        withinFamily.find((t) => t.label.toLowerCase() === categoryLabel) ??
+        withinFamily[0] ??
+        portfolio.projectTypes.find((t) => t.id.toLowerCase() === typeLabel) ??
         portfolio.projectTypes[0];
       const phaseName = col(r, 'Phase');
       const phaseIndex = Math.max(0, typeDef.phases.findIndex((x: string) => x.toLowerCase() === phaseName.toLowerCase()));
@@ -420,7 +437,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
             : typeNames
                 .split(';')
                 .map((n) => n.trim())
-                .map((n) => portfolio.projectTypes.find((t) => t.label.toLowerCase() === n.toLowerCase())?.id)
+                .map((n) => portfolio.families.find((f) => f.label.toLowerCase() === n.toLowerCase())?.id)
                 .filter((x): x is string => Boolean(x)),
         workingDays: days,
         capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),

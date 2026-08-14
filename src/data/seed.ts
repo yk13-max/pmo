@@ -1,6 +1,6 @@
 import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
-import { DEFAULT_PROJECT_TYPES, ROLES } from './phases';
+import { DEFAULT_FAMILIES, DEFAULT_PROJECT_TYPES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
 
 type ProjectSeed = [
@@ -217,6 +217,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     allocations,
     leave,
     roles: [...ROLES],
+    families: DEFAULT_FAMILIES.map((f) => ({ ...f })),
     projectTypes: DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
     threshold: 85,
     window: { startMonth: months[0], months: months.length },

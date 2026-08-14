@@ -1,13 +1,32 @@
 /** A project type's id. Types are user-defined, so this is a plain string. */
 export type ProjectType = string;
 
-export interface ProjectTypeDef {
+/* Delivery work comes in kinds — CDMO, Client Solutions — and each kind is run more than one
+   way. A family is the kind; a category under it is one way of running it, with its own
+   phases. "CDMO · Full" is the whole seven-phase route; a shorter one alongside it is another
+   category of the same family.
+
+   The family is what the business is organised around: it decides a project's colour, who is
+   allowed to work on it, and what the portfolio is filtered by. The category decides the
+   phases, which is why anything comparing projects phase by phase has to be looking at one
+   category at a time. */
+export interface ProjectFamily {
   id: string;
   label: string;
-  /** The type written out in full. Short labels do the work everywhere space is tight;
+  /** Written out in full, for the places with room to say it properly. */
+  fullName?: string;
+}
+
+export interface ProjectTypeDef {
+  id: string;
+  /** The category's own name — "Full", "Fill-finish only". The family names the kind. */
+  label: string;
+  /** The category written out in full. Short labels do the work everywhere space is tight;
       this is what gets said where there is room to say it properly. */
   fullName?: string;
-  /** Ordered phases a project of this type passes through. */
+  /** Which family this category belongs to. */
+  family: string;
+  /** Ordered phases a project of this category passes through. */
   phases: string[];
   /** The milestone that closes each phase, offered as the default. */
   milestones: string[];
@@ -61,8 +80,9 @@ export interface Project {
   plansResource?: boolean;
 }
 
-/** The delivery type that carries the sterile question. */
-export const STERILE_TYPE = 'CS';
+/** The family that carries the sterile question. It is asked of the kind of work rather than
+    of the way a particular project of it is run, so every category under it is asked. */
+export const STERILE_FAMILY = 'CS';
 
 /** The points a customer-facing project raises an invoice at. What each one is worth is
     agreed with the client project by project, so no share is assumed here. */
@@ -185,6 +205,9 @@ export interface Portfolio {
   /** Job titles available when adding someone. Editable on the Data screen. */
   roles: string[];
   /** Delivery types and their phase lists. Editable on the Data screen. */
+  /** The kinds of work. Every category belongs to one of these. */
+  families: ProjectFamily[];
+  /** The categories, each under a family, each with its own phases. */
   projectTypes: ProjectTypeDef[];
   /** Load above which a person counts as over-allocated, %. */
   threshold: number;

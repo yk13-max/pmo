@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CurrencyCode, Person, Portfolio, Project, ProjectTypeDef, Rag, Task } from '../types';
+import type { CurrencyCode, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Rag, Task } from '../types';
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -65,7 +65,13 @@ export interface ProjectView extends Project {
   overallPct: number;
   pips: { fill: number; bg: string }[];
   cust: boolean;
+  /** The family's id — what the portfolio filters and colours by. */
+  family: string;
+  /** The family's name: "CDMO". What is said where there is only room for one word. */
   typeShort: string;
+  /** The category under it: "Full". */
+  categoryLabel: string;
+  /** Both, for the places with room to say which way this project is being run. */
   typeLabel: string;
   facingLabel: string;
   /** Inner band of the stripe: who the work is for. Internal is the lighter tone. */
@@ -129,6 +135,7 @@ export function viewProject(
   people: Person[],
   threshold: number,
   types: ProjectTypeDef[],
+  families: ProjectFamily[],
   load = project.load,
   /** What one unit of the project's currency is worth in the base currency. */
   fx = 1,
@@ -141,6 +148,7 @@ export function viewProject(
 ): ProjectView {
   const sharePct = draw.portfolioHours ? (draw.hours / draw.portfolioHours) * 100 : 0;
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
+  const family = families.find((f) => f.id === typeDef?.family) ?? families[0];
   const phases = typeDef?.phases ?? [];
   const cust = project.facing === 'C';
   const burn = project.budget ? Math.round((project.actual / project.budget) * 100) : 0;
@@ -174,11 +182,20 @@ export function viewProject(
       bg: i < project.phase ? 'var(--color-text)' : 'var(--color-accent)',
     })),
     cust,
-    typeShort: typeDef?.id ?? project.type,
-    typeLabel: typeDef?.label ?? project.type,
+    family: family?.id ?? typeDef?.family ?? '',
+    typeShort: family?.label ?? project.type,
+    categoryLabel: typeDef?.label ?? '',
+    /* Both, in the order they are read: the kind of work, then the way it is being run. A
+       family with one way of running it says only its own name — there is nothing to tell
+       apart, and "CDMO · Full" would be saying it twice. */
+    typeLabel:
+      typeDef && families.length && types.filter((t) => t.family === typeDef.family).length > 1
+        ? `${family?.label ?? ''} · ${typeDef.label}`
+        : family?.label ?? project.type,
     facingLabel: cust ? 'Customer' : 'Internal',
     stripe: cust ? 'var(--color-text)' : 'var(--color-neutral-300)',
-    stripeType: typeColour(types.findIndex((t) => t.id === project.type)),
+    // Colour belongs to the family, so every way of running CDMO work reads as CDMO.
+    stripeType: typeColour(families.findIndex((f) => f.id === typeDef?.family)),
     sterileLabel: project.sterile ? 'Sterile' : 'Non-sterile',
     ragLabel: RAG_LABEL[project.rag],
     ragColor: ragColor(project.rag),
@@ -296,6 +313,9 @@ export interface PortfolioView {
   monthsToLastEnd: number;
   roles: string[];
   projectTypes: ProjectTypeDef[];
+  families: ProjectFamily[];
+  /** The categories under a family, in the order they were added. */
+  categoriesOf: (familyId: string) => ProjectTypeDef[];
   /** Roles oversubscribed for 3+ months running, where no colleague of the same
       title has room to absorb the overspill. */
   roleShortages: RoleShortage[];
@@ -404,6 +424,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         allPeople,
         threshold,
         portfolio.projectTypes,
+        portfolio.families,
         Math.round(hoursToPct(drawHours(p.id))),
         portfolio.fxToBase[p.currency] ?? 1,
         { hours: drawHours(p.id), portfolioHours },
@@ -626,6 +647,8 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       monthsToLastEnd,
       roles: portfolio.roles,
       projectTypes: portfolio.projectTypes,
+      families: portfolio.families,
+      categoriesOf: (familyId: string) => portfolio.projectTypes.filter((x) => x.family === familyId),
       roleShortages,
       totals: {
         value,

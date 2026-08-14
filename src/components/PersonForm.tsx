@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Person, ProjectTypeDef } from '../types';
+import type { Person, ProjectFamily } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { leavePct } from '../lib/derive';
 
@@ -23,7 +23,7 @@ function emptyPerson(role: string): Person {
 export function PersonForm({
   person,
   roles,
-  projectTypes,
+  families,
   months,
   monthLabels,
   leaveDays,
@@ -35,7 +35,9 @@ export function PersonForm({
 }: {
   person: Person | null;
   roles: string[];
-  projectTypes: ProjectTypeDef[];
+  /** The kinds of work a person can be assigned to. They work on a kind, not on one
+      particular way of running it. */
+  families: ProjectFamily[];
   months: string[];
   monthLabels: string[];
   /** Days of leave already booked, one per planning month. */
@@ -147,7 +149,7 @@ export function PersonForm({
             Project types they work on
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-            {projectTypes.map((t) => {
+            {families.map((t) => {
               const on = draft.types.includes(t.id);
               return (
                 <button

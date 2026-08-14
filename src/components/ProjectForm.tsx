@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CurrencyCode, Facing, Person, Project, ProjectTypeDef, Rag } from '../types';
+import type { CurrencyCode, Facing, Person, Project, ProjectFamily, ProjectTypeDef, Rag } from '../types';
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -7,7 +7,7 @@ import {
   MAX_DATE,
   PRIORITY_LABEL,
   PRIORITY_LEVELS,
-  STERILE_TYPE,
+  STERILE_FAMILY,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { days, hoursToPct } from '../lib/derive';
@@ -80,6 +80,7 @@ export function ProjectForm({
   monthLabels,
   threshold,
   projectTypes,
+  families,
   allocations,
   otherLoads,
   onSave,
@@ -92,6 +93,7 @@ export function ProjectForm({
   monthLabels: string[];
   threshold: number;
   projectTypes: ProjectTypeDef[];
+  families: ProjectFamily[];
   /** `${personId}|${month}` → % for this project. */
   allocations: Record<string, number>;
   /** Each person's load from every other project, for the over-booking warning. */
@@ -145,9 +147,12 @@ export function ProjectForm({
   const typeDef = projectTypes.find((t) => t.id === draft.type) ?? projectTypes[0];
   const phases = typeDef?.phases ?? [];
   /* A person with no types listed is treated as available to everything; anyone with an
-     explicit list must include this project's type to be bookable. */
+     explicit list must include this project's kind of work to be bookable. People are
+     assigned to the kind, not to the way a particular project of it is run, so the check is
+     against the family the chosen category sits under. */
+  const draftFamily = projectTypes.find((t) => t.id === draft.type)?.family ?? '';
   const ineligible = new Set(
-    people.filter((p) => p.types.length > 0 && !p.types.includes(draft.type)).map((p) => p.id),
+    people.filter((p) => p.types.length > 0 && !p.types.includes(draftFamily)).map((p) => p.id),
   );
   const strandedBookings = people.filter(
     (p) => ineligible.has(p.id) && months.some((m) => (alloc[`${p.id}|${m}`] ?? 0) > 0),
@@ -196,7 +201,7 @@ export function ProjectForm({
   if (draft.milestoneDate && draft.startDate && draft.milestoneDate < draft.startDate)
     errors.milestoneDate = 'The next thing due falls before the project starts.';
   if (strandedBookings.length)
-    errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${typeDef?.label}. Clear those bookings or add the type to them.`;
+    errors.types = `${strandedBookings.map((p) => p.name).join(', ')} ${strandedBookings.length === 1 ? 'is' : 'are'} booked here but ${strandedBookings.length === 1 ? 'does' : 'do'} not work on ${families.find((f) => f.id === draftFamily)?.label ?? draft.type}. Clear those bookings or add the type to them.`;
 
   /* Bookings come from the plan while this is on, so the grid below reports rather than
      accepts. The figures in it are the plan's own — every screen reads the same set. */
@@ -267,6 +272,9 @@ export function ProjectForm({
           </div>
           <div className="field">
             <label htmlFor="pf-type">Delivery type</label>
+            {/* Grouped by the kind of work, because that is how it is chosen: CDMO first,
+                then which way this one is being run. The value is the category, which is
+                what carries the phases. */}
             <select
               id="pf-type"
               className="input"
@@ -280,10 +288,16 @@ export function ProjectForm({
                 });
               }}
             >
-              {projectTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
+              {families.map((f) => (
+                <optgroup key={f.id} label={f.label}>
+                  {projectTypes
+                    .filter((t) => t.family === f.id)
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -300,7 +314,7 @@ export function ProjectForm({
             </select>
             <div className="field-hint">Internal work draws on a budget pool and carries no invoice side.</div>
           </div>
-          {draft.type === STERILE_TYPE && (
+          {draftFamily === STERILE_FAMILY && (
             <div className="field">
               <label htmlFor="pf-sterile">Sterile product</label>
               <select
@@ -313,7 +327,8 @@ export function ProjectForm({
                 <option value="yes">Yes</option>
               </select>
               <div className="field-hint">
-                Asked of {typeDef?.label ?? STERILE_TYPE} work only — sterile products carry extra validation.
+                Asked of {families.find((f) => f.id === STERILE_FAMILY)?.label ?? STERILE_FAMILY} work only — sterile
+                products carry extra validation.
               </div>
             </div>
           )}
@@ -733,7 +748,7 @@ export function ProjectForm({
           threshold={threshold}
           otherLoads={shownLoads}
           ineligible={ineligible}
-          typeLabel={typeDef?.label ?? draft.type}
+          typeLabel={families.find((f) => f.id === draftFamily)?.label ?? draft.type}
           onChange={(personId, month, pct) =>
             setAlloc((prev) => {
               const next = { ...prev };

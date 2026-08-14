@@ -193,7 +193,7 @@ export function Resourcing({
                   <div style={{ fontSize: 13, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4 }}>
                     {p.person.role}
                     {p.person.types.length
-                      ? ` · ${p.person.types.map((id) => view.projectTypes.find((t) => t.id === id)?.label ?? id).join(', ')}`
+                      ? ` · ${p.person.types.map((id) => view.families.find((f) => f.id === id)?.label ?? id).join(', ')}`
                       : ''}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
