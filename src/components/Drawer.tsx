@@ -1,4 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+/* Whether the pane it is sitting in has the screen. What a pane shows is mostly the same
+   either way, but a few things are only worth showing when there is room for them. */
+const FullPane = createContext(false);
+export const useFullPane = () => useContext(FullPane);
 
 /* Whether the pane is a full page is a working preference rather than a property of what is
    being edited. Somebody who opens a project full screen because that is how they like to
@@ -80,7 +85,7 @@ export function Drawer({
             </button>
           </div>
         </div>
-        {children}
+        <FullPane.Provider value={full}>{children}</FullPane.Provider>
       </div>
     </div>
   );

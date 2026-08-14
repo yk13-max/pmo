@@ -443,9 +443,15 @@ a:hover { color: var(--color-accent-600); }
    always did; on one it becomes the two columns, each keeping its own order. */
 .form-columns { display: contents; }
 .drawer.is-full .form-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-8); align-items: start; }
-/* Side by side, the groups need an edge to read as groups. */
-.drawer.is-full .fieldset { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-6) var(--space-6); }
-.drawer.is-full .fieldset > legend { display: block; width: 100%; }
+/* Side by side, the groups need an edge to read as groups. The block-start padding is the
+   panel's own, plus a line for the heading that is sitting in it — see below. */
+.drawer.is-full .fieldset { position: relative; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-lg); padding: calc(var(--space-4) + 25px) var(--space-6) var(--space-6); }
+/* A legend is otherwise laid into the block-start border of the box it names: sitting on the
+   line, breaking it either side. A browser only does that to a legend that is in flow, so
+   taking it out of flow puts the heading where any other heading would be — inside the
+   panel, above the fields — and leaves the border to run unbroken all the way round. Out of
+   flow it reserves no room, which is what the padding above is for. */
+.drawer.is-full .fieldset > legend { position: absolute; top: var(--space-4); left: var(--space-6); right: var(--space-6); width: auto; margin: 0; line-height: 16px; }
 
 @media (max-width: 860px), (max-height: 520px) {
   /* No width to expand into: the pane is already the screen. */
@@ -623,4 +629,24 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   }
   /* A plan longer than a page breaks between rows rather than through one. */
   :root[data-print='gantt'] .plan-workspace .task-row { page-break-inside: avoid; }
+
+  /* — the same plan, printed from a project's own pane —
+
+     An edit pane is normally the one thing print drops: it is a window over the screen, and
+     what was wanted was the screen. A plan is the exception. Printed from the pane, the pane
+     is the page: it comes back, lies flat, loses the fields around the plan, and the screen
+     behind it goes instead. What reaches the paper is the same drawing either way. */
+  :root[data-print='gantt'] .shell:has(> .drawer-backdrop) > .main { display: none !important; }
+  :root[data-print='gantt'] .drawer-backdrop { display: block !important; position: static; padding: 0; background: none; }
+  :root[data-print='gantt'] .drawer { width: auto; max-width: none; max-height: none; overflow: visible; box-shadow: none; border-radius: 0; padding: 0; }
+  /* The screen's reading measure would centre the plan on the page and lose it a margin
+     either side; a page has its own margins and printGantt has already drawn to them. */
+  :root[data-print='gantt'] .drawer.is-full > .project-form { max-width: none; margin-inline: 0; }
+  :root[data-print='gantt'] .drawer-head,
+  :root[data-print='gantt'] .drawer-actions,
+  :root[data-print='gantt'] .project-form > .form-columns,
+  :root[data-print='gantt'] .project-form > .fieldset:not(.plan-fieldset) { display: none !important; }
+  /* The panel's chrome and its heading are the pane's, not the plan's. */
+  :root[data-print='gantt'] .plan-fieldset { border: 0; background: none; padding: 0; margin: 0; }
+  :root[data-print='gantt'] .plan-fieldset > legend { display: none !important; }
 }

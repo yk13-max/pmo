@@ -13,8 +13,11 @@ import { days, hoursToPct, ragColor } from '../lib/derive';
 import { addMonths, monthKey, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 import { DEFAULT_MONTHS } from './WindowControls';
+import { useFullPane } from './Drawer';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, type Scheduled } from '../lib/schedule';
+import { Planning } from '../screens/Planning';
+import type { PortfolioView } from '../lib/derive';
 
 type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'billed' | 'load'> & {
   phase: number;
@@ -74,6 +77,7 @@ const num = (s: string) => {
 
 export function ProjectForm({
   project,
+  view,
   people,
   months,
   monthLabels,
@@ -87,6 +91,8 @@ export function ProjectForm({
   onDelete,
 }: {
   project: Project | null;
+  /* Only for the plan at the foot of a full page, which is the Planning screen itself. */
+  view: PortfolioView;
   people: Person[];
   months: string[];
   monthLabels: string[];
@@ -122,6 +128,14 @@ export function ProjectForm({
     return Math.max(0, Math.min(wanted, months.length - DEFAULT_MONTHS));
   });
   const { portfolio } = usePortfolio();
+  const fullPane = useFullPane();
+  /* The plan at the foot of a full page saves the moment it is touched — including its two
+     switches, which are the project's own fields. So those two are read from the store
+     rather than from the draft this form opened with, or ticking one and then saving the
+     form would put it straight back. */
+  const live = project ? portfolio.projects.find((p) => p.id === project.id) : undefined;
+  const usesPlan = live?.usesPlan ?? draft.usesPlan;
+  const plansResource = live?.plansResource ?? draft.plansResource;
 
   const start = Math.min(bookFrom, Math.max(0, months.length - 1));
   const shownMonths = months.slice(start, bookCount > 0 ? start + bookCount : undefined);
@@ -177,7 +191,7 @@ export function ProjectForm({
     const end = (at as Scheduled).endDate;
     if (!planPhaseEnds[task.phase] || end > planPhaseEnds[task.phase]) planPhaseEnds[task.phase] = end;
   });
-  const canMirror = Boolean(draft.usesPlan) && planTasks.length > 0;
+  const canMirror = Boolean(usesPlan) && planTasks.length > 0;
   const mirroring = canMirror && Boolean(draft.mirrorPhases);
   /* What each gate reads as on screen: the plan's dates while mirroring, otherwise typed. */
   const gates = phases.map((_, i) => (mirroring ? planPhaseEnds[i] || phaseDates[i] : phaseDates[i]));
@@ -189,7 +203,8 @@ export function ProjectForm({
 
   const errors: Record<string, string> = {};
   if (!draft.name.trim()) errors.name = 'Give the project a name.';
-  if (!draft.client.trim()) errors.client = internal ? 'Name the owning function.' : 'Name the client.';
+  if (!draft.client.trim())
+    errors.client = internal ? 'Name the function that owns the work.' : 'Name the customer.';
   if (!draft.pmId) errors.pmId = 'Pick a project manager.';
   if (num(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
   if (effectiveEnd <= draft.startDate)
@@ -206,7 +221,7 @@ export function ProjectForm({
 
   /* Bookings come from the plan while this is on, so the grid below reports rather than
      accepts. The figures in it are the plan's own — every screen reads the same set. */
-  const planBooked = Boolean(project?.usesPlan && project?.plansResource);
+  const planBooked = Boolean(usesPlan && plansResource);
 
   const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
   if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
@@ -222,6 +237,9 @@ export function ProjectForm({
         name: draft.name.trim(),
         client: draft.client.trim(),
         milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
+        // Owned by the plan below, and already saved by it. See `live` above.
+        usesPlan,
+        plansResource,
         pct: Math.min(100, num(draft.pct)),
         budget: num(draft.budget),
         actual: num(draft.actual),
@@ -267,7 +285,10 @@ export function ProjectForm({
             {err('name')}
           </div>
           <div className="field">
-            <label htmlFor="pf-client">{internal ? 'Owning function' : 'Client'}</label>
+            {/* One label for both kinds of work: a customer's name on customer work, the
+                function that owns it on internal. Which of the two applies is the answer to
+                "Who it is for", two fields along. */}
+            <label htmlFor="pf-client">Owner (Customer / Function)</label>
             <input
               id="pf-client"
               className="input"
@@ -802,6 +823,23 @@ export function ProjectForm({
           }
         />
       </fieldset>
+
+      {/* THE PLAN
+          Only on a full page, and only for a project that exists — a Gantt needs the width
+          of a screen to be worth reading, and tasks need something to be attached to. It is
+          the Planning screen itself rather than a copy of it: the same grid, the same chart,
+          the same switches, the same PDF. The only thing missing is the project picker, the
+          pane being open on one project already.
+
+          What it saves, it saves as it goes, the way it does on its own screen. So the gates
+          above fill in from it as tasks move, and the bookings grid turns to reading when
+          "Book people from this plan" goes on, without this form having been saved. */}
+      {fullPane && project && (
+        <fieldset className="fieldset plan-fieldset">
+          <legend>The plan</legend>
+          <Planning view={view} projectId={project.id} onSelectProject={() => {}} embedded />
+        </fieldset>
+      )}
 
       <div className="drawer-actions">
         {project && onDelete && (

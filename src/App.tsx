@@ -275,6 +275,7 @@ export function App() {
         >
           <ProjectForm
             project={editing.project}
+            view={view}
             people={view.people}
             months={editSpan.months}
             monthLabels={editSpan.labels}

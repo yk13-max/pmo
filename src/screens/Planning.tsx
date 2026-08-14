@@ -33,12 +33,17 @@ export function Planning({
   view,
   projectId,
   onSelectProject,
+  embedded = false,
 }: {
   view: PortfolioView;
   /* One project is under the pencil at a time. The choice is held by the app rather than
      here, so the header's Edit project detail button knows which one it would open. */
   projectId: string | null;
   onSelectProject: (id: string) => void;
+  /* Inside a project's own edit pane rather than on the Planning screen. The plan is the
+     same plan and every control on it still works; what goes is the project picker, since
+     the pane is already open on one project and is not the place to wander off to another. */
+  embedded?: boolean;
 }) {
   const { portfolio, saveTask, deleteTask, saveProject } = usePortfolio();
   const chosen = projectId ?? view.projects[0]?.id ?? '';
@@ -168,25 +173,27 @@ export function Planning({
         </p>
       </div>
       <div className="no-print control-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-        <label className="picker" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Planning</span>
-          <select
-            id="pl-project"
-            className="input"
-            style={{ width: 'auto', minWidth: 340 }}
-            value={project.id}
-            onChange={(e) => {
-              onSelectProject(e.target.value);
-              setDepDraft(null);
-            }}
-          >
-            {view.projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.typeLabel} · {p.client}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!embedded && (
+          <label className="picker" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Planning</span>
+            <select
+              id="pl-project"
+              className="input"
+              style={{ width: 'auto', minWidth: 340 }}
+              value={project.id}
+              onChange={(e) => {
+                onSelectProject(e.target.value);
+                setDepDraft(null);
+              }}
+            >
+              {view.projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {p.typeLabel} · {p.client}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="chip-group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <span className="eyebrow">Zoom</span>
           {ZOOMS.map((z) => (
