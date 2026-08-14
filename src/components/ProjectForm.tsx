@@ -151,6 +151,8 @@ export function ProjectForm({
      assigned to the kind, not to the way a particular project of it is run, so the check is
      against the family the chosen category sits under. */
   const draftFamily = projectTypes.find((t) => t.id === draft.type)?.family ?? '';
+  /** The ways this kind of work is run — what the delivery type is chosen from. */
+  const ofFamily = projectTypes.filter((t) => t.family === draftFamily);
   const ineligible = new Set(
     people.filter((p) => p.types.length > 0 && !p.types.includes(draftFamily)).map((p) => p.id),
   );
@@ -270,11 +272,39 @@ export function ProjectForm({
             />
             {err('client')}
           </div>
+          {/* The two levels, in the order they are decided: what kind of work this is, then
+              which way it is being run. Both are one field each rather than one field of
+              grouped options, because the first decides who can be booked and how the
+              portfolio reads it, and the second decides the phases — different questions,
+              and the second is not worth reading past until the first is answered. */}
+          <div className="field">
+            <label htmlFor="pf-family">Project type</label>
+            <select
+              id="pf-family"
+              className="input"
+              value={draftFamily}
+              onChange={(e) => {
+                /* The categories belong to one family, so changing family takes the first
+                   way that one is run — and the phase and milestone come with it, since
+                   the new category has phases of its own. */
+                const next = projectTypes.find((t) => t.family === e.target.value);
+                if (!next) return;
+                setDraft((d) => {
+                  const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
+                  return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
+                });
+              }}
+            >
+              {families.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <div className="field-hint">The kind of work. Sets who can be booked on it.</div>
+          </div>
           <div className="field">
             <label htmlFor="pf-type">Delivery type</label>
-            {/* Grouped by the kind of work, because that is how it is chosen: CDMO first,
-                then which way this one is being run. The value is the category, which is
-                what carries the phases. */}
             <select
               id="pf-type"
               className="input"
@@ -288,18 +318,19 @@ export function ProjectForm({
                 });
               }}
             >
-              {families.map((f) => (
-                <optgroup key={f.id} label={f.label}>
-                  {projectTypes
-                    .filter((t) => t.family === f.id)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
+              {projectTypes
+                .filter((t) => t.family === draftFamily)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
             </select>
+            <div className="field-hint">
+              {ofFamily.length > 1
+                ? 'The way it is run, and the phases it follows.'
+                : `The only way ${families.find((f) => f.id === draftFamily)?.label ?? 'this'} work is run. Add another on the Data screen.`}
+            </div>
           </div>
           <div className="field">
             <label htmlFor="pf-facing">Who it is for</label>
