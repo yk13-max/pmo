@@ -265,10 +265,14 @@ export function Planning({
             marginBottom: 'var(--space-4)',
           }}
         >
-          This project is not planned here. It runs {shortDateYear(project.startDate)} →{' '}
-          {shortDateYear(project.endDate)} from the dates entered on the project itself, and that is what the
-          timeline and every other screen shows. Anything built below is kept but not used until you tick{' '}
-          <strong>Plan this project here</strong>.
+          {/* The panel lines up with everything else on the page; the sentence inside it keeps
+              a measure that can be read across a wide window. */}
+          <span>
+            This project is not planned here. It runs {shortDateYear(project.startDate)} →{' '}
+            {shortDateYear(project.endDate)} from the dates entered on the project itself, and that is what the
+            timeline and every other screen shows. Anything built below is kept but not used until you tick{' '}
+            <strong>Plan this project here</strong>.
+          </span>
         </p>
       )}
 
