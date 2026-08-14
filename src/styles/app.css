@@ -18,10 +18,14 @@ a:hover { color: var(--color-accent-600); }
    displays don't leave the content stranded against the left edge. */
 .main { flex: 1; min-width: 0; padding: var(--space-8); max-width: 1560px; margin-inline: auto; }
 
-/* The plan takes the whole window. Its chart is as wide as the project is long, so every
-   pixel it is given is a week it can show without scrolling; the text on it keeps a measure
-   that can be read, because a line of prose two thousand pixels wide cannot be. */
+/* The chart takes the whole window — it is as wide as the project is long, so every pixel it
+   is given is a fortnight it can show without scrolling. Everything else on the page keeps
+   the measure the rest of the site is set to, and every one of them starts at the same left
+   edge as the chart, so only the chart runs on past them. */
 .main-wide { max-width: none; }
+.main-wide .page-head,
+.main-wide .plan-page > * { max-width: 1560px; }
+.main-wide .plan-page > .plan-workspace { max-width: none; }
 .main-wide .page-blurb, .main-wide .lede, .main-wide .plan-note { max-width: 76ch; }
 
 /* Title on the left, actions on the right — and on a narrow screen, the actions drop
@@ -551,18 +555,21 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
      its columns in the same order, so one rule covers both. */
   :root[data-print='gantt'] .plan-grid-head > :nth-child(5),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(6),
-  :root[data-print='gantt'] .plan-grid-head > :nth-child(7),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(9),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(10),
   :root[data-print='gantt'] .plan-grid-head > :nth-child(11),
   :root[data-print='gantt'] .task-row > :nth-child(5),
   :root[data-print='gantt'] .task-row > :nth-child(6),
-  :root[data-print='gantt'] .task-row > :nth-child(7),
   :root[data-print='gantt'] .task-row > :nth-child(9),
   :root[data-print='gantt'] .task-row > :nth-child(10),
   :root[data-print='gantt'] .task-row > :nth-child(11) { display: none !important; }
+  /* The start column stays, but as the date the plan starts rather than as a field to type
+     a rule into: a printed plan has no rule column to read the typed date against. */
+  :root[data-print='gantt'] .task-start input { display: none !important; }
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(7),
+  :root[data-print='gantt'] .task-start { width: 62px !important; flex: none; }
   /* Narrower without those, which is what leaves the chart half the page. */
-  :root[data-print='gantt'] .plan-grid { width: 500px !important; }
+  :root[data-print='gantt'] .plan-grid { width: 560px !important; }
 
   /* The grid is built from form controls, which on paper would print as a page of empty
      boxes. Here they are just the text they hold. */

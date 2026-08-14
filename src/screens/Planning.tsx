@@ -153,7 +153,7 @@ export function Planning({
 
 
   return (
-    <div>
+    <div className="plan-page">
       {/* Only on paper: the screen says which project this is in the menu and the picker
           below, neither of which prints, and a plan handed to somebody has to name itself. */}
       <div className="print-only plan-print-head">
@@ -289,7 +289,7 @@ export function Planning({
               % day
             </span>
             <span style={{ width: 74 }}>Rule</span>
-            <span style={{ width: 116 }}>On</span>
+            <span style={{ width: 116 }}>Start</span>
             <span style={{ width: 70, textAlign: 'right' }}>Finish</span>
             <span style={{ width: 60, textAlign: 'right' }}>After</span>
             <span style={{ width: 40, textAlign: 'right' }}>Float</span>
@@ -664,21 +664,30 @@ function TaskRow({
           </option>
         ))}
       </select>
-      <input
-        className="input"
-        type="date"
-        style={{ ...cell, width: 116, fontSize: 12, visibility: needsDate ? 'visible' : 'hidden' }}
-        value={task.constraintDate}
-        aria-label={`Task ${row.number} constraint date`}
-        aria-hidden={needsDate ? undefined : true}
-        tabIndex={needsDate ? undefined : -1}
-        title="Work only lands on weekdays, so a weekend here moves to the Monday."
-        onChange={(e) => {
-          if (!e.target.value) return;
-          // Nothing is worked at a weekend, so a date dropped on one moves to the Monday.
-          set({ constraintDate: toISO(nextWorkingDay(fromISO(e.target.value))) });
-        }}
-      />
+      {/* The date the rule beside it is measured against — for the usual rule, the day the
+          task may start. On paper the rule column is not printed and there is nothing to
+          type into, so what shows there instead is the day the plan actually has it
+          starting, which is the day its bar begins. */}
+      <span className="task-start" style={{ width: 116, display: 'flex', alignItems: 'center' }}>
+        <input
+          className="input"
+          type="date"
+          style={{ ...cell, width: 116, fontSize: 12, visibility: needsDate ? 'visible' : 'hidden' }}
+          value={task.constraintDate}
+          aria-label={`Task ${row.number} start rule date`}
+          aria-hidden={needsDate ? undefined : true}
+          tabIndex={needsDate ? undefined : -1}
+          title="Work only lands on weekdays, so a weekend here moves to the Monday."
+          onChange={(e) => {
+            if (!e.target.value) return;
+            // Nothing is worked at a weekend, so a date dropped on one moves to the Monday.
+            set({ constraintDate: toISO(nextWorkingDay(fromISO(e.target.value))) });
+          }}
+        />
+        <span className="print-only" style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
+          {at ? shortDate(at.startDate) : '—'}
+        </span>
+      </span>
       <span
         title={at?.conflict ? `Its rule and its links disagree: ${at.conflict}` : undefined}
         style={{

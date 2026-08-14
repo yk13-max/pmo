@@ -19,7 +19,7 @@
 /** A4 landscape at 10mm margins, in the pixels a browser lays print out in. */
 export const PRINT_PAGE_WIDTH = 1010;
 /** What the task list takes on paper, once the editing columns have gone. */
-export const PRINT_GRID_WIDTH = 500;
+export const PRINT_GRID_WIDTH = 560;
 /** What is left for the chart, which is what a day has to be scaled to fill. */
 export const PRINT_CHART_WIDTH = PRINT_PAGE_WIDTH - PRINT_GRID_WIDTH;
 
