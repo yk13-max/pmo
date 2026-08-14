@@ -18,6 +18,11 @@ function idFrom(label: string, taken: Set<string>) {
 export function ProjectTypeEditor({ view }: { view: PortfolioView }) {
   const { saveProjectType, removeProjectType, saveFamily, removeFamily } = usePortfolio();
   const [newFamily, setNewFamily] = useState('');
+  /* Which types are open. Each one is a stack of tables of phases, so a handful of them run
+     to several screens and finding the one you came for means scrolling past the rest. They
+     start shut: the line that is always on show — the name, how many projects, which
+     categories — is enough to pick from, and the phases are a click away. */
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const usedBy = (typeId: string) => view.projects.filter((p) => p.type === typeId).length;
 
@@ -25,7 +30,10 @@ export function ProjectTypeEditor({ view }: { view: PortfolioView }) {
     const label = newFamily.trim();
     if (!label) return;
     const taken = new Set([...view.families.map((f) => f.id), ...view.projectTypes.map((t) => t.id)]);
-    saveFamily({ id: idFrom(label, taken), label, fullName: label });
+    const id = idFrom(label, taken);
+    saveFamily({ id, label, fullName: label });
+    // A type just added is a type about to be set up, so it opens on the way in.
+    setOpen((o) => ({ ...o, [id]: true }));
     setNewFamily('');
   };
 
@@ -67,6 +75,8 @@ export function ProjectTypeEditor({ view }: { view: PortfolioView }) {
             categories={view.categoriesOf(family.id)}
             allIds={new Set([...view.families.map((f) => f.id), ...view.projectTypes.map((t) => t.id)])}
             usedBy={usedBy}
+            open={open[family.id] ?? false}
+            onToggle={() => setOpen((o) => ({ ...o, [family.id]: !(o[family.id] ?? false) }))}
             canRemove={
               view.families.length > 1 && view.categoriesOf(family.id).every((c) => usedBy(c.id) === 0)
             }
@@ -87,6 +97,8 @@ function FamilyCard({
   allIds,
   usedBy,
   canRemove,
+  open,
+  onToggle,
   onSaveFamily,
   onRemoveFamily,
   onSaveCategory,
@@ -97,6 +109,8 @@ function FamilyCard({
   allIds: Set<string>;
   usedBy: (typeId: string) => number;
   canRemove: boolean;
+  open: boolean;
+  onToggle: () => void;
   onSaveFamily: (family: ProjectFamily) => void;
   onRemoveFamily: () => void;
   onSaveCategory: (def: ProjectTypeDef) => void;
@@ -120,11 +134,36 @@ function FamilyCard({
       milestones: from ? [...from.milestones] : ['Phase 1 complete'],
     });
     setNewCategory('');
+    // Adding one is a reason to be looking at them.
+    if (!open) onToggle();
   };
+
+  const body = `type-${family.id}`;
 
   return (
     <div style={{ borderTop: '2px solid var(--color-text)', paddingTop: 'var(--space-3)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          marginBottom: open ? 'var(--space-4)' : 0,
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ padding: '4px 6px', display: 'inline-flex', alignItems: 'center' }}
+          aria-expanded={open}
+          aria-controls={body}
+          title={open ? `Collapse ${family.label}` : `Show the categories and phases of ${family.label}`}
+          onClick={onToggle}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease' }}>
+            <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <input
           className="input"
           style={{ width: 220, fontFamily: 'var(--font-heading)', fontWeight: 600 }}
@@ -142,9 +181,12 @@ function FamilyCard({
           aria-label={`Full name of ${family.label}`}
           onChange={(e) => onSaveFamily({ ...family, fullName: e.target.value })}
         />
+        {/* Shut, this line is all there is to go on, so it names the categories rather than
+            only counting them. Open, they are listed below it in full. */}
         <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>
           {projects} project{projects === 1 ? '' : 's'} · {categories.length}{' '}
           {categories.length === 1 ? 'category' : 'categories'}
+          {!open && categories.length > 0 && `: ${categories.map((c) => c.label).join(', ')}`}
         </span>
         <button
           type="button"
@@ -158,7 +200,11 @@ function FamilyCard({
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', paddingLeft: 'var(--space-4)', borderLeft: '3px solid var(--color-divider)' }}>
+      <div
+        id={body}
+        hidden={!open}
+        style={{ display: open ? 'flex' : 'none', flexDirection: 'column', gap: 'var(--space-6)', paddingLeft: 'var(--space-4)', borderLeft: '3px solid var(--color-divider)' }}
+      >
         {categories.map((category) => (
           <CategoryCard
             key={category.id}
