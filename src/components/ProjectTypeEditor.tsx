@@ -117,6 +117,11 @@ function FamilyCard({
   onRemoveCategory: (id: string) => void;
 }) {
   const [newCategory, setNewCategory] = useState('');
+  /* The categories fold the same way their type does, each one being a table of phases in
+     its own right. The default is only different where there is nothing to choose between:
+     a type run one way is already open, because opening the type is what you did to see it. */
+  const [openCategory, setOpenCategory] = useState<Record<string, boolean>>({});
+  const categoryOpen = (id: string) => openCategory[id] ?? categories.length === 1;
   const projects = categories.reduce((n, c) => n + usedBy(c.id), 0);
 
   const addCategory = () => {
@@ -125,13 +130,24 @@ function FamilyCard({
     /* A new way of running the work starts from the way it is run now, because that is
        almost always what is being varied — a phase dropped, one added, two renamed. */
     const from = categories[0];
+    const id = idFrom(`${family.id}-${label}`, allIds);
     onSaveCategory({
-      id: idFrom(`${family.id}-${label}`, allIds),
+      id,
       label,
       fullName: `${family.label} · ${label}`,
       family: family.id,
       phases: from ? [...from.phases] : ['Phase 1'],
       milestones: from ? [...from.milestones] : ['Phase 1 complete'],
+    });
+    /* The one that was here is pinned as it stands before the new one lands, or a type going
+       from one category to two would shut the first as a side effect of the default. The new
+       one opens: it is a copy of the old that exists to be changed. */
+    setOpenCategory((o) => {
+      const next = { ...o, [id]: true };
+      categories.forEach((c) => {
+        next[c.id] = categoryOpen(c.id);
+      });
+      return next;
     });
     setNewCategory('');
     // Adding one is a reason to be looking at them.
@@ -212,6 +228,8 @@ function FamilyCard({
             category={category}
             used={usedBy(category.id)}
             canRemove={usedBy(category.id) === 0 && categories.length > 1}
+            open={categoryOpen(category.id)}
+            onToggle={() => setOpenCategory((o) => ({ ...o, [category.id]: !categoryOpen(category.id) }))}
             onSave={onSaveCategory}
             onRemove={() => onRemoveCategory(category.id)}
           />
@@ -249,6 +267,8 @@ function CategoryCard({
   category,
   used,
   canRemove,
+  open,
+  onToggle,
   onSave,
   onRemove,
 }: {
@@ -256,6 +276,8 @@ function CategoryCard({
   category: ProjectTypeDef;
   used: number;
   canRemove: boolean;
+  open: boolean;
+  onToggle: () => void;
   onSave: (def: ProjectTypeDef) => void;
   onRemove: () => void;
 }) {
@@ -285,9 +307,24 @@ function CategoryCard({
     setNewPhase('');
   };
 
+  const body = `category-${category.id}`;
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: open ? 'var(--space-3)' : 0, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ padding: '4px 6px', display: 'inline-flex', alignItems: 'center' }}
+          aria-expanded={open}
+          aria-controls={body}
+          title={open ? `Collapse ${category.label}` : `Show the phases of ${family.label} ${category.label}`}
+          onClick={onToggle}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease' }}>
+            <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <span className="eyebrow" style={{ color: 'var(--color-accent-700)' }}>{family.label} ·</span>
         <input
           className="input"
@@ -317,6 +354,7 @@ function CategoryCard({
         </button>
       </div>
 
+      <div id={body} hidden={!open} style={{ display: open ? 'block' : 'none' }}>
       <table className="table" style={{ maxWidth: 900 }}>
         <thead>
           <tr>
@@ -400,6 +438,7 @@ function CategoryCard({
         <button type="button" className="btn btn-secondary" disabled={!newPhase.trim()} onClick={addPhase}>
           Add phase
         </button>
+      </div>
       </div>
     </div>
   );
