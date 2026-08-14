@@ -146,7 +146,7 @@ export function PersonForm({
         </div>
         <div className="field">
           <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
-            Project types they work on
+            Project families they work on
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             {families.map((t) => {
@@ -170,7 +170,7 @@ export function PersonForm({
             })}
           </div>
           <div className="field-hint">
-            {draft.types.length ? 'Only these types.' : 'None selected — treated as available to every type.'}
+            {draft.types.length ? 'Only these kinds of work.' : 'None selected — treated as available to every kind of work.'}
           </div>
         </div>
         <div className="field">

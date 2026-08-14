@@ -140,7 +140,7 @@ function familyOf(p: Portfolio, typeId: string) {
 
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
-    ['Name', 'Job title', 'Project types', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
+    ['Name', 'Job title', 'Project family', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
     p.people.map((x) => [
       x.name,
       x.role,
@@ -424,7 +424,8 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       if (!name) return;
       const role = col(r, 'Job title') || 'Project manager';
       roles.add(role);
-      const typeNames = col(r, 'Project types');
+      // Sheets written before families were named that way carry the old heading.
+      const typeNames = col(r, 'Project family') || col(r, 'Project types');
       const days = num(col(r, 'Working days per month')) || WORKING_DAYS_PER_MONTH;
       const existing = people.findIndex((x) => x.name.toLowerCase() === name.toLowerCase());
       const merged = {

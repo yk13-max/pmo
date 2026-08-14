@@ -9,6 +9,9 @@ const WINDOW_MONTHS = 24;
 
 export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
+  /* Which way of running the work each kind is narrowed to, kept per kind so moving between
+     the tabs comes back to what was being looked at rather than resetting. */
+  const [category, setCategory] = useState<Record<string, string>>({});
 
   const { windowStart, span, quarters, todayLeft } = useMemo(() => {
     const start = addMonths(startOfMonth(view.today), -WINDOW_BEFORE);
@@ -119,16 +122,52 @@ export function Timeline({ view, onOpenProject }: { view: PortfolioView; onOpenP
             count: view.projects.length,
             render: () => <div style={{ display: 'flex', flexDirection: 'column' }}>{view.projects.map(row)}</div>,
           },
-          ...view.projectTypes.map((t) => ({
-            id: t.id,
-            label: t.label,
-            count: view.projects.filter((p) => p.type === t.id).length,
-            render: () => (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {view.projects.filter((p) => p.type === t.id).map(row)}
-              </div>
-            ),
-          })),
+          /* A tab per kind of work, because that is how a portfolio is read across; the ways
+             each kind is run sit under its tab, where they are a narrowing of what is
+             already on screen rather than another dozen tabs to scan. */
+          ...view.families.map((family) => {
+            const categories = view.categoriesOf(family.id);
+            const mine = view.projects.filter((p) => p.family === family.id);
+            return {
+              id: family.id,
+              label: family.label,
+              count: mine.length,
+              render: () => {
+                const chosen = category[family.id] ?? 'All';
+                const shown = chosen === 'All' ? mine : mine.filter((p) => p.type === chosen);
+                return (
+                  <>
+                    {/* Only worth asking when the kind is run more than one way. */}
+                    {categories.length > 1 && (
+                      <div
+                        className="chip-group"
+                        style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}
+                      >
+                        <span className="eyebrow">Category</span>
+                        {[{ id: 'All', label: 'All' }, ...categories].map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="chip"
+                            aria-pressed={chosen === c.id}
+                            onClick={() => setCategory((s) => ({ ...s, [family.id]: c.id }))}
+                          >
+                            {c.label}
+                            {c.id !== 'All' && (
+                              <span style={{ marginLeft: 6, color: 'var(--color-neutral-600)' }}>
+                                {mine.filter((p) => p.type === c.id).length}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>{shown.map(row)}</div>
+                  </>
+                );
+              },
+            };
+          }),
         ]}
       />
     </div>
