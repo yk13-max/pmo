@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import type { ConstraintType, Person, Project, Task } from '../types';
 import { CONSTRAINTS } from '../types';
@@ -50,7 +50,6 @@ export function Planning({
      page for the length of it, which is why this is state rather than something the print
      stylesheet could do on its own. */
   const [printing, setPrinting] = useState(false);
-  const workspace = useRef<HTMLDivElement>(null);
 
   const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
 
@@ -64,7 +63,7 @@ export function Planning({
      render away from the click — so the click sets the state and this sends it to the
      printer, and putting it back is what closing the dialog does. */
   useEffect(() => {
-    if (printing) printGantt(workspace.current, () => setPrinting(false));
+    if (printing) printGantt(() => setPrinting(false));
   }, [printing]);
 
   if (!project) return <p className="empty">No projects yet. Add one before planning it.</p>;
@@ -257,6 +256,7 @@ export function Planning({
 
       {!project.usesPlan && (
         <p
+          className="plan-note"
           style={{
             fontSize: 14,
             color: 'var(--color-neutral-700)',
@@ -274,18 +274,18 @@ export function Planning({
 
       <PlanSummary project={project} plan={plan} tasks={tasks} numberOf={numberOf} />
 
-      <div ref={workspace} className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
+      <div className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
-        <div className="plan-grid" style={{ flex: 'none', width: 830, borderRight: '1px solid var(--color-divider)' }}>
+        <div className="plan-grid" style={{ flex: 'none', width: 846, borderRight: '1px solid var(--color-divider)' }}>
           {/* Same padding and the same gap as a task row, so every heading lands over the
               control it names rather than drifting across the row. */}
           <div className="plan-grid-head" style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
             <span style={{ width: 26 }}>#</span>
             <span style={{ flex: 1, minWidth: 0 }}>Task</span>
             <span style={{ width: 96 }}>Who</span>
-            <span style={{ width: 38, textAlign: 'right' }}>Days</span>
-            <span style={{ width: 46, textAlign: 'right' }} title="Per cent of that person's day, while the task runs">
+            <span style={{ width: 48, textAlign: 'right' }}>Days</span>
+            <span style={{ width: 52, textAlign: 'right' }} title="Per cent of that person's day, while the task runs">
               % day
             </span>
             <span style={{ width: 74 }}>Rule</span>
@@ -623,7 +623,7 @@ function TaskRow({
         type="number"
         min={1}
         step={1}
-        style={{ ...cell, width: 38, textAlign: 'right' }}
+        style={{ ...cell, width: 48, textAlign: 'right' }}
         defaultValue={task.days}
         aria-label={`Task ${row.number} days`}
         onBlur={(e) => {
@@ -640,7 +640,7 @@ function TaskRow({
         min={0}
         max={100}
         step={5}
-        style={{ ...cell, width: 46, textAlign: 'right' }}
+        style={{ ...cell, width: 52, textAlign: 'right' }}
         defaultValue={task.weight ?? 100}
         aria-label={`Task ${row.number} share of the owner's day, per cent`}
         title="Per cent of that person's day, while the task runs."

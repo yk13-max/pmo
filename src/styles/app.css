@@ -18,6 +18,12 @@ a:hover { color: var(--color-accent-600); }
    displays don't leave the content stranded against the left edge. */
 .main { flex: 1; min-width: 0; padding: var(--space-8); max-width: 1560px; margin-inline: auto; }
 
+/* The plan takes the whole window. Its chart is as wide as the project is long, so every
+   pixel it is given is a week it can show without scrolling; the text on it keeps a measure
+   that can be read, because a line of prose two thousand pixels wide cannot be. */
+.main-wide { max-width: none; }
+.main-wide .page-blurb, .main-wide .lede, .main-wide .plan-note { max-width: 76ch; }
+
 /* Title on the left, actions on the right — and on a narrow screen, the actions drop
    under the title rather than forcing the page wider than the phone. */
 .page-head { display: flex; align-items: flex-end; justify-content: space-between;

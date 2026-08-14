@@ -33,26 +33,18 @@ function cleanUp() {
 /**
  * Print the plan on screen as a landscape PDF.
  *
- * Call it once the chart has been redrawn at its printing width — the measurement here is of
- * what is actually on the page, and is only a safety net for a plan whose task names push the
- * list past the width it was given.
+ * Call it once the chart has been redrawn at its printing width. Nothing is measured: the
+ * list is the width the print stylesheet gives it and the chart has just been drawn to what
+ * is left, so the two come to the width of the page by construction. Measuring what is on
+ * screen would only report how wide the window happens to be.
  *
- * @param workspace The element holding the task list and the chart side by side.
  * @param done Run when the print dialog closes, to put the screen back as it was.
  */
-export function printGantt(workspace: HTMLElement | null, done: () => void) {
+export function printGantt(done: () => void) {
   cleanUp();
-  /* The chart is measured because it has just been redrawn to fit; the list is taken as the
-     width the print stylesheet gives it, which is not what it is showing on screen and so
-     cannot be measured here. */
-  const chart = workspace?.lastElementChild?.firstElementChild as HTMLElement | null;
-  const full = PRINT_GRID_WIDTH + (chart?.offsetWidth ?? 0);
-  const scale = full > PRINT_PAGE_WIDTH ? PRINT_PAGE_WIDTH / full : 1;
-
   const style = document.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = `@page { size: A4 landscape; margin: 10mm; }
-    @media print { :root[data-print='gantt'] .plan-workspace { zoom: ${scale.toFixed(3)}; } }`;
+  style.textContent = '@page { size: A4 landscape; margin: 10mm; }';
   document.head.append(style);
   document.documentElement.dataset.print = 'gantt';
 

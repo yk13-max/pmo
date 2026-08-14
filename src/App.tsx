@@ -191,7 +191,10 @@ export function App() {
         </div>
       </aside>
 
-      <main className="main">
+      {/* The plan is the one screen worth every pixel the window has: the chart is as wide as
+          the project is long, and what it cannot show has to be scrolled for. The rest of the
+          site keeps its measure, which is what makes a page of prose readable. */}
+      <main className={screen === 'planning' ? 'main main-wide' : 'main'}>
        <div style={{ maxWidth: SCREEN_WIDTH[screen], marginInline: 'auto' }}>
         <header className="page-head">
           <div style={{ flex: 1, minWidth: 0 }}>
