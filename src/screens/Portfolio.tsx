@@ -491,10 +491,10 @@ function Scatter({
   const anyInternal = projects.some((p) => !p.cust);
   const yTitle =
     anyCustomer && anyInternal
-      ? 'Invoiceable, or budget for internal'
+      ? 'Project Value/Internal Budget'
       : anyCustomer
-        ? 'Total invoiceable'
-        : 'Approved budget';
+        ? 'Project Value'
+        : 'Internal Budget';
   /* The plot starts in the same place whether or not the phase scale is on show: the
      type's name sits above the phase labels rather than out to their left, so turning the
      scale on no longer shunts the whole chart sideways. */
