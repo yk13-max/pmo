@@ -271,6 +271,7 @@ export function App() {
           title={editing.project ? `Edit ${editing.project.name}` : 'New project'}
           kicker={editing.project ? 'Project' : 'Add to the portfolio'}
           onClose={() => setEditing(null)}
+          expandable
         >
           <ProjectForm
             project={editing.project}

@@ -243,7 +243,14 @@ export function ProjectForm({
   const invalid = (key: string) => (touched && errors[key] ? true : undefined);
 
   return (
-    <div>
+    <div className="project-form">
+      {/* Two columns on a full page, one otherwise — the wrapper is `display: contents`
+          until there is width for it, so off a full page these are the same six sections in
+          the same order they have always been in. Each column is a run of the form: what the
+          project is and where it has got to on the left, what it costs and when it is due on
+          the right. Bookings sit below both, where they have the width to be read. */}
+      <div className="form-columns">
+      <div className="form-col">
       <fieldset className="fieldset">
         <legend>What it is</legend>
         <div className="form-grid">
@@ -535,7 +542,9 @@ export function ProjectForm({
           </div>
         </div>
       </fieldset>
+      </div>
 
+      <div className="form-col">
       <fieldset className="fieldset">
         <legend>Money, in thousands</legend>
         <div className="form-grid">
@@ -710,6 +719,8 @@ export function ProjectForm({
           <p className="field-hint">Required — when each invoice is expected to be raised.</p>
         </fieldset>
       )}
+      </div>
+      </div>
 
       <fieldset className="fieldset">
         <legend>Who is working on it</legend>

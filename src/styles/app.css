@@ -418,6 +418,43 @@ a:hover { color: var(--color-accent-600); }
 .drawer-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-neutral-900) 40%, transparent); display: flex; align-items: center; justify-content: center; padding: var(--space-6); z-index: 20; }
 .drawer { width: min(880px, 100%); max-height: min(90vh, 100%); overflow-y: auto; background: var(--color-bg); box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); padding: var(--space-8); }
 .drawer-actions { display: flex; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--color-divider); position: sticky; bottom: 0; background: var(--color-bg); }
+.drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); }
+.drawer-head-actions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.drawer-expand { display: inline-flex; align-items: center; gap: 7px; }
+
+/* THE FULL PAGE
+   A project form is six groups of fields and a booking grid. In an 880px pane that is one
+   column and a long scroll: the money is three screens from the dates, so checking one
+   against the other means losing sight of both. Given the screen, the same form is two
+   columns of panels — what it is and where it has got to on the left, the money and the
+   dates on the right, bookings across the foot — and the whole thing is in view at once.
+
+   The pane is the same pane: same fields, same order down each column, same validation. It
+   is the width that changes, and what the width lets the layout do. */
+.drawer-backdrop.is-full { padding: 0; align-items: stretch; justify-content: stretch; background: var(--color-bg); }
+.drawer.is-full { width: 100%; max-width: none; max-height: 100%; border-radius: 0; box-shadow: none; padding: 0 var(--space-8) var(--space-6); }
+/* The title and the way out stay put while the form scrolls under them. */
+.drawer.is-full > .drawer-head { position: sticky; top: 0; z-index: 2; background: var(--color-bg); padding: var(--space-4) 0 var(--space-3); margin-bottom: var(--space-6); border-bottom: 1px solid var(--color-divider); }
+/* Wide enough for two columns of panels, capped so a field never runs the width of a 27in
+   monitor — nothing on the form is worth 2,000px of input. */
+.drawer.is-full > .project-form { max-width: 1560px; margin-inline: auto; }
+
+/* Off a full page the wrapper is not there at all, so the sections stack exactly as they
+   always did; on one it becomes the two columns, each keeping its own order. */
+.form-columns { display: contents; }
+.drawer.is-full .form-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-8); align-items: start; }
+/* Side by side, the groups need an edge to read as groups. */
+.drawer.is-full .fieldset { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-6) var(--space-6); }
+.drawer.is-full .fieldset > legend { display: block; width: 100%; }
+
+@media (max-width: 860px), (max-height: 520px) {
+  /* No width to expand into: the pane is already the screen. */
+  .drawer-expand { display: none; }
+  .drawer.is-full { padding: var(--space-4); }
+  .drawer.is-full > .drawer-head { padding: var(--space-2) 0 var(--space-3); margin-bottom: var(--space-4); }
+  .drawer.is-full .form-columns { display: contents; }
+  .drawer.is-full .fieldset { padding: var(--space-3) var(--space-4) var(--space-4); }
+}
 
 .alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .alloc-table th { text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
