@@ -6,6 +6,7 @@ import { usePortfolio } from '../store/portfolio';
 import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from '../lib/schedule';
 import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
 import { PRINT_CHART_WIDTH, printGantt } from '../lib/printGantt';
+import { ColHead, usePlanColumns, type Widths } from '../components/PlanColumns';
 
 /** How much of the chart one day takes, at each way of looking at it. */
 const ZOOMS = [
@@ -55,6 +56,8 @@ export function Planning({
      page for the length of it, which is why this is state rather than something the print
      stylesheet could do on its own. */
   const [printing, setPrinting] = useState(false);
+  /* The task list's column widths, dragged from the headings and remembered. */
+  const { widths, resize, reset, isDefault } = usePlanColumns();
 
   /* The picker only offers running work, but a project on hold can still be opened from its
      own edit pane — and a plan is exactly what somebody picking a paused project back up
@@ -257,6 +260,18 @@ export function Planning({
             />
             Book people from this plan
           </label>
+          {/* Only offered once something has been dragged — a button undoing nothing is
+              just another thing to read. */}
+          {!isDefault && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              title="Put every column in the task list back to the width it started at"
+              onClick={reset}
+            >
+              Reset columns
+            </button>
+          )}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
@@ -307,16 +322,23 @@ export function Planning({
             </span>
             <span style={{ width: 26 }}>#</span>
             <span style={{ flex: 1, minWidth: 0 }}>Task</span>
-            <span style={{ width: 96 }}>Who</span>
-            <span style={{ width: 48, textAlign: 'right' }}>Days</span>
-            <span style={{ width: 52, textAlign: 'right' }} title="Per cent of that person's day, while the task runs">
-              % day
-            </span>
-            <span style={{ width: 74 }}>Rule</span>
-            <span style={{ width: 116 }}>Start</span>
-            <span style={{ width: 70, textAlign: 'right' }}>Finish</span>
-            <span style={{ width: 60, textAlign: 'right' }}>After</span>
-            <span style={{ width: 40, textAlign: 'right' }}>Float</span>
+            {/* Every one of these can be dragged by its right-hand edge, double-clicked
+                back to where it started, or nudged with the arrow keys. */}
+            <ColHead col="who" width={widths.who} label="Who" onResize={resize} />
+            <ColHead col="days" width={widths.days} label="Days" align="right" onResize={resize} />
+            <ColHead
+              col="pct"
+              width={widths.pct}
+              label="% day"
+              align="right"
+              title="Per cent of that person's day, while the task runs"
+              onResize={resize}
+            />
+            <ColHead col="rule" width={widths.rule} label="Rule" onResize={resize} />
+            <ColHead col="start" width={widths.start} label="Start" onResize={resize} />
+            <ColHead col="finish" width={widths.finish} label="Finish" align="right" onResize={resize} />
+            <ColHead col="after" width={widths.after} label="After" align="right" onResize={resize} />
+            <ColHead col="float" width={widths.float} label="Float" align="right" onResize={resize} />
             {/* Sits over the delete button, so every heading lands on its own column. */}
             <span style={{ width: 22 }} aria-hidden="true" />
           </div>
@@ -351,6 +373,7 @@ export function Planning({
               <TaskRow
                 key={row.key}
                 row={row}
+                widths={widths}
                 people={view.people}
                 numberOf={numberOf}
                 byNumber={byNumber}
@@ -628,6 +651,7 @@ function Fig({ value, label, sub, color }: { value: string; label: string; sub: 
 
 function TaskRow({
   row,
+  widths,
   people,
   numberOf,
   byNumber,
@@ -637,6 +661,7 @@ function TaskRow({
   onDelete,
 }: {
   row: Extract<Row, { kind: 'task' }>;
+  widths: Widths;
   people: Person[];
   numberOf: Map<string, number>;
   byNumber: Map<number, string>;
@@ -691,7 +716,7 @@ function TaskRow({
           still reads, and so a plan built before anyone was linked keeps what it said. */}
       <select
         className="input"
-        style={{ ...cell, width: 96, fontSize: 12 }}
+        style={{ ...cell, width: widths.who, flex: 'none', fontSize: 12 }}
         value={task.ownerId ?? ''}
         aria-label={`Task ${row.number} owner`}
         onChange={(e) => {
@@ -711,7 +736,7 @@ function TaskRow({
         type="number"
         min={1}
         step={1}
-        style={{ ...cell, width: 48, textAlign: 'right' }}
+        style={{ ...cell, width: widths.days, flex: 'none', textAlign: 'right' }}
         defaultValue={task.days}
         aria-label={`Task ${row.number} days`}
         onBlur={(e) => {
@@ -728,7 +753,7 @@ function TaskRow({
         min={0}
         max={100}
         step={5}
-        style={{ ...cell, width: 52, textAlign: 'right' }}
+        style={{ ...cell, width: widths.pct, flex: 'none', textAlign: 'right' }}
         defaultValue={task.weight ?? 100}
         aria-label={`Task ${row.number} share of the owner's day, per cent`}
         title="Per cent of that person's day, while the task runs."
@@ -740,7 +765,7 @@ function TaskRow({
       />
       <select
         className="input"
-        style={{ ...cell, width: 74, fontSize: 12 }}
+        style={{ ...cell, width: widths.rule, flex: 'none', fontSize: 12 }}
         value={task.constraint}
         aria-label={`Task ${row.number} constraint`}
         title={CONSTRAINTS.find((c) => c.id === task.constraint)?.hint}
@@ -756,11 +781,11 @@ function TaskRow({
           task may start. On paper the rule column is not printed and there is nothing to
           type into, so what shows there instead is the day the plan actually has it
           starting, which is the day its bar begins. */}
-      <span className="task-start" style={{ width: 116, display: 'flex', alignItems: 'center' }}>
+      <span className="task-start" style={{ width: widths.start, flex: 'none', display: 'flex', alignItems: 'center' }}>
         <input
           className="input"
           type="date"
-          style={{ ...cell, width: 116, fontSize: 12, visibility: needsDate ? 'visible' : 'hidden' }}
+          style={{ ...cell, width: '100%', minWidth: 0, fontSize: 12, visibility: needsDate ? 'visible' : 'hidden' }}
           value={task.constraintDate}
           aria-label={`Task ${row.number} start rule date`}
           aria-hidden={needsDate ? undefined : true}
@@ -779,7 +804,8 @@ function TaskRow({
       <span
         title={at?.conflict ? `Its rule and its links disagree: ${at.conflict}` : undefined}
         style={{
-          width: 70,
+          width: widths.finish,
+          flex: 'none',
           textAlign: 'right',
           fontSize: 12,
           fontVariantNumeric: 'tabular-nums',
@@ -790,7 +816,7 @@ function TaskRow({
       </span>
       <input
         className="input"
-        style={{ ...cell, width: 60, fontSize: 12 }}
+        style={{ ...cell, width: widths.after, flex: 'none', fontSize: 12 }}
         value={editing ? depDraft.text : written}
         placeholder="—"
         aria-label={`Task ${row.number} predecessors`}
@@ -809,7 +835,8 @@ function TaskRow({
       />
       <span
         style={{
-          width: 40,
+          width: widths.float,
+          flex: 'none',
           textAlign: 'right',
           fontSize: 12,
           fontVariantNumeric: 'tabular-nums',
