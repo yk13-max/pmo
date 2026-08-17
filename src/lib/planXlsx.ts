@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import type { ConstraintType, Person, Project, Task } from '../types';
 import { CONSTRAINTS } from '../types';
 import { depsToText, parseDeps, schedule } from './schedule';
+import { parsePeople, peopleText, taskDayShare } from './planLoad';
 import { fileStamp } from './dates';
 
 /* The plan, out to a spreadsheet and back.
@@ -66,9 +67,9 @@ export function planToXlsx(project: Project, phases: string[], tasks: Task[], pe
       '#': numberOf.get(t.id) ?? '',
       Phase: phases[t.phase] ?? '',
       Task: t.name,
-      Who: people.find((p) => p.id === t.ownerId)?.name ?? t.owner ?? '',
+      Who: peopleText(t, (id) => people.find((p) => p.id === id)?.name),
       Days: t.days,
-      '% of day': t.weight ?? 100,
+      '% of day': taskDayShare(t),
       Rule: t.constraint,
       'Rule date': t.constraintDate ?? '',
       Predecessors: depsToText(t.deps, (id) => numberOf.get(id) ?? null),
@@ -187,18 +188,20 @@ export async function xlsxToPlan(
     const was = byId.get(id);
     if (was) updated += 1;
     else added += 1;
-    const whoName = String(r.Who ?? '').trim();
-    const person = people.find((p) => p.name.toLowerCase() === whoName.toLowerCase());
+    /* One cell holds everybody on the task with their own share, so the sheet's own
+       "% of day" column is a total that is written out and not read back. */
+    const on = parsePeople(String(r.Who ?? ''), people);
     out.push({
       ...(was ?? {}),
       id,
       projectId: project.id,
       phase,
       name,
-      owner: person?.name ?? whoName,
-      ownerId: person?.id,
+      assignees: on,
+      owner: on[0]?.name ?? '',
+      ownerId: on[0]?.personId || undefined,
       days: Math.max(1, Math.round(num(r.Days, was?.days ?? 1))),
-      weight: clamp(Math.round(num(r['% of day'], was?.weight ?? 100)), 0, 100),
+      weight: on[0]?.weight ?? was?.weight ?? 100,
       constraint: rule as ConstraintType,
       constraintDate: dateCell(r['Rule date']) || was?.constraintDate || '',
       deps: deps.deps,

@@ -3,6 +3,7 @@ import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_FAMILY, WORKING_DAYS_P
 import { RAG_LABEL } from '../data/phases';
 import { fileStamp, monthKeyLabel } from './dates';
 import { depsToText, parseDeps } from './schedule';
+import { parsePeople, peopleText } from './planLoad';
 
 /* CSVs are written to be read by a person, not just re-imported: words rather than codes
    ("Client Solutions", "At risk", "Customer"), money in whole thousands under a labelled
@@ -204,7 +205,7 @@ export function tasksCsv(p: Portfolio): string {
         phases[t.phase] ?? String(t.phase + 1),
         numberOf.get(t.id) ?? 0,
         t.name,
-        t.owner,
+        peopleText(t, (id) => p.people.find((x) => x.id === id)?.name),
         t.days,
         t.weight ?? 100,
         t.constraint,
@@ -412,10 +413,15 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
           projectId: project.id,
           phase,
           name: taskName,
-          owner: col(r, 'Who'),
           /* The sheet names people, so the id is looked up here — a name nobody answers to
              is kept as written and books no time, which is what it did before. */
-          ownerId: portfolio.people.find((x) => x.name.toLowerCase() === col(r, 'Who').trim().toLowerCase())?.id,
+          ...(() => {
+            /* One cell holds everybody on the task — "Yusuf 100%; Rachel 20%" — and the
+               first of them fills the two older fields so anything still reading those
+               sees the task's lead rather than nothing. */
+            const on = parsePeople(col(r, 'Who'), portfolio.people);
+            return { assignees: on, owner: on[0]?.name ?? '', ownerId: on[0]?.personId || undefined };
+          })(),
           days: Math.max(1, Math.round(num(col(r, 'Working days')) || 1)),
           // A sheet written before weights existed means the whole day.
           weight: col(r, '% of their day') ? Math.min(100, Math.max(0, num(col(r, '% of their day')))) : 100,

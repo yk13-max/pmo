@@ -52,6 +52,15 @@ a:hover { color: var(--color-accent-600); }
    own flex leaves, so taking hold of it never means missing the control underneath, and it
    only shows itself when the pointer is somewhere near. */
 .plan-col-head { position: relative; }
+
+/* Who is on a task: a cell that reads as a field and opens a panel. The panel hangs over
+   whatever is under it rather than pushing the row taller — a plan is read by its rows, and
+   one row growing to four would move every bar beside it. */
+.plan-people-button { display: block; width: 100%; text-align: left; font-size: 12px; height: 26px;
+  padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.plan-people-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: block;
+  min-width: 280px; padding: var(--space-3); background: var(--color-bg);
+  border: 1px solid var(--color-divider); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
 .plan-col-grip { position: absolute; top: -6px; right: -7px; bottom: -6px; width: 9px;
   cursor: col-resize; background: transparent; border-radius: 2px; touch-action: none; }
 .plan-col-grip::after { content: ''; position: absolute; inset: 20% 4px; background: var(--color-neutral-400);

@@ -216,6 +216,19 @@ export const CONSTRAINTS: { id: ConstraintType; label: string; needsDate: boolea
   { id: 'MFO', label: 'Must finish on', needsDate: true, hint: 'Pinned to this finish, links or no links.' },
 ];
 
+/* Somebody on a task, and how much of their day it takes while it runs.
+
+   A task is often not one person's: a validation runs with an engineer on it full time and
+   a regulatory reviewer at a fifth of their day beside them. One owner and one weight could
+   only say one of those things, so each person on a task carries their own share. */
+export interface Assignee {
+  personId: string;
+  /** Their name as it stood, so an exported sheet reads without the team beside it. */
+  name?: string;
+  /** How much of that person's day this task takes while it runs, 0–100. */
+  weight: number;
+}
+
 /** A piece of work inside one phase of one project. */
 export interface Task {
   id: string;
@@ -229,8 +242,14 @@ export interface Task {
   /** The person on the team it draws from, when the plan is booking people. */
   ownerId?: string;
   /** How much of that person's day the task takes, 0–100. Half of a two-day task is one
-      day of their time — eight hours — not two. */
+      day of their time — eight hours — not two.
+
+      Kept for plans written before a task could have more than one person on it; `assignees`
+      is what everything reads now, and a plan without one is read as a single assignee made
+      from these two fields. */
   weight?: number;
+  /** Everybody on the task, each with their own share of their own day. */
+  assignees?: Assignee[];
   /** Working days of work. A task always occupies at least one. */
   days: number;
   /** How this task is pinned to the calendar. */

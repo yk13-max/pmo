@@ -1,4 +1,4 @@
-import type { Portfolio } from '../types';
+import type { Assignee, Portfolio, Task } from '../types';
 import { WORKING_HOURS_PER_DAY } from '../types';
 import { schedule } from './schedule';
 import { fromISO, monthKey } from './dates';
@@ -16,10 +16,56 @@ import { fromISO, monthKey } from './dates';
    already reads the two against each other. */
 export type PlanLoad = Record<string, number>;
 
-/** Hours per working day of a task, from its weight. Unset means the whole day. */
+/** Hours per working day of a task, from a share of a day. Unset means the whole day. */
 function hoursPerDay(weight: number | undefined): number {
   const pct = weight === undefined ? 100 : Math.max(0, Math.min(100, weight));
   return (pct / 100) * WORKING_HOURS_PER_DAY;
+}
+
+/**
+ * Everybody on a task, however the task was written.
+ *
+ * A plan written before a task could carry more than one person has an owner and a weight
+ * instead of a list; it reads as a list of one. Nothing downstream needs to know which it
+ * is looking at, which is what keeps every screen and both exports on one answer.
+ */
+export function assigneesOf(task: Task): Assignee[] {
+  if (task.assignees?.length) return task.assignees;
+  if (!task.ownerId) return [];
+  return [{ personId: task.ownerId, name: task.owner, weight: task.weight ?? 100 }];
+}
+
+/** Everybody on a task as one cell of text: "Yusuf 100%; Rachel 20%". */
+export function peopleText(task: Task, name: (id: string) => string | undefined): string {
+  return assigneesOf(task)
+    .map((a) => `${name(a.personId) ?? a.name ?? ''} ${a.weight}%`.trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
+/**
+ * That text back into a list. A cell with no percentage is read as somebody's whole day,
+ * which is what a person typing one name into a sheet means; a name that matches nobody on
+ * the team is kept as written and simply books no time.
+ */
+export function parsePeople(text: string, people: { id: string; name: string }[]): Assignee[] {
+  return String(text ?? '')
+    .split(/[;,]/)
+    .map((piece) => piece.trim())
+    .filter(Boolean)
+    .map((piece) => {
+      const m = piece.match(/^(.*?)\s*(\d+(?:\.\d+)?)\s*%?$/);
+      const name = (m ? m[1] : piece).trim();
+      const weight = m ? Math.max(0, Math.min(100, Math.round(Number(m[2])))) : 100;
+      const person = people.find((p) => p.name.toLowerCase() === name.toLowerCase());
+      return { personId: person?.id ?? '', name: person?.name ?? name, weight };
+    })
+    .filter((a) => a.name);
+}
+
+/** What a task asks of the team per working day, across everybody on it. */
+export function taskDayShare(task: Task): number {
+  return assigneesOf(task).reduce((n, a) => n + Math.max(0, Math.min(100, a.weight)), 0);
 }
 
 /**
@@ -38,26 +84,29 @@ export function planAllocations(portfolio: Portfolio): PlanLoad {
     if (!tasks.length) return;
     const plan = schedule(tasks, project.startDate);
     tasks.forEach((task) => {
-      /* No one named, or someone who has since left the list, means nothing to book —
-         the task still sits in the plan and still drives the dates. */
-      if (!task.ownerId || !known.has(task.ownerId)) return;
       const at = plan.byId.get(task.id);
       if (!at) return;
-      const perDay = hoursPerDay(task.weight);
-      if (perDay <= 0) return;
-      /* Walk the task's days and drop each one's hours in the month it falls in. Walking
-         the calendar beats arithmetic here: a task straddling a month end splits itself,
-         and the weekends it skips are the same ones the scheduler skipped. */
-      const day = fromISO(at.startDate);
-      const last = fromISO(at.endDate);
-      while (day <= last) {
-        const weekend = day.getDay() === 0 || day.getDay() === 6;
-        if (!weekend) {
-          const key = `${project.id}|${task.ownerId}|${monthKey(day)}`;
-          out[key] = (out[key] ?? 0) + perDay;
+      /* Everybody on it books their own share of their own day. Nobody named, or somebody
+         who has since left the list, means nothing to book for them — the task still sits
+         in the plan and still drives the dates. */
+      assigneesOf(task).forEach((who) => {
+        if (!who.personId || !known.has(who.personId)) return;
+        const perDay = hoursPerDay(who.weight);
+        if (perDay <= 0) return;
+        /* Walk the task's days and drop each one's hours in the month it falls in. Walking
+           the calendar beats arithmetic here: a task straddling a month end splits itself,
+           and the weekends it skips are the same ones the scheduler skipped. */
+        const day = fromISO(at.startDate);
+        const last = fromISO(at.endDate);
+        while (day <= last) {
+          const weekend = day.getDay() === 0 || day.getDay() === 6;
+          if (!weekend) {
+            const key = `${project.id}|${who.personId}|${monthKey(day)}`;
+            out[key] = (out[key] ?? 0) + perDay;
+          }
+          day.setDate(day.getDate() + 1);
         }
-        day.setDate(day.getDate() + 1);
-      }
+      });
     });
   });
   // Half-hours are as fine as the bookings grid goes, so the totals match what it shows.

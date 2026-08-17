@@ -8,6 +8,8 @@ import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
 import { PRINT_CHART_WIDTH, printGantt } from '../lib/printGantt';
 import { ColHead, usePlanColumns, type Widths } from '../components/PlanColumns';
 import { planToXlsx, planXlsxName, xlsxToPlan } from '../lib/planXlsx';
+import { TaskPeople } from '../components/TaskPeople';
+import { taskDayShare } from '../lib/planLoad';
 
 /** How much of the chart one day takes, at each way of looking at it. */
 const ZOOMS = [
@@ -962,26 +964,11 @@ function TaskRow({
         aria-label={`Task ${row.number} name`}
         onBlur={(e) => e.target.value !== task.name && set({ name: e.target.value })}
       />
-      {/* Picked from the team rather than typed, because this is who the task books when
-          the plan is booking people. The name is stored beside the id so an exported sheet
-          still reads, and so a plan built before anyone was linked keeps what it said. */}
-      <select
-        className="input"
-        style={{ ...cell, width: widths.who, flex: 'none', fontSize: 12 }}
-        value={task.ownerId ?? ''}
-        aria-label={`Task ${row.number} owner`}
-        onChange={(e) => {
-          const person = people.find((p) => p.id === e.target.value);
-          set({ ownerId: person?.id ?? '', owner: person?.name ?? '' });
-        }}
-      >
-        <option value="">{task.owner && !task.ownerId ? task.owner : '—'}</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {/* A task is often not one person's, and each of them has their own share of their
+          own day — so the cell says who in the room it has and opens a panel with a line
+          each. They are picked from the team rather than typed, because this is who the
+          task books when the plan is booking people. */}
+      <TaskPeople task={task} people={people} width={widths.who} label={`task ${row.number}`} onSave={set} />
       <input
         className="input"
         type="number"
@@ -996,24 +983,24 @@ function TaskRow({
           e.target.value = String(days);
         }}
       />
-      {/* How much of the owner's day it takes while it runs. Half of a two-day task is one
-          day of their time, not two — which is the whole point of having it. */}
-      <input
-        className="input"
-        type="number"
-        min={0}
-        max={100}
-        step={5}
-        style={{ ...cell, width: widths.pct, flex: 'none', textAlign: 'right' }}
-        defaultValue={task.weight ?? 100}
-        aria-label={`Task ${row.number} share of the owner's day, per cent`}
-        title="Per cent of that person's day, while the task runs."
-        onBlur={(e) => {
-          const weight = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
-          if (weight !== (task.weight ?? 100)) set({ weight });
-          e.target.value = String(weight);
+      {/* What the task asks of the team per working day, across everybody on it. Half of a
+          two-day task is one day of somebody's time, not two — which is the whole point of
+          having it — and two people at full time on the same task is two days a day. Read
+          only: the shares belong to the people they are shares of, so they are set beside
+          the names rather than as one number here. */}
+      <span
+        style={{
+          width: widths.pct,
+          flex: 'none',
+          textAlign: 'right',
+          fontSize: 12,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--color-neutral-700)',
         }}
-      />
+        title={`${taskDayShare(task)}% of a working day, across everybody on this task. Set each person's share beside their name.`}
+      >
+        {taskDayShare(task)}%
+      </span>
       <select
         className="input"
         style={{ ...cell, width: widths.rule, flex: 'none', fontSize: 12 }}
