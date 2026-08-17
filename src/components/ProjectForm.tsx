@@ -445,6 +445,26 @@ export function ProjectForm({
             </select>
             <div className="field-hint">Set by the project manager, not calculated.</div>
           </div>
+          {/* Whether the work is running at all. Beside the status rather than under the
+              dates, because it is the same kind of thing: something a project manager says
+              about the project, not something worked out from it. */}
+          <div className="field">
+            <label htmlFor="pf-active">Running</label>
+            <select
+              id="pf-active"
+              className="input"
+              value={draft.inactive ? 'no' : 'yes'}
+              onChange={(e) => set('inactive', e.target.value === 'no')}
+            >
+              <option value="yes">Active</option>
+              <option value="no">On hold</option>
+            </select>
+            <div className="field-hint">
+              {draft.inactive
+                ? 'Out of the portfolio and drawing nobody’s time. Everything booked on it is kept for when it starts again.'
+                : 'On hold takes it out of the portfolio and the resourcing without archiving it.'}
+            </div>
+          </div>
         </div>
       </fieldset>
 

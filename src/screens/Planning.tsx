@@ -56,7 +56,15 @@ export function Planning({
      stylesheet could do on its own. */
   const [printing, setPrinting] = useState(false);
 
-  const project = view.projects.find((p) => p.id === chosen) ?? view.projects[0] ?? null;
+  /* The picker only offers running work, but a project on hold can still be opened from its
+     own edit pane — and a plan is exactly what somebody picking a paused project back up
+     wants to look at. So the one asked for is found among both, and only the falling back
+     lands on the running list. */
+  const project =
+    view.projects.find((p) => p.id === chosen) ??
+    view.inactiveProjects.find((p) => p.id === chosen) ??
+    view.projects[0] ??
+    null;
 
   const tasks = useMemo(
     () => (project ? portfolio.tasks.filter((t) => t.projectId === project.id) : []),

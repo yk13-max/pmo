@@ -99,6 +99,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'Milestone date',
       'Planned with tasks',
       'Books people from the plan',
+      'On hold',
       'Archived',
     ],
     p.projects.map((x) => [
@@ -127,6 +128,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       x.milestoneDate,
       x.usesPlan ? 'Yes' : 'No',
       x.plansResource ? 'Yes' : 'No',
+      x.inactive ? 'Yes' : 'No',
       x.archived ? 'Yes' : 'No',
     ]),
   );
@@ -337,6 +339,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
           ? col(r, 'Archived').toLowerCase() === 'yes'
           : base?.archived,
+        inactive: headers.some((h) => h.trim().toLowerCase() === 'on hold')
+          ? col(r, 'On hold').toLowerCase() === 'yes'
+          : base?.inactive,
         // A file without the column leaves the stored answer alone.
         sterile: headers.some((h) => h.trim().toLowerCase() === 'sterile')
           ? col(r, 'Sterile').toLowerCase() === 'yes'

@@ -74,12 +74,20 @@ export function ProjectDetail({
             onChange={(e) => onSelect(e.target.value)}
           >
             {view.families.map((family) => {
-              const mine = view.projects.filter((p) => p.family === family.id);
+              /* Work on hold is listed with the rest: it has left the portfolio, but this
+                 screen is a project's own record and a paused project still has one — and
+                 leaving it out would mean opening it by name showed somebody else's. It
+                 says what it is, and sorts after the running work of its own kind. */
+              const mine = [
+                ...view.projects.filter((p) => p.family === family.id),
+                ...view.inactiveProjects.filter((p) => p.family === family.id),
+              ];
               return mine.length ? (
                 <optgroup key={family.id} label={family.label}>
                   {mine.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} · {p.facingLabel.toLowerCase()} · {p.client}
+                      {p.inactive ? ' · on hold' : ''}
                     </option>
                   ))}
                 </optgroup>

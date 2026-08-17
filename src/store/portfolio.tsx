@@ -14,6 +14,8 @@ interface PortfolioStore {
   deleteProject: (id: string) => void;
   /** Archiving keeps the data; only the archive screen shows it. */
   setArchived: (id: string, archived: boolean) => void;
+  /** Put a project on hold, or take it off hold. See `Project.inactive`. */
+  setInactive: (id: string, inactive: boolean) => void;
   savePerson: (person: Person) => void;
   /** Adds or replaces one task in a project's plan. */
   saveTask: (task: Task) => void;
@@ -222,6 +224,15 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  /* On hold rather than finished with. Nothing is moved and nothing is dropped — the
+     bookings are exactly where they were when it stopped, ready for when it starts. */
+  const setInactive = useCallback((id: string, inactive: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, inactive } : p)),
+    }));
+  }, []);
+
   const savePerson = useCallback((person: Person) => {
     setPortfolio((prev) => {
       const exists = prev.people.some((p) => p.id === person.id);
@@ -401,6 +412,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       saveProject,
       deleteProject,
       setArchived,
+      setInactive,
       savePerson,
       saveTask,
       deleteTask,
@@ -425,6 +437,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       saveProject,
       deleteProject,
       setArchived,
+      setInactive,
       savePerson,
       saveTask,
       deleteTask,

@@ -101,7 +101,12 @@ export function App() {
   }, [projectId]);
 
   const selected =
-    view.projects.find((p) => p.id === (projectId ?? lastProjectId)) ?? view.projects[0] ?? null;
+    view.projects.find((p) => p.id === (projectId ?? lastProjectId)) ??
+    /* A project on hold has left the portfolio, but asking for it by name should still open
+       it rather than quietly showing a different one. */
+    view.inactiveProjects.find((p) => p.id === (projectId ?? lastProjectId)) ??
+    view.projects[0] ??
+    null;
 
   /* Where the mark was double-clicked from, so double-clicking it again on the credit page
      puts you back in the area you left rather than at the front. */
@@ -146,7 +151,11 @@ export function App() {
      end date carries the grid out to it. */
   const editSpan =
     editing?.kind === 'project' && editing.project
-      ? view.monthsFor(view.projects.find((p) => p.id === editing.project?.id) ?? editing.project)
+      ? view.monthsFor(
+          view.projects.find((p) => p.id === editing.project?.id) ??
+            view.inactiveProjects.find((p) => p.id === editing.project?.id) ??
+            editing.project,
+        )
       : { months: view.months, labels: view.monthLabels };
 
   /* Double-clicking the mark leads here and double-clicking it again leads back. It takes

@@ -294,6 +294,9 @@ export interface RoleShortage {
 export interface PortfolioView {
   projects: ProjectView[];
   archivedProjects: ProjectView[];
+  /** Projects on hold: out of every screen the way archived work is, but still listed with
+      the live ones on the Data screen so they can be picked up again. */
+  inactiveProjects: ProjectView[];
   people: Person[];
   /** People who have left. Their bookings are still in the record. */
   archivedPeople: Person[];
@@ -388,10 +391,13 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     /* Team draw reports the current month — the month the window starts on — because that
        is the demand a lead is deciding about now. The peak is still available per month. */
     const drawHours = (id: string) => loadPerMonth.get(id)?.[0] ?? 0;
-    // Archived work is out of the portfolio, so it is out of the share each project takes.
-    const portfolioHours = portfolio.projects
-      .filter((p) => !p.archived)
-      .reduce((n, p) => n + drawHours(p.id), 0);
+    /* The work that is actually running. Archived work is finished with and out of every
+       screen; work on hold is still in the project data and still holds its bookings, but
+       it is not running, so it is out of the portfolio and it draws nobody's time. What
+       both have in common is that no plan being made today should be counting them. */
+    const running = (p: Project) => !p.archived && !p.inactive;
+    const onHold = new Set(portfolio.projects.filter((p) => !p.archived && p.inactive).map((p) => p.id));
+    const portfolioHours = portfolio.projects.filter(running).reduce((n, p) => n + drawHours(p.id), 0);
 
     /* Each project that has opted into planning is scheduled once here, so the timeline can
        draw what its plan actually says rather than the dates typed on it. The stored dates
@@ -436,8 +442,12 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         phaseEnds.get(p.id) ?? [],
       ),
     );
-    // Archived work keeps its data but is invisible to every screen except the archive.
-    const projects = allProjectViews.filter((p) => !p.archived);
+    /* Archived work keeps its data but is invisible to every screen except the archive.
+       Work on hold is out of the portfolio the same way, but it has not gone anywhere: it
+       is listed with the rest on the Data screen, marked as what it is, and one click from
+       running again. */
+    const projects = allProjectViews.filter(running);
+    const inactiveProjects = allProjectViews.filter((p) => !p.archived && p.inactive);
     const archivedProjects = allProjectViews.filter((p) => p.archived);
 
     const projectById = new Map(portfolio.projects.map((p) => [p.id, p]));
@@ -453,6 +463,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       const booked = loadIndex.get(personId);
       const project = projectById.get(projectId);
       if (monthIndex < 0 || !booked || !project) return;
+      /* A project on hold is not asking anybody for time. Its bookings are kept exactly as
+         they were, so nothing has to be typed again when it starts, but they stop weighing
+         on the person they were made against — which is the whole reason for the switch. */
+      if (onHold.has(projectId)) return;
       booked[monthIndex] += hours;
       bookedOn.get(personId)?.add(project.name);
     });
@@ -636,6 +650,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     return {
       projects,
       archivedProjects,
+      inactiveProjects,
       people,
       archivedPeople,
       peopleViews,

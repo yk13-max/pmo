@@ -51,14 +51,20 @@ export function DataManager({
   onOpenProject: (id: string) => void;
   onExport: () => void;
 }) {
-  const { replaceAll, resetToSeed, clearAll, portfolio, addRole, removeRole, setArchived, setPersonArchived, deleteProject } =
+  const { replaceAll, resetToSeed, clearAll, portfolio, addRole, removeRole, setArchived, setInactive, setPersonArchived, deleteProject } =
     usePortfolio();
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [newRole, setNewRole] = useState('');
   const [danger, setDanger] = useState<{ kind: 'reset' | 'clear'; step: 1 | 2 | 3 } | null>(null);
-  const { rows, filters, setFilters, sort, setSort } = useProjectsTable(view.projects);
+  /* Work on hold has left every other screen, but this is the project data — it is where
+     you go to find it and put it back. So it is listed here with the running work, sorted
+     and filtered alongside it, and marked for what it is. */
+  const { rows, filters, setFilters, sort, setSort } = useProjectsTable([
+    ...view.projects,
+    ...view.inactiveProjects,
+  ]);
 
   /* What an archived person is still on the books for, across every project and every
      month — the reason their record is worth keeping. */
@@ -177,7 +183,7 @@ export function DataManager({
       <Tabs
         storageKey="data"
         tabs={[
-          { id: 'projects', label: 'Projects', count: view.projects.length, render: () => (<>
+          { id: 'projects', label: 'Projects', count: view.projects.length + view.inactiveProjects.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Projects</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
         Everything the screens are built from. Editing a project also books people onto it. Narrow the list with the
@@ -188,7 +194,7 @@ export function DataManager({
         filters={filters}
         setFilters={setFilters}
         shown={rows.length}
-        total={view.projects.length}
+        total={view.projects.length + view.inactiveProjects.length}
       />
       {rows.length === 0 ? (
         <p className="empty">No project matches these filters.</p>
@@ -207,6 +213,15 @@ export function DataManager({
                       {p.name}
                     </span>
                     <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
+                    {p.inactive && (
+                      <span
+                        className="eyebrow"
+                        title="On hold — out of the portfolio and drawing nobody's time"
+                        style={{ marginLeft: 8, color: 'var(--color-accent-700)' }}
+                      >
+                        On hold
+                      </span>
+                    )}
                   </button>
                 </td>
                 <td style={{ fontSize: 13 }}>{p.typeShort}</td>
@@ -232,6 +247,25 @@ export function DataManager({
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button type="button" className="btn btn-ghost" onClick={() => onEditProject(p)}>
                       Edit
+                    </button>
+                    {/* No confirming: it changes nothing and the same button puts it back. */}
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      title={
+                        p.inactive
+                          ? `Put ${p.name} back into the portfolio and the resourcing`
+                          : `Take ${p.name} out of the portfolio and the resourcing, keeping everything booked on it`
+                      }
+                      onClick={() => {
+                        setInactive(p.id, !p.inactive);
+                        setMessage({
+                          tone: 'ok',
+                          text: p.inactive ? `${p.name} is running again.` : `${p.name} put on hold.`,
+                        });
+                      }}
+                    >
+                      {p.inactive ? 'Resume' : 'Hold'}
                     </button>
                     <button
                       type="button"

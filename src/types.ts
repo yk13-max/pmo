@@ -66,6 +66,11 @@ export interface Project {
   invoiceDates: string[];
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
+  /** Work that is not running at the moment — on hold, awaiting a decision, between
+      contracts. It keeps its place in the project data and everything booked on it, but it
+      is out of the portfolio and draws nobody's time until it is made active again. Not the
+      same as archived: that is for work that is finished with. */
+  inactive?: boolean;
   /** Currency the client is invoiced in. Budget and spend stay in the base currency. */
   currency: CurrencyCode;
   /** Whether the product is sterile. Only asked of Client Solutions work. */
