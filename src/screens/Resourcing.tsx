@@ -9,7 +9,6 @@ import { WindowControls } from '../components/WindowControls';
 import { Drawer } from '../components/Drawer';
 import { monthKeyLabel } from '../lib/dates';
 import { MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
-import { HATCH_ID, HATCH_SWATCH, HatchDefs } from '../components/Hatch';
 
 
 /** A share of a full-time month expressed in working days, to one decimal. */
@@ -130,7 +129,7 @@ export function Resourcing({
               Days off, at the base of each bar
             </span>
             <span>
-              <span style={{ width: 14, height: 12, display: 'block', ...HATCH_SWATCH }} />
+              <span style={{ width: 14, height: 12, background: 'var(--color-offwork)', display: 'block' }} />
               Other work
             </span>
             <span>
@@ -601,7 +600,6 @@ function DemandChart({
               role="img"
               aria-label="How many people the promised work needs each month against the people available"
             >
-              <HatchDefs />
               <line
                 x1={DEMAND_GUTTER}
                 y1={DEMAND_BASE - scale(cap)}
@@ -638,7 +636,7 @@ function DemandChart({
                       y={DEMAND_BASE - hLeave - hOver}
                       width={paleW}
                       height={hOver}
-                      fill={`url(#${HATCH_ID})`}
+                      fill="var(--color-offwork)"
                     />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh} width={darkW} height={dh} fill="var(--color-text)" />
                     <rect x={left + (slot - darkW) / 2} y={DEMAND_BASE - dh - oh} width={darkW} height={oh} fill="var(--color-accent-2)" />
@@ -752,7 +750,7 @@ function DemandChart({
           Away on leave
         </span>
         <span>
-          <span style={{ width: 14, height: 12, display: 'block', ...HATCH_SWATCH }} />
+          <span style={{ width: 14, height: 12, background: 'var(--color-offwork)', display: 'block' }} />
           Other work
         </span>
         <span>

@@ -92,6 +92,13 @@
      stays where it is, meaning what it means there: a print separation plate. */
   --color-warning: #d18500;
 
+  /* Meetings, admin, the rest of a month that never reaches a project. Its own token
+     because of where it sits: the middle band of every resourcing bar, with days off in
+     deep navy below it and project work in pale grey-blue above. It has to be told apart
+     from both, and no step of either ramp manages that — this is the tone that balances
+     the two, 2.1:1 against the pale band and 2.2:1 against the navy. */
+  --color-offwork: #5c7f9e;
+
   /* Quiet text on the chrome — the eyebrow under the name and the footer beneath the menu.
      It is its own role rather than a step of the accent ramp, because that ramp is turned
      upside down by the dark theme and this text needs to stay pale on both. */
@@ -182,6 +189,11 @@
     --color-neutral-900: #eef5fa;
 
     --color-warning: #edad3c;
+    /* On a dark ground the two neighbours are only 1.5:1 apart, so there is no room
+       between them: the band goes below both instead, which is the quiet direction here
+       anyway. 2.3:1 against project work, 3.4:1 against days off, and it still reads
+       against the page. */
+    --color-offwork: #2f5470;
     --color-process-yellow: #f0c53a;
 
     /* Ink rather than navy: on a dark ground a tinted shadow does not read as depth. */
