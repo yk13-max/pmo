@@ -335,7 +335,9 @@ export interface PortfolioView {
     customerCount: number;
     internalCount: number;
     atRisk: number;
-    shortOfPeople: number;
+    /** Projects that depend on somebody booked past their own month — a real shortfall,
+        not the earlier warning the threshold gives. */
+    overbooked: number;
   };
   /** The months a project can be booked across: the planning window, stretched forward so
       it always reaches the project's own end date. Booking has to be possible for every
@@ -678,10 +680,16 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         customerCount: customer.length,
         internalCount: internal.length,
         atRisk: projects.filter((p) => p.rag === 'R').length,
-        shortOfPeople: projects.filter((project) =>
-          peopleViews.some(
-            (pv) =>
-              pv.committed.some((v, i) => v > (pv.person.capacity * threshold) / 100 && (allocations[`${project.id}|${pv.person.id}|${months[i]}`] ?? 0) > 0),
+        /* Past their whole month, not past the threshold. The threshold is the earlier
+           warning — it says a person is getting full — and a project depending on somebody
+           at 90% is not yet short of anybody. Past 100% the hours have to come from
+           somewhere, and that is the number worth counting. */
+        overbooked: projects.filter((project) =>
+          peopleViews.some((pv) =>
+            pv.committed.some(
+              (v, i) =>
+                v > pv.person.capacity && (allocations[`${project.id}|${pv.person.id}|${months[i]}`] ?? 0) > 0,
+            ),
           ),
         ).length,
       },

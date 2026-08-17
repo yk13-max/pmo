@@ -28,7 +28,7 @@ export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | '
    the window instead, so it has no header to fill in. */
 const HEADS: Record<Exclude<ScreenId, 'about'>, [kicker: string, title: string, blurb: string]> = {
   portfolio: [
-    'Both delivery types',
+    'All delivery types',
     'Portfolio',
     'Every delivery type side by side. The top of the stripe names the type; the bottom says who it is for, internal being the lighter half.',
   ],

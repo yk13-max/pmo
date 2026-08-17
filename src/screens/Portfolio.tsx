@@ -124,9 +124,9 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
           }
         />
         <Stat
-          value={view.totals.shortOfPeople}
-          label="Short of people"
-          sub={`Depend on someone already booked past ${view.threshold}% of their month`}
+          value={view.totals.overbooked}
+          label="Overbooked"
+          sub="Depend on someone booked past their whole month"
           color="var(--color-accent-700)"
           onClick={() => setShowShortfall(true)}
           spark={<ShortfallSpark view={view} />}
@@ -251,7 +251,7 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   );
 }
 
-/** What sits behind "Short of people": which projects, and which people are the pinch. */
+/** What sits behind "Overbooked": which projects, and which people are the pinch. */
 function ShortfallDetail({
   view,
   onClose,
@@ -261,12 +261,12 @@ function ShortfallDetail({
   onClose: () => void;
   onOpenProject: (id: string) => void;
 }) {
+  /* Past their whole month, which is the same test the number outside uses. The threshold
+     is the earlier warning and lives on the resourcing screen; this is the shortfall. */
   const stretched = view.peopleViews
     .map((pv) => ({
       pv,
-      months: pv.committed
-        .map((v, i) => (v > (pv.person.capacity * view.threshold) / 100 ? i : -1))
-        .filter((i) => i >= 0),
+      months: pv.committed.map((v, i) => (v > pv.person.capacity ? i : -1)).filter((i) => i >= 0),
     }))
     .filter((r) => r.months.length);
 
@@ -280,10 +280,11 @@ function ShortfallDetail({
     .filter((r) => r.people.length);
 
   return (
-    <Drawer title="Short of people" kicker="What is behind the number" onClose={onClose}>
+    <Drawer title="Overbooked" kicker="What is behind the number" onClose={onClose}>
       <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
-        {affected.length} project{affected.length === 1 ? '' : 's'} depend on {stretched.length} person
-        {stretched.length === 1 ? '' : 's'} already booked past {view.threshold}% of their own month.
+        {affected.length} project{affected.length === 1 ? '' : 's'} depend on {stretched.length}{' '}
+        {stretched.length === 1 ? 'person' : 'people'} booked past their own whole month. Every hour past it has to
+        come from somewhere: longer days, later dates, or somebody else.
       </p>
 
       <h4 style={{ margin: '0 0 var(--space-2)' }}>The people</h4>
@@ -293,7 +294,7 @@ function ShortfallDetail({
             <th>Person</th>
             <th style={{ width: 150 }}>Job title</th>
             <th style={{ width: 90, textAlign: 'right' }}>Peak</th>
-            <th>Months past the threshold</th>
+            <th>Months past their capacity</th>
           </tr>
         </thead>
         <tbody>
