@@ -32,11 +32,9 @@ export function BrandLockup({
           'Project Glass'
         )}
       </div>
-      {tagline && (
-        <div className="eyebrow" style={{ marginTop: 6 }}>
-          {tagline}
-        </div>
-      )}
+      {/* Its own class rather than a margin written on the element, so the menu can set it
+          beside the mark when the lockup is folded down to a line. */}
+      {tagline && <div className="eyebrow brand-tagline">{tagline}</div>}
     </div>
   );
 }

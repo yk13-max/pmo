@@ -142,6 +142,35 @@ a:hover { color: var(--color-accent-600); }
 .theme-toggle:hover { color: #ffffff; background: color-mix(in srgb, #ffffff 14%, transparent); }
 .theme-toggle:focus-visible { outline: 2px solid var(--color-brand-teal); outline-offset: 2px; }
 
+/* Beside it, and drawn the same way, because it is the same kind of switch: a standing
+   preference about the chrome rather than anything to do with the work. */
+.brand-toggle { position: absolute; top: 10px; left: 46px; z-index: 1;
+  display: inline-grid; place-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: 3px; background: transparent; cursor: pointer;
+  color: color-mix(in srgb, #ffffff 55%, transparent); transition: color 160ms ease, background 160ms ease; }
+.brand-toggle:hover { color: #ffffff; background: color-mix(in srgb, #ffffff 14%, transparent); }
+.brand-toggle:focus-visible { outline: 2px solid var(--color-brand-teal); outline-offset: 2px; }
+
+.brand-tagline { margin-top: 6px; }
+
+/* — the lockup, folded down —
+
+   The name is what the menu is for on the first visit and dead weight on the hundredth, so
+   it can be put away: the mark comes down to the height of a couple of lines of type and
+   sits beside the tagline, which is left saying what the thing is. Everything the mark does
+   — the arrival, the drag, the hover, the double-click through to the credit — it still
+   does at this size; only the name and the room it took have gone.
+
+   Scoped to the menu. The same lockup is the whole of the credit page, where it is centred
+   and stacked and has a page to itself. */
+/* The margin clears the two switches above: folded down, the mark comes up to where their
+   hover wash would otherwise clip its top corner. */
+.sidebar.is-brand-small .brand-lockup { display: flex; align-items: center; gap: 11px; text-align: left; margin-top: 6px; }
+.sidebar.is-brand-small .brand-paper { width: 42px; height: 42px; flex: none; margin-inline: 0; padding: 5px; border-radius: 11px; }
+.sidebar.is-brand-small .brand-grip > svg { width: 32px; height: 32px; }
+.sidebar.is-brand-small .brand-wordmark { display: none; }
+.sidebar.is-brand-small .brand-tagline { margin-top: 0; }
+
 /* On the first paint the three panes fly in from three corners of the paper and settle
    into the mark: the palest from the bottom left, the middle one from the top left, the
    teal from the top right — each arriving at the corner it lives nearest. The stagger
@@ -242,6 +271,8 @@ a:hover { color: var(--color-accent-600); }
   .sidebar .eyebrow, .sidebar-foot { display: none; }
   /* The switch rejoins the flow and sits at the end of the brand line. */
   .theme-toggle { position: absolute; top: var(--space-3); right: var(--space-4); left: auto; }
+  /* Both switches stay together in the corner the menu has moved them to. */
+  .brand-toggle { top: var(--space-3); right: calc(var(--space-4) + 36px); left: auto; }
 
   /* The areas, as one scrolling row. Each keeps a comfortable target and its own line;
      the counts go, because a label a thumb can hit matters more than the number on it. */

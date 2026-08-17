@@ -8,6 +8,7 @@ import type { Person, Project } from './types';
 import { Drawer } from './components/Drawer';
 import { BrandLockup } from './components/BrandLockup';
 import { ThemeToggle } from './components/ThemeToggle';
+import { BrandToggle } from './components/BrandToggle';
 import { About } from './screens/About';
 import { ProjectForm } from './components/ProjectForm';
 import { PersonForm } from './components/PersonForm';
@@ -86,6 +87,8 @@ const SCREEN_WIDTH: Partial<Record<ScreenId, number>> = {
   alerts: 1180,
 };
 
+const BRAND_KEY = 'pmo-tracker:brand-small';
+
 export function App() {
   const store = usePortfolio();
   const view = usePortfolioView(store.portfolio);
@@ -111,6 +114,26 @@ export function App() {
   /* Where the mark was double-clicked from, so double-clicking it again on the credit page
      puts you back in the area you left rather than at the front. */
   const [cameFrom, setCameFrom] = useState<ScreenId>('portfolio');
+
+  /* Whether the lockup is folded down to a line. Remembered like the theme: it is a
+     standing preference about the chrome, not something to be set again every morning. */
+  const [smallBrand, setSmallBrand] = useState(() => {
+    try {
+      return localStorage.getItem(BRAND_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleBrand = () => {
+    setSmallBrand((was) => {
+      try {
+        localStorage.setItem(BRAND_KEY, was ? '0' : '1');
+      } catch {
+        /* Private browsing. The switch still works; the choice just does not stick. */
+      }
+      return !was;
+    });
+  };
 
   /* Moving between areas closes whatever was open over the top, so going back never
      leaves an edit pane floating above a screen it does not belong to. */
@@ -179,10 +202,11 @@ export function App() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
-        {/* In the corner of the chrome rather than the page: it belongs to the whole site,
+      <aside className={smallBrand ? 'sidebar is-brand-small' : 'sidebar'}>
+        {/* In the corner of the chrome rather than the page: they belong to the whole site,
             and the menu is the one thing on screen wherever you are. */}
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        <BrandToggle small={smallBrand} onToggle={toggleBrand} />
         <BrandLockup
           tagline="PMO Portfolio Tracker"
           onDoubleClick={() => {
