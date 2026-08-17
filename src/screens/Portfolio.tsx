@@ -514,10 +514,29 @@ function Scatter({
   /* Two ways to label the plot. Left alone it calls out only what a delivery lead would
      stop on — anything at risk, plus priority 1-2 — and says why. Switched to names it
      labels every project with its name alone, so the chart can be read as a map.
-     Either way a label is placed only where it will not collide with one already there,
-     biggest first, so a crowded corner stays readable. */
-  const callouts: { p: ProjectView; x: number; y: number; text: string; anchor: 'start' | 'end' }[] = [];
+
+     Either way, labels are laid down biggest first and never on top of one another. A name
+     that will not fit beside its own dot is not dropped, though: it is moved to the nearest
+     clear line above or below and joined back to its dot by a leader. That is what makes
+     "name every project" mean every project — a cluster of four studies at much the same
+     value and much the same progress used to show one name and three anonymous circles. Only
+     a name with nowhere at all to go inside the plot is left off. */
+  type Callout = {
+    p: ProjectView;
+    /** The dot. */
+    x: number;
+    y: number;
+    /** The label, which is the same place unless it had to be moved. */
+    lx: number;
+    ly: number;
+    text: string;
+    anchor: 'start' | 'end';
+    leader: boolean;
+  };
+  const callouts: Callout[] = [];
   const placed: { x: number; y: number; w: number }[] = [];
+  /** How far a moved label may be from its dot, tried nearest first, above before below. */
+  const NUDGES = [0, -16, 16, -32, 32, -48, 48, -64, 64, -80, 80];
   (showNames
     ? [...projects].sort((a, b) => worth(b) - worth(a))
     : [...projects]
@@ -537,12 +556,26 @@ function Scatter({
             : `${p.name} · P${p.priority}`;
     // Roughly how wide the label will render at 12px, in the chart's own units.
     const w = text.length * 6.8 + 24;
-    const anchor: 'start' | 'end' = cx > 720 ? 'end' : 'start';
-    const left = anchor === 'start' ? cx : cx - w;
-    const clash = placed.some((k) => Math.abs(k.y - cy) < 15 && left < k.x + k.w && k.x < left + w);
-    if (clash) return;
-    placed.push({ x: left, y: cy, w });
-    callouts.push({ p, x: cx, y: cy, text, anchor });
+    const natural: 'start' | 'end' = cx > 720 ? 'end' : 'start';
+    const free = (anchor: 'start' | 'end', ly: number) => {
+      const left = anchor === 'start' ? cx : cx - w;
+      if (ly < plotTop + 8 || ly > plotBottom - 8) return null;
+      if (left < 0 || left + w > CHART_W) return null;
+      const clash = placed.some((k) => Math.abs(k.y - ly) < 15 && left < k.x + k.w && k.x < left + w);
+      return clash ? null : left;
+    };
+    /* Its own side first at every offset, then the other side — a label reads better beside
+       its dot than across the plot from it, so crossing over is the last resort. */
+    for (const anchor of [natural, natural === 'start' ? 'end' : ('start' as const)] as const) {
+      for (const dy of NUDGES) {
+        const ly = cy + dy;
+        const left = free(anchor, ly);
+        if (left === null) continue;
+        placed.push({ x: left, y: ly, w });
+        callouts.push({ p, x: cx, y: cy, lx: cx, ly, text, anchor, leader: dy !== 0 || anchor !== natural });
+        return;
+      }
+    }
   });
 
   return (
@@ -645,6 +678,29 @@ function Scatter({
                   opacity={p.cust ? 0.82 : 1}
                 />
               ))}
+              {/* Leaders, under the dots so a line never crosses a circle it is not for.
+                  Drawn from the edge of the dot rather than its middle, and stopping just
+                  short of the label, so both ends read as touching without overlapping. */}
+              {callouts
+                .filter((c) => c.leader)
+                .map((c) => {
+                  const r = radius(c.p.load) + 2;
+                  const toward = c.anchor === 'start' ? 1 : -1;
+                  const endX = c.lx + toward * 12;
+                  const dy = c.ly - c.y;
+                  const len = Math.hypot(endX - c.x, dy) || 1;
+                  return (
+                    <line
+                      key={`lead-${c.p.id}`}
+                      x1={c.x + ((endX - c.x) / len) * r}
+                      y1={c.y + (dy / len) * r}
+                      x2={endX}
+                      y2={c.ly}
+                      stroke="var(--color-neutral-400)"
+                      strokeWidth={0.9}
+                    />
+                  );
+                })}
               {projects.map((p) => (
                 <circle
                   key={`hit-${p.id}`}
@@ -665,8 +721,8 @@ function Scatter({
                   className="chart-callout"
                   style={{
                     position: 'absolute',
-                    left: `${(c.x / CHART_W) * 100}%`,
-                    top: `${(c.y / chartH) * 100}%`,
+                    left: `${(c.lx / CHART_W) * 100}%`,
+                    top: `${(c.ly / chartH) * 100}%`,
                     transform: c.anchor === 'start' ? 'translate(14px,-50%)' : 'translate(-100%,-50%)',
                     marginLeft: c.anchor === 'end' ? -14 : 0,
                     fontSize: 12,
@@ -803,7 +859,7 @@ function Scatter({
         <span>Bigger circle = draws more of the team</span>
         <span>
           {showNames
-            ? 'Every project named, bar those a neighbour’s label would sit on top of'
+            ? 'Every project named — a name that will not fit beside its dot moves clear and keeps a line to it'
             : 'Labels mark at-risk and priority 1–2 work'}
         </span>
         <span>Hover a circle for the project&rsquo;s details</span>
