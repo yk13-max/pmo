@@ -75,6 +75,14 @@ const num = (s: string) => {
   return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
 };
 
+/* Money, which is held in thousands. Whole thousands are what most of a portfolio is written
+   in, but not all of it — a £600 study is 0.6, and rounding that to the nearest thousand
+   would either lose it or double it. Kept to three places, which is the pound. */
+const cash = (s: string) => {
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 1000) / 1000 : 0;
+};
+
 export function ProjectForm({
   project,
   view,
@@ -206,12 +214,12 @@ export function ProjectForm({
   if (!draft.client.trim())
     errors.client = internal ? 'Name the function that owns the work.' : 'Name the customer.';
   if (!draft.pmId) errors.pmId = 'Pick a project manager.';
-  if (num(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
+  if (cash(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
   if (effectiveEnd <= draft.startDate)
     errors.endDate = lastGate
       ? 'The last phase completes on or before the start date.'
       : 'The end date must come after the start date.';
-  if (!internal && num(draft.billed) > num(draft.value)) errors.billed = 'Invoiced cannot exceed the agreed value.';
+  if (!internal && cash(draft.billed) > cash(draft.value)) errors.billed = 'Invoiced cannot exceed the agreed value.';
   if (draft.milestoneDate && effectiveEnd && draft.milestoneDate > effectiveEnd)
     errors.milestoneDate = `The next thing due falls after the project ends (${effectiveEnd}). Move it earlier, or push the end date out.`;
   if (draft.milestoneDate && draft.startDate && draft.milestoneDate < draft.startDate)
@@ -241,10 +249,10 @@ export function ProjectForm({
         usesPlan,
         plansResource,
         pct: Math.min(100, num(draft.pct)),
-        budget: num(draft.budget),
-        actual: num(draft.actual),
-        value: internal ? 0 : num(draft.value),
-        billed: internal ? 0 : num(draft.billed),
+        budget: cash(draft.budget),
+        actual: cash(draft.actual),
+        value: internal ? 0 : cash(draft.value),
+        billed: internal ? 0 : cash(draft.billed),
         load: derivedLoad,
         phaseDates,
         invoiceDates: internal ? [] : invoiceDates,
@@ -597,21 +605,25 @@ export function ProjectForm({
               className="input"
               type="number"
               min={0}
+              /* Any is what lets a sum under a thousand be typed: without it a browser
+                 holds the field to whole numbers and refuses 0.6 outright. */
+              step="any"
               value={draft.budget}
               aria-invalid={invalid('budget')}
               onChange={(e) => set('budget', e.target.value)}
             />
             {err('budget')}
+            <div className="field-hint">In thousands, so a £600 study is 0.6.</div>
           </div>
           <div className="field">
             <label htmlFor="pf-actual">Spent so far ({CURRENCIES[BASE_CURRENCY].symbol})</label>
-            <input id="pf-actual" className="input" type="number" min={0} value={draft.actual} onChange={(e) => set('actual', e.target.value)} />
+            <input id="pf-actual" className="input" type="number" min={0} step="any" value={draft.actual} onChange={(e) => set('actual', e.target.value)} />
           </div>
           {!internal && (
             <>
               <div className="field">
                 <label htmlFor="pf-value">Agreed with the client ({CURRENCIES[draft.currency].symbol})</label>
-                <input id="pf-value" className="input" type="number" min={0} value={draft.value} onChange={(e) => set('value', e.target.value)} />
+                <input id="pf-value" className="input" type="number" min={0} step="any" value={draft.value} onChange={(e) => set('value', e.target.value)} />
               </div>
               <div className="field">
                 <label htmlFor="pf-billed">Invoiced so far ({CURRENCIES[draft.currency].symbol})</label>
@@ -620,6 +632,7 @@ export function ProjectForm({
                   className="input"
                   type="number"
                   min={0}
+                  step="any"
                   value={draft.billed}
                   aria-invalid={invalid('billed')}
                   onChange={(e) => set('billed', e.target.value)}

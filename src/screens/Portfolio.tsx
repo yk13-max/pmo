@@ -410,7 +410,8 @@ const TICK_ROW = 26;
    dropped as well, which stops the top of the axis crowding. */
 function moneyTicks(min: number, max: number, y: (v: number) => number): number[] {
   const ladder: number[] = [];
-  for (let e = 0; e <= 9; e += 1) {
+  // From the pound up: a portfolio of small studies has every project under one thousand.
+  for (let e = -3; e <= 9; e += 1) {
     for (const m of [1, 2, 5]) {
       const v = m * 10 ** e;
       if (v >= min && v <= max) ladder.push(v);

@@ -17,7 +17,11 @@ import { fromISO, monthKeyLabel, monthLabel, monthSpan, monthsBetween, monthsFro
 export function money(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
   if (!k) return '—';
   const symbol = CURRENCIES[currency]?.symbol ?? CURRENCIES[BASE_CURRENCY].symbol;
-  return k >= 1000 ? `${symbol}${(k / 1000).toFixed(k % 1000 === 0 ? 0 : 1)}m` : `${symbol}${k}k`;
+  if (k >= 1000) return `${symbol}${(k / 1000).toFixed(k % 1000 === 0 ? 0 : 1)}m`;
+  /* Money is held in thousands, so anything under one is a sum a reader would say in
+     pounds: £600, not £0.6k. Rounded to the pound, which is as fine as the field goes. */
+  if (k < 1) return `${symbol}${Math.round(k * 1000).toLocaleString('en-GB')}`;
+  return `${symbol}${Number(k.toFixed(1))}k`;
 }
 
 export function moneyOrZero(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
