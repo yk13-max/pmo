@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PersonView } from '../lib/derive';
+import { HATCH_ID, HatchDefs } from './Hatch';
 
 /* One shared chart for every place a person's monthly commitment is drawn — the resourcing
    grid, the alerts list and the person card — so the geometry, colours and axis are
@@ -133,6 +134,7 @@ export function PersonBars({
           strokeDasharray="6 3"
           vectorEffect="non-scaling-stroke"
         />
+        <HatchDefs />
         <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
         {/* The month starts with the time already gone — days off at the base, then meetings
@@ -153,7 +155,7 @@ export function PersonBars({
                   y={BASELINE - hGone}
                   width={width}
                   height={hGone - hLeave}
-                  fill="var(--color-accent-500)"
+                  fill={`url(#${HATCH_ID})`}
                 />
               )}
               {hTotal > hGone && (

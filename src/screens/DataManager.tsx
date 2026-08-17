@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Person, Portfolio, Project } from '../types';
 import { hoursToDays, type PortfolioView } from '../lib/derive';
 import { usePortfolio } from '../store/portfolio';
@@ -34,6 +34,8 @@ const DANGER_ACTIONS = [
   },
 ];
 
+type PeopleSort = 'added' | 'az' | 'za';
+
 export function DataManager({
   view,
   onEditProject,
@@ -58,6 +60,17 @@ export function DataManager({
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [newRole, setNewRole] = useState('');
   const [danger, setDanger] = useState<{ kind: 'reset' | 'clear'; step: 1 | 2 | 3 } | null>(null);
+  /* How the team is listed. Order added is the order the list is held in, which is the one
+     a small team is remembered by; the alphabet is what you want the moment it stops being
+     small. A view rather than a change to the data, so nothing is reordered by looking. */
+  const [peopleSort, setPeopleSort] = useState<PeopleSort>('added');
+  const sortedPeople = useMemo(() => {
+    if (peopleSort === 'added') return view.peopleViews;
+    const by = new Intl.Collator('en-GB', { sensitivity: 'base' });
+    const out = [...view.peopleViews].sort((a, b) => by.compare(a.person.name, b.person.name));
+    return peopleSort === 'za' ? out.reverse() : out;
+  }, [view.peopleViews, peopleSort]);
+
   /* Work on hold has left every other screen, but this is the project data — it is where
      you go to find it and put it back. So it is listed here with the running work, sorted
      and filtered alongside it, and marked for what it is. */
@@ -282,6 +295,25 @@ export function DataManager({
         People are archived rather than deleted. Someone who leaves keeps every booking and day off they ever had, so
         what a project drew stays true; they simply stop being planned forward.
       </p>
+      <div
+        className="control-row"
+        style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}
+      >
+        <label className="eyebrow" htmlFor="people-sort">
+          Sort by
+        </label>
+        <select
+          id="people-sort"
+          className="input"
+          style={{ width: 'auto' }}
+          value={peopleSort}
+          onChange={(e) => setPeopleSort(e.target.value as PeopleSort)}
+        >
+          <option value="added">Order added</option>
+          <option value="az">Name A–Z</option>
+          <option value="za">Name Z–A</option>
+        </select>
+      </div>
       <table className="table" style={{ maxWidth: 900 }}>
         <thead>
           <tr>
@@ -296,7 +328,7 @@ export function DataManager({
           </tr>
         </thead>
         <tbody>
-          {view.peopleViews.map((row) => (
+          {sortedPeople.map((row) => (
             <tr key={row.person.id}>
               <td>
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>

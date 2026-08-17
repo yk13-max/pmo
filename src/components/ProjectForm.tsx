@@ -245,6 +245,7 @@ export function ProjectForm({
         name: draft.name.trim(),
         client: draft.client.trim(),
         number: draft.number?.trim() || undefined,
+        salesLead: draft.salesLead?.trim() || undefined,
         milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
         // Owned by the plan below, and already saved by it. See `live` above.
         usesPlan,
@@ -411,6 +412,20 @@ export function ProjectForm({
               ))}
             </select>
             {err('pmId')}
+          </div>
+          {/* Whoever sold it, where somebody did. Free text and not a person on the team: the
+              sales lead is often not somebody the tracker books time for, and asking for one
+              of the seven names on the resourcing screen would be asking the wrong question. */}
+          <div className="field">
+            <label htmlFor="pf-sales">Sales lead</label>
+            <input
+              id="pf-sales"
+              className="input"
+              value={draft.salesLead ?? ''}
+              placeholder="Optional"
+              onChange={(e) => set('salesLead', e.target.value)}
+            />
+            <div className="field-hint">Who brought the work in, if anyone is named for it.</div>
           </div>
           <div className="field">
             <label htmlFor="pf-priority">Priority</label>

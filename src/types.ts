@@ -89,6 +89,9 @@ export interface Project {
   actualStart?: string;
   /** Whether the detail screen shows what actually happened beside what was planned. */
   showActuals?: boolean;
+  /** Who sold the work, where somebody is named for it. Free text rather than a person on
+      the team: a sales lead is often not somebody the tracker books time for. */
+  salesLead?: string;
   /** Whatever the business calls this project in its own systems — a job number, a contract
       reference, a code. Optional and free text, because every organisation numbers its work
       differently and none of them number it the way an id does. */

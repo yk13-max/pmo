@@ -88,6 +88,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       'Phase',
       '% through current phase',
       'Project manager',
+      'Sales lead',
       'Budget £k',
       'Spent £k',
       'Invoice currency',
@@ -118,6 +119,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       (p.projectTypes.find((t) => t.id === x.type)?.phases ?? [])[x.phase] ?? '',
       x.pct,
       person(x.pmId),
+      x.salesLead ?? '',
       x.budget,
       x.actual,
       x.currency,
@@ -342,6 +344,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
           ? col(r, 'Archived').toLowerCase() === 'yes'
           : base?.archived,
         number: col(r, 'Project number').trim() || base?.number,
+        salesLead: col(r, 'Sales lead').trim() || base?.salesLead,
         inactive: headers.some((h) => h.trim().toLowerCase() === 'on hold')
           ? col(r, 'On hold').toLowerCase() === 'yes'
           : base?.inactive,
