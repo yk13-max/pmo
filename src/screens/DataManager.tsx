@@ -5,6 +5,7 @@ import { usePortfolio } from '../store/portfolio';
 import { applyCsv, portfolioCsvFiles } from '../lib/csv';
 import { Tabs } from '../components/Tabs';
 import { ProjectTypeEditor } from '../components/ProjectTypeEditor';
+import { SkillsMatrix } from '../components/SkillsMatrix';
 import { ProjectFilters, ProjectHeaders, useProjectsTable } from '../components/ProjectsTable';
 
 /* CSV is what people exchange, but it is one sheet per kind of thing. The JSON pair moves
@@ -28,7 +29,7 @@ const DANGER_ACTIONS = [
     kind: 'clear' as const,
     title: 'Clear all data',
     blurb:
-      'Empties the tracker: every project, person, booking, day off and public holiday goes. Job titles, delivery types and the planning window stay, so you can start entering real work straight away.',
+      'Empties the tracker: every project, person, booking, day off and public holiday goes. Job titles, skills, delivery types and the planning window stay, so you can start entering real work straight away.',
     fate: 'will be deleted',
     confirm: 'Clear everything',
   },
@@ -455,6 +456,7 @@ export function DataManager({
       </div>
 
       </>) },
+          { id: 'skills', label: 'Skills', count: portfolio.skills.length, render: () => <SkillsMatrix view={view} /> },
           { id: 'settings', label: 'Settings', render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Settings</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>

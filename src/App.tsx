@@ -344,6 +344,7 @@ export function App() {
             person={editing.person}
             roles={view.roles}
             families={view.families}
+            skills={store.portfolio.skills}
             months={view.months}
             monthLabels={view.monthLabels}
             leaveDays={

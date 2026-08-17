@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Person, ProjectFamily } from '../types';
+import type { Person, ProjectFamily, Skill } from '../types';
 import { WORKING_DAYS_PER_MONTH } from '../types';
 import { leavePct } from '../lib/derive';
 
@@ -24,6 +24,7 @@ export function PersonForm({
   person,
   roles,
   families,
+  skills,
   months,
   monthLabels,
   leaveDays,
@@ -38,6 +39,8 @@ export function PersonForm({
   /** The kinds of work a person can be assigned to. They work on a kind, not on one
       particular way of running it. */
   families: ProjectFamily[];
+  /** The skills the business has named. What this person holds is picked from them. */
+  skills: Skill[];
   months: string[];
   monthLabels: string[];
   /** Days of leave already booked, one per planning month. */
@@ -172,6 +175,48 @@ export function PersonForm({
           <div className="field-hint">
             {draft.types.length ? 'Only these kinds of work.' : 'None selected — treated as available to every kind of work.'}
           </div>
+        </div>
+        {/* What they can do, as against what they are. The tags are the same ones projects
+            ask for, which is what lets the tracker say whether the work has anybody behind
+            it — so this is worth filling in even where the job title looks like it says the
+            same thing. */}
+        <div className="field">
+          <span style={{ display: 'block', fontSize: 13, marginBottom: 5, color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+            What they can do
+          </span>
+          {skills.length === 0 ? (
+            <div className="field-hint">No skills listed yet — they are named under Data → Skills.</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                {skills.map((s) => {
+                  const on = Boolean(draft.skills?.includes(s.id));
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="chip"
+                      aria-pressed={on}
+                      title={s.note}
+                      onClick={() =>
+                        setDraft((d) => ({
+                          ...d,
+                          skills: on ? (d.skills ?? []).filter((x) => x !== s.id) : [...(d.skills ?? []), s.id],
+                        }))
+                      }
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="field-hint">
+                {draft.skills?.length
+                  ? `${draft.skills.length} skill${draft.skills.length === 1 ? '' : 's'}.`
+                  : 'None yet — work asking for a skill will not find them.'}
+              </div>
+            </>
+          )}
         </div>
         <div className="field">
           <label htmlFor="pn-cap">Working days a month</label>

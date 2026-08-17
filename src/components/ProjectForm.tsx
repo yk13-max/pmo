@@ -526,6 +526,90 @@ export function ProjectForm({
         </div>
       </fieldset>
 
+      {/* What the work needs somebody to be able to do. It books nobody and moves nothing:
+          it is the project's side of the same tags the team is described with, so the
+          tracker can say whether what is being asked for exists and whether anybody holding
+          it has room. The answer is said here, beside the asking, rather than only on the
+          resourcing screen — the moment to find out that nobody can do this is while the
+          project is being set up. */}
+      <fieldset className="fieldset">
+        <legend>Skills the work needs</legend>
+        {view.skillViews.length === 0 ? (
+          <p className="field-hint" style={{ margin: 0 }}>
+            No skills have been listed yet. They are named under Data → Skills, and assigned to the team there too.
+          </p>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+              {view.skillViews.map((sv) => {
+                const on = Boolean(draft.skills?.includes(sv.skill.id));
+                return (
+                  <button
+                    key={sv.skill.id}
+                    type="button"
+                    className="chip"
+                    aria-pressed={on}
+                    title={sv.skill.note}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        skills: on ? (d.skills ?? []).filter((x) => x !== sv.skill.id) : [...(d.skills ?? []), sv.skill.id],
+                      }))
+                    }
+                  >
+                    {sv.skill.label}
+                  </button>
+                );
+              })}
+            </div>
+            {draft.skills?.length ? (
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {draft.skills.map((id) => {
+                  const sv = view.skillViews.find((s) => s.skill.id === id);
+                  if (!sv) return null;
+                  /* Three answers, and they are different problems: nobody can do it at all;
+                     somebody can but is full for the whole window; or here is who has room
+                     and when. */
+                  const bad = sv.headcount === 0;
+                  const full = sv.headcount > 0 && !sv.freeAt;
+                  return (
+                    <li key={id} style={{ fontSize: 13, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          flex: 'none',
+                          alignSelf: 'center',
+                          background: bad
+                            ? 'var(--color-accent-2)'
+                            : full
+                              ? 'var(--color-warning)'
+                              : 'var(--color-teal-700)',
+                        }}
+                      />
+                      <span style={{ fontWeight: 600 }}>{sv.skill.label}</span>
+                      <span style={{ color: 'var(--color-neutral-700)' }}>
+                        {bad
+                          ? 'nobody on the team holds this'
+                          : full
+                            ? `${sv.headcount} ${sv.headcount === 1 ? 'person holds' : 'people hold'} it, none with room in the next ${view.monthLabels.length} months`
+                            : `${sv.headcount} ${sv.headcount === 1 ? 'person holds' : 'people hold'} it · ${sv.freeAt?.person} has room in ${view.monthLabels[sv.freeAt?.month ?? 0]}`}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="field-hint" style={{ margin: 0 }}>
+                None asked for. Pick the ones this work cannot be done without, and the resourcing screen will say
+                whether the team can cover them.
+              </p>
+            )}
+          </>
+        )}
+      </fieldset>
+
       <fieldset className="fieldset">
         <legend>Where it has got to</legend>
         <div className="form-grid">

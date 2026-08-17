@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CurrencyCode, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Rag, Task } from '../types';
+import type { CurrencyCode, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Rag, Skill, Task } from '../types';
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -296,14 +296,42 @@ export interface PersonView {
   projectNames: string[];
 }
 
-export interface RoleShortage {
-  role: string;
-  /** Consecutive months where the whole role is oversubscribed. */
-  months: string[];
-  /** Largest gap over the role's combined capacity, in people. */
-  worstGap: number;
-  /** How many people hold this title. */
+/* A skill, read against the team and the work.
+
+   Everything here is in people rather than percentages: "1.4 people of aseptic process design
+   booked against 1.0 available" is the sentence a resourcing conversation is actually held
+   in, and a percentage of a group that changes size as people join it is not. */
+export interface SkillView {
+  skill: Skill;
+  /** Everybody who holds it. */
+  holders: PersonView[];
   headcount: number;
+  /** The live projects asking for it. */
+  wantedBy: { id: string; name: string }[];
+  /** What its holders have booked, in people, per planning month. */
+  booked: number[];
+  /** What they have to give, once leave and non-project work are out, in people. */
+  available: number[];
+  /** Available less booked. Negative is a hole. */
+  spare: number[];
+  /** The first month somebody holding it has room, and who has the most of it. */
+  freeAt: { month: number; person: string } | null;
+  /** A skill some live project asks for that nobody on the team holds at all. */
+  uncovered: boolean;
+}
+
+export interface SkillShortage {
+  skillId: string;
+  skill: string;
+  /** Consecutive months where everybody holding it is oversubscribed. Empty when nobody
+      holds it at all — that shortage has no months about it, it simply is. */
+  months: string[];
+  /** Largest gap over the holders' combined capacity, in people. */
+  worstGap: number;
+  /** How many people hold this skill. */
+  headcount: number;
+  /** How many live projects are asking for it. */
+  wanted: number;
 }
 
 export interface PortfolioView {
@@ -338,9 +366,11 @@ export interface PortfolioView {
   families: ProjectFamily[];
   /** The categories under a family, in the order they were added. */
   categoriesOf: (familyId: string) => ProjectTypeDef[];
-  /** Roles oversubscribed for 3+ months running, where no colleague of the same
-      title has room to absorb the overspill. */
-  roleShortages: RoleShortage[];
+  /** Every skill on the list, read against who holds it and what is asking for it. */
+  skillViews: SkillView[];
+  /** Skills nobody on the team holds, and skills whose holders are all oversubscribed for
+      3+ months running — the work asking for something the team cannot cover. */
+  skillShortages: SkillShortage[];
   totals: {
     value: number;
     billed: number;
@@ -542,41 +572,98 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     // What the whole team loses to meetings and admin, in people. Constant across the window.
     const overhead = peopleViews.reduce((n, p) => n + p.overheadLoad, 0) / 100;
 
-    /* A role is short when the work booked to everyone holding that title exceeds their
-       combined capacity for the month — meaning the overspill cannot be handed to a
-       colleague who does the same job. Three months running makes it structural rather
-       than a bad fortnight. */
-    const roleShortages: RoleShortage[] = [];
-    const rolesInUse = [...new Set(people.map((p) => p.role))];
-    rolesInUse.forEach((role) => {
-      const holders = peopleViews.filter((p) => p.person.role === role);
-      if (!holders.length) return;
-      const gaps = months.map((_, i) => {
-        const booked = holders.reduce((n, p) => n + p.loads[i], 0);
-        const available = holders.reduce(
-          (n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad),
-          0,
-        );
-        return (booked - available) / 100;
+    /* Skills, read both ways: who holds each one, and which live work is asking for it.
+
+       This replaced the same reading taken by job title. A title is what somebody is, and
+       two people with the same title are not interchangeable — one process engineer holds
+       aseptic design and the other does not, so a title being oversubscribed said less than
+       it appeared to. A skill is what somebody can do, and the work says which ones it needs,
+       so both sides of the sentence now point at the same tag. */
+    const skills = portfolio.skills ?? [];
+    const wantedBy = new Map<string, { id: string; name: string }[]>();
+    projects.forEach((p) => {
+      (p.skills ?? []).forEach((id) => {
+        wantedBy.set(id, [...(wantedBy.get(id) ?? []), { id: p.id, name: p.name }]);
       });
+    });
+
+    const skillViews: SkillView[] = skills.map((skill) => {
+      const holders = peopleViews.filter((pv) => pv.person.skills?.includes(skill.id));
+      const asking = wantedBy.get(skill.id) ?? [];
+      const booked = months.map((_, i) => holders.reduce((n, p) => n + p.loads[i], 0) / 100);
+      const available = months.map(
+        (_, i) =>
+          holders.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad), 0) / 100,
+      );
+      const spare = available.map((a, i) => Math.round((a - booked[i]) * 100) / 100);
+      /* Somebody is "free" when a tenth of their month is going spare, which is about two
+         days: less than that and saying they are available would be a promise nobody can
+         keep. The name given is whoever has the most room that month, since that is who
+         would actually be asked. */
+      let freeAt: SkillView['freeAt'] = null;
+      months.some((_, i) => {
+        const best = holders
+          .map((p) => ({ name: p.person.name, room: (p.person.capacity - p.committed[i]) / 100 }))
+          .sort((a, b) => b.room - a.room)[0];
+        if (best && best.room >= 0.1) {
+          freeAt = { month: i, person: best.name };
+          return true;
+        }
+        return false;
+      });
+      return {
+        skill,
+        holders,
+        headcount: holders.length,
+        wantedBy: asking,
+        booked,
+        available,
+        spare,
+        freeAt,
+        uncovered: holders.length === 0 && asking.length > 0,
+      };
+    });
+
+    /* A skill is short in one of two ways. Either nobody on the team holds it and live work
+       is asking for it, which is a gap that does not need three months to prove itself; or
+       everybody who holds it is booked past what they have for three months running, which
+       is the same sustained reading the job titles used to get. */
+    const skillShortages: SkillShortage[] = [];
+    skillViews.forEach((sv) => {
+      if (sv.uncovered) {
+        skillShortages.push({
+          skillId: sv.skill.id,
+          skill: sv.skill.label,
+          months: [],
+          worstGap: 0,
+          headcount: 0,
+          wanted: sv.wantedBy.length,
+        });
+        return;
+      }
+      if (!sv.headcount) return;
       let run: number[] = [];
       const flush = () => {
         if (run.length >= 3) {
-          roleShortages.push({
-            role,
+          skillShortages.push({
+            skillId: sv.skill.id,
+            skill: sv.skill.label,
             months: run.map((i) => monthLabels[i]),
-            worstGap: Math.max(...run.map((i) => gaps[i])),
-            headcount: holders.length,
+            worstGap: Math.max(...run.map((i) => -sv.spare[i])),
+            headcount: sv.headcount,
+            wanted: sv.wantedBy.length,
           });
         }
         run = [];
       };
-      gaps.forEach((gap, i) => {
-        if (gap > 0) run.push(i);
+      sv.spare.forEach((gap, i) => {
+        if (gap < 0) run.push(i);
         else flush();
       });
       flush();
     });
+    // Nothing covered at all first, then the deepest hole.
+    skillShortages.sort((a, b) => Number(b.headcount === 0) - Number(a.headcount === 0) || b.worstGap - a.worstGap);
 
     /* How far out there is anything to look at. Used as a soft limit: the window can be
        stretched to cover every live project without guessing a number. */
@@ -685,7 +772,8 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       projectTypes: portfolio.projectTypes,
       families: portfolio.families,
       categoriesOf: (familyId: string) => portfolio.projectTypes.filter((x) => x.family === familyId),
-      roleShortages,
+      skillViews,
+      skillShortages,
       totals: {
         value,
         billed,

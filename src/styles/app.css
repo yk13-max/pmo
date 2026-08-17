@@ -578,6 +578,14 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
    work on a dense table, so every heading on the site is lifted a step. */
 .table th { font-size: 12px; }
 
+/* The skills grid is many narrow columns, each headed by a name longer than its column —
+   "Aseptic process design" over a 96px tick box. So its headings wrap instead of forcing
+   the table wider than the screen, and they sit on the bottom of the row so the names line
+   up along the ticks whatever height each one takes. The count under the ticks is what says
+   how many people cover each skill, so it is set off from the body by a rule. */
+.skills-matrix th { white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
+.skills-matrix tfoot td { border-top: 2px solid var(--color-text); font-size: 12px; }
+
 .row-actions { display: flex; gap: var(--space-2); }
 .empty { padding: var(--space-8); text-align: center; color: var(--color-neutral-700); border: 1px dashed var(--color-divider); border-radius: var(--radius-md); }
 

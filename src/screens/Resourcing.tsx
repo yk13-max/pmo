@@ -5,6 +5,7 @@ import { hoursToDays } from '../lib/derive';
 import { Stat } from '../components/Stat';
 import { Tabs } from '../components/Tabs';
 import { PersonBars } from '../components/PersonBars';
+import { SkillGraphs } from '../components/SkillBars';
 import { WindowControls } from '../components/WindowControls';
 import { Drawer } from '../components/Drawer';
 import { monthKeyLabel } from '../lib/dates';
@@ -95,16 +96,20 @@ export function Resourcing({
           color="var(--color-accent-700)"
         />
         <Stat
-          value={view.roleShortages.length}
-          label="Roles short 3 months running"
+          value={view.skillShortages.length}
+          label="Skillset with no cover"
           sub={
-            view.roleShortages.length
-              ? view.roleShortages
-                  .map((s) => `${s.role} (${s.months[0]}–${s.months[s.months.length - 1]})`)
+            view.skillShortages.length
+              ? view.skillShortages
+                  .map((s) =>
+                    s.headcount === 0
+                      ? `${s.skill} (nobody holds it)`
+                      : `${s.skill} (${s.months[0]}–${s.months[s.months.length - 1]})`,
+                  )
                   .join(' · ')
-              : 'No title is oversubscribed for three months straight'
+              : 'Every skill the work asks for has somebody behind it'
           }
-          color={view.roleShortages.length ? 'var(--color-accent-2-700)' : 'var(--color-text)'}
+          color={view.skillShortages.length ? 'var(--color-accent-2-700)' : 'var(--color-text)'}
         />
       </div>
 
@@ -238,43 +243,54 @@ export function Resourcing({
           { id: 'demand', label: 'People the work needs', count: `${Math.max(0, ...view.demand).toFixed(1)} peak`, render: () => (
             <DemandChart view={view} onSetWindow={onSetWindow} />
           ) },
-          { id: 'roles', label: 'Job titles with no cover', count: view.roleShortages.length, render: () => (<>
+          { id: 'skills', label: 'Skillset with no cover', count: view.skillShortages.length, render: () => (<>
 
-      <h3 style={{ margin: '0 0 4px' }}>Job titles with no cover</h3>
+      <h3 style={{ margin: '0 0 4px' }}>Skillset with no cover</h3>
       <p className="lede">
-        A title is short when everyone holding it is booked past their available time, so the overspill cannot be handed
-        to a colleague who does the same job. Three months running makes it a hiring problem, not a scheduling one.
+        A skill has no cover when nobody on the team holds it and live work is asking for it, or when everybody who does
+        hold it is booked past their available time — so the overspill cannot be handed to a colleague who can do the
+        same job. Three months running makes that a hiring problem rather than a scheduling one.
       </p>
-      {view.roleShortages.length === 0 ? (
+      {view.skillShortages.length === 0 ? (
         <p className="empty" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
-          No job title is oversubscribed for three consecutive months.
+          {view.skillViews.length === 0
+            ? 'No skills have been listed yet. Add them under Data → Skills, then say which ones each project needs.'
+            : 'Every skill the work asks for has somebody behind it, with room for it.'}
         </p>
       ) : (
         <table className="table" style={{ marginTop: 'var(--space-4)', maxWidth: 1040 }}>
           <thead>
             <tr>
-              <th style={{ width: 220 }}>Job title</th>
+              <th style={{ width: 220 }}>Skill</th>
               <th style={{ width: 90 }}>People</th>
+              <th style={{ width: 90 }}>Wanted by</th>
               <th style={{ width: 200 }}>Months</th>
               <th style={{ textAlign: 'right', width: 150 }}>Worst gap</th>
               <th>What it means</th>
             </tr>
           </thead>
           <tbody>
-            {view.roleShortages.map((s) => (
-              <tr key={`${s.role}-${s.months[0]}`}>
+            {view.skillShortages.map((s) => (
+              <tr key={`${s.skillId}-${s.months[0] ?? 'none'}`}>
                 <td>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{s.role}</span>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{s.skill}</span>
                 </td>
-                <td style={{ color: 'var(--color-neutral-700)' }}>{s.headcount}</td>
-                <td>{s.months.join(', ')}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
-                  {s.worstGap.toFixed(2)} people
+                <td style={{ color: s.headcount ? 'var(--color-neutral-700)' : 'var(--color-accent-2-700)' }}>
+                  {s.headcount}
                 </td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>
-                  {s.headcount === 1
-                    ? 'The only person with this title — nobody can take the overspill.'
-                    : `All ${s.headcount} are over their available time in the same months.`}
+                  {s.wanted} project{s.wanted === 1 ? '' : 's'}
+                </td>
+                <td>{s.months.length ? s.months.join(', ') : 'Every month'}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
+                  {s.headcount === 0 ? 'No cover at all' : `${s.worstGap.toFixed(2)} people`}
+                </td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>
+                  {s.headcount === 0
+                    ? `Nobody on the team holds this, and ${s.wanted} live project${s.wanted === 1 ? ' needs' : 's need'} it.`
+                    : s.headcount === 1
+                      ? 'The only person who can do this — nobody can take the overspill.'
+                      : `All ${s.headcount} are over their available time in the same months.`}
                 </td>
               </tr>
             ))}
@@ -283,6 +299,9 @@ export function Resourcing({
       )}
 
       </>) },
+          { id: 'skill-load', label: 'Skill by skill', count: view.skillViews.length, render: () => (
+            <SkillGraphs view={view} showPct={showPct} scrollLeft={monthScroll} onScrollLeft={setMonthScroll} />
+          ) },
           { id: 'overspill', label: 'Where the overspill comes from', count: overMonths.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>Where the overspill comes from</h3>
       <p className="lede">

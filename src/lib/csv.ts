@@ -1,4 +1,4 @@
-import type { ConstraintType, CurrencyCode, Portfolio, Task } from '../types';
+import type { ConstraintType, CurrencyCode, Portfolio, Skill, Task } from '../types';
 import { CONSTRAINTS, CURRENCIES, PRIORITY_LABEL, STERILE_FAMILY, WORKING_DAYS_PER_MONTH, WORKING_HOURS_PER_DAY } from '../types';
 import { RAG_LABEL } from '../data/phases';
 import { fileStamp, monthKeyLabel } from './dates';
@@ -78,6 +78,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
     [
       'Project',
       'Project number',
+      'Skills needed',
       'Client or function',
       'Delivery type',
       'Category',
@@ -108,6 +109,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
     p.projects.map((x) => [
       x.name,
       x.number ?? '',
+      (x.skills ?? []).map((id) => p.skills.find((s) => s.id === id)?.label ?? id).join('; '),
       x.client,
       familyOf(p, x.type)?.label ?? x.type,
       p.projectTypes.find((t) => t.id === x.type)?.label ?? '',
@@ -147,11 +149,13 @@ function familyOf(p: Portfolio, typeId: string) {
 
 export function peopleCsv(p: Portfolio): string {
   return toCsv(
-    ['Name', 'Job title', 'Project family', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
+    ['Name', 'Job title', 'Project family', 'Skills', 'Working days per month', 'Capacity %', 'Non-project work %', 'Archived'],
     p.people.map((x) => [
       x.name,
       x.role,
       x.types.map((id) => p.families.find((f) => f.id === id)?.label ?? id).join('; ') || 'All',
+      // By name, not by id: a spreadsheet is read by people, and the names are the tags.
+      (x.skills ?? []).map((id) => p.skills.find((s) => s.id === id)?.label ?? id).join('; '),
       x.workingDays,
       x.capacity,
       x.overheadPct ?? 0,
@@ -264,6 +268,23 @@ export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
   ];
 }
 
+/* Skills come and go by name in a sheet. A name already on the list is that skill; one that
+   is not is added, the same way an unfamiliar job title is — a sheet naming a skill nobody
+   has recorded is a person telling the tracker about a skill, not a mistake to drop. */
+function readSkills(text: string, into: Skill[]): string[] {
+  return text
+    .split(';')
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .map((label) => {
+      const found = into.find((s) => s.label.toLowerCase() === label.toLowerCase());
+      if (found) return found.id;
+      const made = { id: `skill-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20)}`, label };
+      into.push(made);
+      return made.id;
+    });
+}
+
 export type CsvKind = 'projects' | 'people' | 'allocations' | 'leave' | 'tasks';
 
 /** Works out which export a file is from its header row. */
@@ -308,6 +329,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
 
   if (kind === 'projects') {
     const projects = [...portfolio.projects];
+    const skills = [...portfolio.skills];
     body.forEach((r) => {
       const name = col(r, 'Project');
       if (!name) return;
@@ -365,6 +387,9 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
           ? col(r, 'Archived').toLowerCase() === 'yes'
           : base?.archived,
         number: col(r, 'Project number').trim() || base?.number,
+        skills: headers.some((h) => h.trim().toLowerCase() === 'skills needed')
+          ? readSkills(col(r, 'Skills needed'), skills)
+          : base?.skills ?? [],
         salesLead: col(r, 'Sales lead').trim() || base?.salesLead,
         inactive: headers.some((h) => h.trim().toLowerCase() === 'on hold')
           ? col(r, 'On hold').toLowerCase() === 'yes'
@@ -386,6 +411,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       applied += 1;
     });
     next.projects = projects;
+    next.skills = skills;
   }
 
   /* A tasks file replaces the plan of every project it names, and leaves every other
@@ -456,6 +482,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
   if (kind === 'people') {
     const people = [...portfolio.people];
     const roles = new Set(portfolio.roles);
+    const skills = [...portfolio.skills];
     body.forEach((r) => {
       const name = col(r, 'Name');
       if (!name) return;
@@ -486,6 +513,10 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
           ? col(r, 'Archived').toLowerCase() === 'yes'
           : existing >= 0 && people[existing].archived,
+        // A file without the column leaves what this person can do alone.
+        skills: headers.some((h) => h.trim().toLowerCase() === 'skills')
+          ? readSkills(col(r, 'Skills'), skills)
+          : (existing >= 0 ? people[existing].skills : []) ?? [],
       };
       if (existing >= 0) people[existing] = merged;
       else people.push(merged);
@@ -493,6 +524,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
     });
     next.people = people;
     next.roles = [...roles];
+    next.skills = skills;
   }
 
   if (kind === 'allocations') {
