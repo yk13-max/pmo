@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import type { ConstraintType, Person, Project, Task } from '../types';
 import { CONSTRAINTS, WORKING_HOURS_PER_DAY } from '../types';
@@ -7,6 +7,7 @@ import { schedule, depsToText, parseDeps, nextWorkingDay, type Scheduled } from 
 import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
 import { PRINT_CHART_WIDTH, printGantt } from '../lib/printGantt';
 import { ColHead, usePlanColumns, type Widths } from '../components/PlanColumns';
+import { planToXlsx, planXlsxName, xlsxToPlan } from '../lib/planXlsx';
 
 /** How much of the chart one day takes, at each way of looking at it. */
 const ZOOMS = [
@@ -63,6 +64,15 @@ export function Planning({
      page for the length of it, which is why this is state rather than something the print
      stylesheet could do on its own. */
   const [printing, setPrinting] = useState(false);
+  /* What the last trip through a spreadsheet came back with, said out loud rather than left
+     to be guessed at from a plan that quietly changed. */
+  const [sheetNote, setSheetNote] = useState<{ tone: 'ok' | 'bad'; lines: string[] } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  /* Bumped when a workbook is read in. The task rows hold their text in uncontrolled inputs
+     — which is what stops every keystroke rescheduling the plan — so a change arriving from
+     outside the row has to remount it, or the boxes would go on showing what was typed
+     before the sheet was imported while the chart drew the new dates. */
+  const [sheetRev, setSheetRev] = useState(0);
   /* The task list's column widths, dragged from the headings and remembered. */
   const { widths, resize, reset, isDefault } = usePlanColumns();
 
@@ -272,6 +282,58 @@ export function Planning({
         >
           {printing ? 'Printing…' : 'Export the plan as PDF'}
         </button>
+        {/* A plan gets built in a room, and the room is not always in front of this screen.
+            Out to a workbook, edited wherever, and back. */}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          title="The whole task list as a spreadsheet, to work on away from here"
+          onClick={() => {
+            const blob = planToXlsx(project as unknown as Project, project.phases, tasks, view.people);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = planXlsxName(project as unknown as Project);
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Export to Excel
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          title="Read a plan back in from a spreadsheet exported here"
+          onClick={() => fileInput.current?.click()}
+        >
+          Import from Excel
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          style={{ display: 'none' }}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+              const read = await xlsxToPlan(file, project as unknown as Project, project.phases, tasks, view.people);
+              if (read.problems.length) {
+                setSheetNote({ tone: 'bad', lines: ['Nothing was changed. The sheet says:', ...read.problems] });
+                return;
+              }
+              read.tasks.forEach(saveTask);
+              setSheetRev((n) => n + 1);
+              setSheetNote({
+                tone: 'ok',
+                lines: [`${read.updated} task${read.updated === 1 ? '' : 's'} updated, ${read.added} added, from ${file.name}.`],
+              });
+            } catch (err) {
+              setSheetNote({ tone: 'bad', lines: [`That file could not be read as a workbook: ${String(err)}`] });
+            }
+          }}
+        />
         {/* Both switches sit together at the right, away from the project being picked and
             the zoom that changes what the chart shows. */}
         <span className="switches" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'auto' }}>
@@ -377,6 +439,31 @@ export function Planning({
         </span>
       </div>
 
+      {sheetNote && (
+        <p
+          className="no-print"
+          style={{
+            fontSize: 14,
+            marginBottom: 'var(--space-4)',
+            padding: 'var(--space-3) var(--space-4)',
+            background:
+              sheetNote.tone === 'ok'
+                ? 'var(--color-surface)'
+                : 'color-mix(in srgb, var(--color-accent-2) 10%, var(--color-surface))',
+            color: sheetNote.tone === 'ok' ? 'var(--color-text)' : 'var(--color-accent-2-700)',
+          }}
+        >
+          {sheetNote.lines.map((line, i) => (
+            <span key={line} style={{ display: 'block', marginTop: i ? 4 : 0 }}>
+              {line}
+            </span>
+          ))}
+          <button type="button" className="btn btn-ghost" style={{ paddingInline: 0 }} onClick={() => setSheetNote(null)}>
+            Dismiss
+          </button>
+        </p>
+      )}
+
       {!project.usesPlan && (
         <p
           className="plan-note"
@@ -480,7 +567,7 @@ export function Planning({
               </div>
             ) : (
               <TaskRow
-                key={row.key}
+                key={`${row.key}-${sheetRev}`}
                 row={row}
                 widths={widths}
                 baselined={baselined}
