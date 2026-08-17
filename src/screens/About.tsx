@@ -16,7 +16,7 @@ export function About({ onLeave }: { onLeave: () => void }) {
             stylesheet. The count is of the source the app is built from, and it is counted
             at the moment it is built rather than typed here, so it is never out of date. */}
         <p className="about-credit">
-          By Saranan · {__SOURCE_LINES__.toLocaleString('en-GB')} lines
+          By Saranan · Mk {__BUILD_MK__} · {__SOURCE_LINES__.toLocaleString('en-GB')} lines
         </p>
       </div>
     </div>

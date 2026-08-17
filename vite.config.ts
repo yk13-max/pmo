@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig } from 'vite';
@@ -18,8 +19,20 @@ function countLines(dir: string): number {
   }, 0);
 }
 
+/* The version, which is the number of commits behind it. Nothing has to be remembered or
+   bumped: every commit is a change to the tracker, so counting them is the version, and it
+   goes up on its own. Read at build time like the line count. A checkout without history —
+   a tarball, a shallow clone — has nothing to count, and says so rather than lying. */
+function commitCount(): number {
+  try {
+    return Number(execSync('git rev-list --count HEAD', { encoding: 'utf8' }).trim()) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default defineConfig({
   plugins: [react()],
-  define: { __SOURCE_LINES__: countLines('src') },
+  define: { __SOURCE_LINES__: countLines('src'), __BUILD_MK__: commitCount() },
   server: { port: 5173 },
 });

@@ -407,7 +407,7 @@ a:hover { color: var(--color-accent-600); }
    settles — the ease carries past 1 and comes back. It is two parents from the paper, so
    this asks the page whether the mark is hovered rather than walking across from it. */
 .about:has(.brand-paper:hover) .about-credit {
-  max-width: 14em; opacity: 1; transform: translateX(-50%);
+  max-width: 18em; opacity: 1; transform: translateX(-50%);
   transition: max-width 760ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 760ms cubic-bezier(0.34, 1.56, 0.64, 1),
     opacity 420ms ease;
 }
