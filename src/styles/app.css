@@ -416,6 +416,12 @@ a:hover { color: var(--color-accent-600); }
 
 .kicker { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
 .eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600); }
+/* Work that has stopped, in the amber the tracker already uses for "watch this" — the same
+   colour as the middle status, which is the right register for it: not a problem, but not
+   to be read as running either. Deepened a step towards the ink so it can be read at this
+   size; the neutral ramp inverts with the theme, so on a dark ground the same rule lifts it
+   instead. */
+.is-on-hold { margin-top: 2px; font-size: 11px; color: color-mix(in srgb, var(--color-warning) 88%, var(--color-neutral-900)); }
 .stat-value { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -0.025em; }
 /* The two display sizes live here rather than inline so print can bring them down. */
 .page-title { font-size: 52px; }

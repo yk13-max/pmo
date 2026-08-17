@@ -51,7 +51,7 @@ export function DataManager({
   onOpenProject: (id: string) => void;
   onExport: () => void;
 }) {
-  const { replaceAll, resetToSeed, clearAll, portfolio, addRole, removeRole, setArchived, setInactive, setPersonArchived, deleteProject } =
+  const { replaceAll, resetToSeed, clearAll, portfolio, addRole, removeRole, setArchived, setPersonArchived, deleteProject } =
     usePortfolio();
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -213,20 +213,21 @@ export function DataManager({
                       {p.name}
                     </span>
                     <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
-                    {p.inactive && (
-                      <span
-                        className="eyebrow"
-                        title="On hold — out of the portfolio and drawing nobody's time"
-                        style={{ marginLeft: 8, color: 'var(--color-accent-700)' }}
-                      >
-                        On hold
-                      </span>
-                    )}
                   </button>
                 </td>
                 <td style={{ fontSize: 13 }}>{p.typeShort}</td>
                 <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{p.facingLabel}</td>
-                <td style={{ fontSize: 13 }}>{p.pmName}</td>
+                <td style={{ fontSize: 13 }}>
+                  {p.pmName}
+                  {/* Under the name whose project it is, in the amber the tracker uses for
+                      "watch this" — quiet enough to scan past on a running project, plain
+                      enough to find when you are looking for what has stopped. */}
+                  {p.inactive && (
+                    <div className="eyebrow is-on-hold" title="Out of the portfolio and drawing nobody’s time">
+                      On hold
+                    </div>
+                  )}
+                </td>
                 <td style={{ fontSize: 13, color: p.priority <= 2 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
                   P{p.priority} {p.priorityLabel}
                 </td>
@@ -247,25 +248,6 @@ export function DataManager({
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button type="button" className="btn btn-ghost" onClick={() => onEditProject(p)}>
                       Edit
-                    </button>
-                    {/* No confirming: it changes nothing and the same button puts it back. */}
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      title={
-                        p.inactive
-                          ? `Put ${p.name} back into the portfolio and the resourcing`
-                          : `Take ${p.name} out of the portfolio and the resourcing, keeping everything booked on it`
-                      }
-                      onClick={() => {
-                        setInactive(p.id, !p.inactive);
-                        setMessage({
-                          tone: 'ok',
-                          text: p.inactive ? `${p.name} is running again.` : `${p.name} put on hold.`,
-                        });
-                      }}
-                    >
-                      {p.inactive ? 'Resume' : 'Hold'}
                     </button>
                     <button
                       type="button"
