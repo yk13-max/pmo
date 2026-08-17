@@ -8,8 +8,8 @@ import { WindowControls } from '../components/WindowControls';
 import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
 import { fromISO, shortDateYear, toISO } from '../lib/dates';
 import { usePortfolio } from '../store/portfolio';
-import { checkInvoice, invoicesOf } from '../lib/invoices';
-import { money } from '../lib/derive';
+import { invoicesOf } from '../lib/invoices';
+import { InvoiceList } from '../components/InvoiceList';
 
 export function ProjectDetail({
   view,
@@ -382,59 +382,7 @@ export function ProjectDetail({
               worth and what it waits on — so where they exist they lead, and the four
               standing stages below become the older, coarser reading. */}
           {listed.length > 0 && (
-            <>
-              <h3 style={{ margin: '0 0 4px' }}>The invoices</h3>
-              <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
-                {money(listed.reduce((n, i) => n + i.amount, 0), project.currency)} across {listed.length} invoice
-                {listed.length === 1 ? '' : 's'}. A date in red is one the work it waits on now lands after — which of
-                the two moves is a decision, not a correction, so nothing here has been adjusted.
-              </p>
-              <table className="table" style={{ maxWidth: 760, marginBottom: 'var(--space-8)' }}>
-                <thead>
-                  <tr>
-                    <th>What for</th>
-                    <th style={{ width: 110, textAlign: 'right' }}>Amount</th>
-                    <th style={{ width: 120 }}>Due</th>
-                    <th style={{ width: 260 }}>Waits on</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listed.map((inv) => {
-                    const check = checkInvoice(inv, project, project.phases, project.phaseDates, projectTasks);
-                    return (
-                      <tr key={inv.id}>
-                        <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{inv.label}</td>
-                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                          {money(inv.amount, project.currency)}
-                        </td>
-                        <td
-                          style={{
-                            fontVariantNumeric: 'tabular-nums',
-                            color: check.late ? 'var(--color-accent-2-700)' : undefined,
-                            fontWeight: check.late ? 600 : undefined,
-                          }}
-                        >
-                          {inv.due ? shortDateYear(inv.due) : '—'}
-                        </td>
-                        <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                          {check.waitsOn ? (
-                            <>
-                              {check.waitsOn}
-                              {check.finishes && ` · ${shortDateYear(check.finishes)}`}
-                              {check.late && (
-                                <span style={{ color: 'var(--color-accent-2-700)' }}> · {check.by}d after the invoice</span>
-                              )}
-                            </>
-                          ) : (
-                            'Nothing — it stands on its own'
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
+            <InvoiceList project={project} invoices={listed} tasks={projectTasks} />
           )}
           <h3 style={{ margin: '0 0 4px' }}>When the client pays</h3>
           <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>

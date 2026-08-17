@@ -96,6 +96,10 @@ export interface Project {
       reference, a code. Optional and free text, because every organisation numbers its work
       differently and none of them number it the way an id does. */
   number?: string;
+  /** Skills the work needs somebody to hold, by id. What it does not do is book anybody:
+      it is what the project is asking the team for, so it can be read against who is on the
+      books and who has room. */
+  skills?: string[];
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
   /** Work that is not running at the moment — on hold, awaiting a decision, between
@@ -140,7 +144,12 @@ export interface Invoice {
   projectId: string;
   /** What the invoice is for, as it would be written on it. */
   label: string;
-  /** In thousands of the project's own currency. */
+  /** The order it is raised against in the sales system, as that system writes it. Free
+      text: a sales order number is somebody else's reference, and it is quoted, not parsed. */
+  salesOrder?: string;
+  /** The sum, in whole units of the project's own currency — £4,200 is 4200. Money on a
+      project is held in thousands because a portfolio is read in millions; an invoice is a
+      document with a figure on it, and that figure is exact. */
   amount: number;
   /** When it is expected to be raised. */
   due: string;
@@ -168,12 +177,29 @@ export const PRIORITY_LABEL: Record<number, string> = {
   5: 'Watching brief',
 };
 
+/* Something a person can do, and something a piece of work can need.
+
+   A job title says what somebody is; a skill says what they can do, and the two are not the
+   same shape. One title fits one person, but sterile fill, tech transfer and CE marking are
+   held by several people apiece and several of them by the same person — so skills are tags,
+   assigned freely on both sides. What makes them worth holding is that both sides use the
+   same list: a project asking for aseptic process design and a person holding it are pointing
+   at one tag, which is what lets the tracker answer whether the work has anybody behind it. */
+export interface Skill {
+  id: string;
+  label: string;
+  /** What the tag means, so two people using it mean the same thing by it. */
+  note?: string;
+}
+
 export interface Person {
   id: string;
   name: string;
   role: string;
   /** Project types this person works across. Empty means all of them. */
   types: string[];
+  /** Skills this person holds, by id. Empty is simply nothing recorded yet. */
+  skills?: string[];
   /** Share of a full-time month available to projects, %. Derived from workingDays. */
   capacity: number;
   /** Normal working days per month. Below full time means part time. */
@@ -304,6 +330,8 @@ export interface Portfolio {
   leave: Leave;
   /** Job titles available when adding someone. Editable on the Data screen. */
   roles: string[];
+  /** The skills the team can hold and the work can ask for. Editable on the Data screen. */
+  skills: Skill[];
   /** Delivery types and their phase lists. Editable on the Data screen. */
   /** The kinds of work. Every category belongs to one of these. */
   families: ProjectFamily[];
@@ -319,6 +347,9 @@ export interface Portfolio {
   fxToBase: Record<CurrencyCode, number>;
   /** Marks allocations as hours. Stores written before the switch held percentages. */
   allocationUnit: 'hours';
+  /** Marks invoice amounts as whole currency units. Stores written before the switch held
+      thousands, like the rest of a project's money. */
+  invoiceUnit?: 'units';
 }
 
 /** Totals across a mixed-currency portfolio are expressed in this. */

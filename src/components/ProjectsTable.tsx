@@ -9,6 +9,11 @@ type Column = SortColumn<ProjectView>;
 /* Money columns sort on the base-currency figure so a mixed-currency portfolio ranks
    honestly; the cells still show what each client is billed. */
 const COLUMNS: Column[] = [
+  /* The number the business knows the project by, ahead of the name — it is how the work is
+     asked for in every other system, so it is what somebody arriving with a reference in
+     their hand looks down first. Projects with no number sort to the bottom of an ascending
+     list rather than to the top: an empty cell is not a low number. */
+  { id: 'number', label: 'Project No.', width: 110, sortBy: (p) => p.number?.toLowerCase() || '\uffff' },
   { id: 'name', label: 'Project', sortBy: (p) => p.name.toLowerCase() },
   { id: 'type', label: 'Type', width: 70, sortBy: (p) => p.typeShort },
   { id: 'facing', label: 'For', width: 100, sortBy: (p) => p.facingLabel },
@@ -43,6 +48,7 @@ export function useProjectsTable(projects: ProjectView[]) {
     return projects.filter(
       (p) =>
         (!needle ||
+          (p.number ?? '').toLowerCase().includes(needle) ||
           p.name.toLowerCase().includes(needle) ||
           p.client.toLowerCase().includes(needle) ||
           p.pmName.toLowerCase().includes(needle) ||
@@ -95,7 +101,7 @@ export function ProjectFilters({
           id="pt-search"
           className="input"
           type="search"
-          placeholder="Project, client, owner or milestone"
+          placeholder="Number, project, client, owner or milestone"
           style={{ width: 280 }}
           value={filters.search}
           onChange={(e) => set({ search: e.target.value })}

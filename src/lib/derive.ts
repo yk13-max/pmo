@@ -24,6 +24,21 @@ export function money(k: number, currency: CurrencyCode = BASE_CURRENCY): string
   return `${symbol}${Number(k.toFixed(1))}k`;
 }
 
+/* An exact sum, in whole currency units. Everything else on a project is money in thousands,
+   read at the altitude a portfolio is read at — £4.2k, £6.1m. An invoice is not read at that
+   altitude: it is a document with a figure on it that has to match what the client was sent,
+   so it is written out in full, grouped, and to the penny where there are pennies. */
+export function moneyExact(n: number, currency: CurrencyCode = BASE_CURRENCY): string {
+  const symbol = CURRENCIES[currency]?.symbol ?? CURRENCIES[BASE_CURRENCY].symbol;
+  /* Pennies where there are pennies, and both of them: £5,197,345.50, never £5,197,345.5.
+     Round sums stay round rather than gaining a .00 nobody typed. */
+  const pennies = Math.abs((n || 0) % 1) > 0.0001;
+  return `${symbol}${(n || 0).toLocaleString('en-GB', {
+    minimumFractionDigits: pennies ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export function moneyOrZero(k: number, currency: CurrencyCode = BASE_CURRENCY): string {
   return k ? money(k, currency) : `${CURRENCIES[currency]?.symbol ?? '£'}0`;
 }

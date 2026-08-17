@@ -220,17 +220,17 @@ export function DataManager({
           <tbody>
             {rows.map((p) => (
               <tr key={p.id}>
+                {/* The business's own number for the work, in its own column ahead of the
+                    name. Unnumbered work says so with a dash rather than an empty cell. */}
+                <td style={{ fontSize: 13, color: 'var(--color-neutral-700)', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.number || '—'}
+                </td>
                 <td>
                   <button type="button" className="card-link" onClick={() => onOpenProject(p.id)}>
                     <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
                       {p.name}
                     </span>
                     <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
-                    {p.number && (
-                      <span className="eyebrow" style={{ display: 'block', marginTop: 2 }}>
-                        {p.number}
-                      </span>
-                    )}
                   </button>
                 </td>
                 <td style={{ fontSize: 13 }}>{p.typeShort}</td>

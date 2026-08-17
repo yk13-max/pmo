@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Baseline, Invoice, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
+import type { Allocations, Baseline, Invoice, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Skill, Task } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { DEFAULT_CATEGORY, DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
@@ -43,6 +43,13 @@ interface PortfolioStore {
   setLeave: (personId: string, month: string, days: number) => void;
   addRole: (role: string) => void;
   removeRole: (role: string) => void;
+  /** Adds a skill tag, or renames one that is already there. */
+  saveSkill: (skill: Skill) => void;
+  /** Takes a skill out of the list, and off everybody holding it and every project asking
+      for it — a tag nobody can see is not a tag anybody should still be tagged with. */
+  removeSkill: (id: string) => void;
+  /** Puts a skill on somebody, or takes it off. What the matrix on the Data screen writes. */
+  setPersonSkill: (personId: string, skillId: string, held: boolean) => void;
   setThreshold: (pct: number) => void;
   /** The months resourcing plans across. */
   setWindow: (startMonth: string, months: number) => void;
@@ -124,8 +131,14 @@ export function normalise(p: Portfolio): Portfolio {
     allocations,
     allocationUnit: 'hours',
     leave: p.leave ?? {},
-    // Stores written before invoices were listed one by one simply have none.
-    invoices: p.invoices ?? [],
+    /* Stores written before invoices were listed one by one simply have none. Those that do
+       have them wrote the amounts in thousands, the way the rest of a project's money is
+       held; they are whole currency units now, so an old store is multiplied up once on the
+       way in and marked, exactly as the switch from percentages to hours was handled. */
+    invoices: (p.invoices ?? []).map((i) =>
+      p.invoiceUnit === 'units' ? i : { ...i, amount: Math.round((i.amount ?? 0) * 1000) },
+    ),
+    invoiceUnit: 'units',
     // Stores written before planning existed simply have no plans.
     tasks: (p.tasks ?? []).map((t) => {
       // Plans written before constraints existed carried a plain start, which is exactly
@@ -148,6 +161,8 @@ export function normalise(p: Portfolio): Portfolio {
       };
     }),
     roles: [...roles, ...new Set(fromPeople)],
+    // Stores written before skills existed simply have none, and nothing asks for any.
+    skills: p.skills ?? [],
     threshold: p.threshold ?? 85,
     window: p.window ?? { startMonth: planningMonths(new Date())[0], months: 6 },
     ...typesAndFamilies(p),
@@ -160,6 +175,8 @@ export function normalise(p: Portfolio): Portfolio {
       phaseDates: project.phaseDates ?? [],
       invoiceDates: project.invoiceDates ?? [],
       currency: project.currency ?? 'GBP',
+      // The same for what the work asks for: a tag that has gone is no longer asked for.
+      skills: (project.skills ?? []).filter((id) => (p.skills ?? []).some((s) => s.id === id)),
       // Projects that predate planning keep their own dates until they are opted in.
       usesPlan: project.usesPlan ?? false,
       mirrorPhases: project.mirrorPhases ?? false,
@@ -172,6 +189,9 @@ export function normalise(p: Portfolio): Portfolio {
         person.workingDays ?? Math.round(((person.capacity ?? 100) / 100) * WORKING_DAYS_PER_MONTH),
       // Stores written before non-project work existed kept none of it, so they start at zero.
       overheadPct: person.overheadPct ?? 0,
+      /* A skill that has been deleted since is dropped here rather than left pointing at
+         nothing, so no screen has to guard against a tag that is not in the list. */
+      skills: (person.skills ?? []).filter((id) => (p.skills ?? []).some((s) => s.id === id)),
       archived: person.archived ?? false,
     })),
   };
@@ -434,6 +454,47 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  /* Skills are added by name, and a name that is already on the list is that skill rather
+     than a second one spelled the same — two tags reading "Sterile fill" would split the
+     cover for it in half and neither half would be the truth. */
+  const saveSkill = useCallback((skill: Skill) => {
+    const label = skill.label.trim();
+    if (!label) return;
+    setPortfolio((prev) => {
+      const exists = prev.skills.some((s) => s.id === skill.id);
+      const clash = prev.skills.some((s) => s.id !== skill.id && s.label.toLowerCase() === label.toLowerCase());
+      if (clash) return prev;
+      const next = { ...skill, label };
+      return {
+        ...prev,
+        skills: exists ? prev.skills.map((s) => (s.id === skill.id ? next : s)) : [...prev.skills, next],
+      };
+    });
+  }, []);
+
+  const removeSkill = useCallback((id: string) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((s) => s.id !== id),
+      people: prev.people.map((p) => (p.skills?.includes(id) ? { ...p, skills: p.skills.filter((x) => x !== id) } : p)),
+      projects: prev.projects.map((p) =>
+        p.skills?.includes(id) ? { ...p, skills: p.skills.filter((x) => x !== id) } : p,
+      ),
+    }));
+  }, []);
+
+  const setPersonSkill = useCallback((personId: string, skillId: string, held: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      people: prev.people.map((p) => {
+        if (p.id !== personId) return p;
+        const skills = p.skills ?? [];
+        if (held === skills.includes(skillId)) return p;
+        return { ...p, skills: held ? [...skills, skillId] : skills.filter((x) => x !== skillId) };
+      }),
+    }));
+  }, []);
+
   const setThreshold = useCallback((pct: number) => {
     setPortfolio((prev) => ({ ...prev, threshold: pct }));
   }, []);
@@ -555,6 +616,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setLeave,
       addRole,
       removeRole,
+      saveSkill,
+      removeSkill,
+      setPersonSkill,
       setThreshold,
       setWindow,
       setPublicHoliday,
@@ -590,6 +654,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setLeave,
       addRole,
       removeRole,
+      saveSkill,
+      removeSkill,
+      setPersonSkill,
       setThreshold,
       setWindow,
       setPublicHoliday,

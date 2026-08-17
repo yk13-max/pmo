@@ -1,4 +1,4 @@
-import type { Allocations, Facing, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
+import type { Allocations, Facing, Invoice, Leave, Person, Portfolio, Project, ProjectType, Rag } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { DEFAULT_FAMILIES, DEFAULT_PROJECT_TYPES, ROLES } from './phases';
 import { addMonths, planningMonths, startOfMonth, toISO } from '../lib/dates';
@@ -80,6 +80,62 @@ const PEOPLE_SEED: PersonSeed[] = [
     ['Breitling', 'Cartier', 'Force India', 'Rolex', 'Patek'], undefined, 12],
 ];
 
+/* The skills the sample team holds and the sample work asks for. Tags rather than titles:
+   several people hold sterile fill, and one person holds four of these — which is the shape
+   the matrix on the Data screen is for. */
+const SKILLS_SEED: [id: string, label: string, note: string][] = [
+  ['skill-aseptic', 'Aseptic process design', 'Designing a process that holds sterility end to end.'],
+  ['skill-fill', 'Sterile fill–finish', 'Filling, stoppering and sealing under grade A conditions.'],
+  ['skill-transfer', 'Tech transfer', 'Moving a process between sites or scales without losing it.'],
+  ['skill-validation', 'Validation (IQ/OQ/PQ)', 'Qualifying equipment and processes to a written protocol.'],
+  ['skill-reg', 'Regulatory submissions', 'Assembling and defending a submission to a regulator.'],
+  ['skill-ce', 'CE marking', 'Taking a device through conformity assessment.'],
+  ['skill-dfm', 'Design for manufacture', 'Designing a part so it can actually be made at volume.'],
+  ['skill-cost', 'Cost modelling', 'Costing a programme before anybody has agreed to it.'],
+];
+
+/** Who holds what. */
+const PERSON_SKILLS: Record<string, string[]> = {
+  Saranan: ['skill-transfer', 'skill-cost'],
+  Priya: ['skill-ce', 'skill-cost'],
+  Marcus: ['skill-dfm', 'skill-cost', 'skill-ce'],
+  Dermot: ['skill-transfer', 'skill-validation'],
+  Yusuf: ['skill-aseptic', 'skill-fill', 'skill-transfer', 'skill-validation'],
+  Elena: ['skill-dfm', 'skill-ce'],
+  Rachel: ['skill-reg', 'skill-validation'],
+};
+
+/** What the work asks for. Everything else asks for nothing in particular. */
+const PROJECT_SKILLS: Record<string, string[]> = {
+  Rolex: ['skill-aseptic', 'skill-fill', 'skill-validation'],
+  Omega: ['skill-transfer', 'skill-validation'],
+  Patek: ['skill-fill', 'skill-reg'],
+  Cartier: ['skill-aseptic', 'skill-reg'],
+  Seiko: ['skill-transfer'],
+  Breitling: ['skill-validation', 'skill-reg'],
+  Ferrari: ['skill-dfm', 'skill-ce'],
+  McLaren: ['skill-ce'],
+  Williams: ['skill-dfm', 'skill-cost'],
+  'Red Bull': ['skill-dfm', 'skill-ce', 'skill-cost'],
+  Benetton: ['skill-ce', 'skill-reg'],
+  'Toro Rosso': ['skill-transfer', 'skill-dfm'],
+};
+
+/* A few projects invoice in named pieces rather than the four standing stages, so the
+   sample shows what that looks like: a sales order number against each, a sum to the pound,
+   and a gate it waits on. The share is of the project's agreed value; the gate is an index
+   into its phases. */
+const INVOICE_SEED: [project: string, label: string, salesOrder: string, share: number, phase: number][] = [
+  ['Rolex', 'On kick-off', 'SO-48120', 0.15, 0],
+  ['Rolex', 'At design freeze', 'SO-48121', 0.3, 2],
+  ['Rolex', 'At validation', 'SO-48122', 0.35, 4],
+  ['Rolex', 'On handover', 'SO-48123', 0.2, 6],
+  ['Patek', 'Stage payment 1', 'SO-47902', 0.4, 1],
+  ['Patek', 'Stage payment 2', 'SO-47903', 0.6, 4],
+  ['Ferrari', 'Design package', 'SO-49015', 0.5, 0],
+  ['Ferrari', 'Build and hand over', 'SO-49016', 0.5, 2],
+];
+
 /** Annual leave in days, per person, across the six planning months. */
 const LEAVE_SEED: Record<string, number[]> = {
   Saranan: [0, 0, 3, 0, 5, 0],
@@ -133,6 +189,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
       name,
       role,
       types: discipline ? [discipline] : [],
+      skills: PERSON_SKILLS[name] ?? [],
       workingDays: days,
       capacity: Math.round((days / WORKING_DAYS_PER_MONTH) * 100),
       overheadPct: overheadPct ?? 0,
@@ -153,6 +210,10 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     return {
       id: `project-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
+      /* Every business numbers its work, so the sample portfolio is numbered too — the
+         kind of work and a serial, which is what most of them come to. */
+      number: `${type}-${String(i + 1).padStart(3, '0')}`,
+      skills: PROJECT_SKILLS[name] ?? [],
       client,
       type,
       facing,
@@ -200,6 +261,25 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     });
   });
 
+  /* The named invoices, priced off each project's agreed value and dated to the gate they
+     wait on. Held to the pound: an invoice is a document with an exact figure on it, and the
+     project's value is in thousands, so the share is multiplied up here. */
+  const invoices: Invoice[] = INVOICE_SEED.flatMap(([projectName, label, salesOrder, share, phase], i) => {
+    const project = byName.get(projectName);
+    if (!project) return [];
+    return [
+      {
+        id: `invoice-seed-${i + 1}`,
+        projectId: project.id,
+        label,
+        salesOrder,
+        amount: Math.round(project.value * 1000 * share),
+        due: project.phaseDates[phase] ?? project.endDate,
+        phase,
+      },
+    ];
+  });
+
   const leave: Leave = {};
   PEOPLE_SEED.forEach(([name]) => {
     const days = LEAVE_SEED[name];
@@ -214,10 +294,11 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     people,
     // Plans are the planner's own work, so the sample portfolio ships without any.
     tasks: [],
-    invoices: [],
+    invoices,
     allocations,
     leave,
     roles: [...ROLES],
+    skills: SKILLS_SEED.map(([id, label, note]) => ({ id, label, note })),
     families: DEFAULT_FAMILIES.map((f) => ({ ...f })),
     projectTypes: DEFAULT_PROJECT_TYPES.map((t) => ({ ...t })),
     threshold: 85,
@@ -226,5 +307,6 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     publicHolidays: { [months[0]]: 1, [months[4]]: 2, [months[5]]: 2 },
     fxToBase: { GBP: 1, USD: 0.79, EUR: 0.85 },
     allocationUnit: 'hours',
+    invoiceUnit: 'units',
   };
 }

@@ -237,7 +237,7 @@ export function tasksCsv(p: Portfolio): string {
 export function invoicesCsv(p: Portfolio): string {
   const project = (id: string) => p.projects.find((x) => x.id === id);
   return toCsv(
-    ['Project', 'What for', 'Amount', 'Currency', 'Due', 'Waits on'],
+    ['Project', 'What for', 'Sales order', 'Amount', 'Currency', 'Due', 'Waits on'],
     p.invoices.map((i) => {
       const proj = project(i.projectId);
       const phases = p.projectTypes.find((t) => t.id === proj?.type)?.phases ?? [];
@@ -247,7 +247,7 @@ export function invoicesCsv(p: Portfolio): string {
           : i.taskId
             ? `Task: ${p.tasks.find((t) => t.id === i.taskId)?.name ?? ''}`
             : '';
-      return [proj?.name ?? '', i.label, i.amount, proj?.currency ?? '', i.due, waits];
+      return [proj?.name ?? '', i.label, i.salesOrder ?? '', i.amount, proj?.currency ?? '', i.due, waits];
     }),
   );
 }

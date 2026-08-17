@@ -67,6 +67,10 @@ a:hover { color: var(--color-accent-600); }
   opacity: 0; transition: opacity 120ms ease; }
 .plan-grid-head:hover .plan-col-grip::after { opacity: 0.55; }
 .plan-col-grip:hover::after, .plan-col-grip:focus-visible::after { opacity: 1; background: var(--color-accent); }
+/* The same grip on an ordinary table heading — the invoice list uses it. The handle only
+   shows itself when the pointer is over the row of headings, so a table nobody is resizing
+   looks like a table. */
+.col-head:hover .plan-col-grip::after { opacity: 0.55; }
 .plan-col-grip:focus-visible { outline: 2px solid var(--color-brand-teal); outline-offset: 1px; }
 
 

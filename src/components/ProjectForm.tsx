@@ -9,7 +9,7 @@ import {
   PRIORITY_LEVELS,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
-import { days, hoursToPct, money, ragColor } from '../lib/derive';
+import { days, hoursToPct, moneyExact, ragColor } from '../lib/derive';
 import { addMonths, monthKey, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 import { DEFAULT_MONTHS } from './WindowControls';
@@ -18,6 +18,7 @@ import { usePortfolio } from '../store/portfolio';
 import { schedule, type Scheduled } from '../lib/schedule';
 import { Planning } from '../screens/Planning';
 import { checkInvoice, invoicesOf } from '../lib/invoices';
+import { ResizableHead, useTableWidths, type ColumnSpec } from './TableColumns';
 import type { PortfolioView } from '../lib/derive';
 
 type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'billed' | 'load'> & {
@@ -84,6 +85,23 @@ const cash = (s: string) => {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 1000) / 1000 : 0;
 };
 
+/* An invoice's sum, which is not held in thousands but in whole currency units — what the
+   document says. To the penny, because invoices have pennies on them. */
+const exact = (s: string) => {
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+};
+
+/* The invoice list's columns as it opens, and how narrow each may be dragged. The widths
+   themselves belong to whoever is reading it — see `useTableWidths`. */
+const INVOICE_EDIT_COLUMNS: ColumnSpec<'label' | 'so' | 'amount' | 'due' | 'waits'>[] = [
+  { key: 'label', label: 'What for', width: 190, min: 90 },
+  { key: 'so', label: 'Sales order', width: 130, min: 80, title: 'The order in the sales system this is raised against' },
+  { key: 'amount', label: 'Amount', width: 130, min: 90, align: 'right' },
+  { key: 'due', label: 'Due', width: 150, min: 110 },
+  { key: 'waits', label: 'Waits on', width: 210, min: 120 },
+];
+
 export function ProjectForm({
   project,
   view,
@@ -137,6 +155,10 @@ export function ProjectForm({
     return Math.max(0, Math.min(wanted, months.length - DEFAULT_MONTHS));
   });
   const { portfolio, saveInvoice, removeInvoice } = usePortfolio();
+  /* The invoice list's column widths, the reader's own and remembered. The table is laid out
+     from them rather than from its content, so the header row is what decides. */
+  const invoiceCols = useTableWidths('pmo-tracker:invoice-edit-columns', INVOICE_EDIT_COLUMNS);
+  const invoiceWidth = INVOICE_EDIT_COLUMNS.reduce((n, c) => n + invoiceCols.widths[c.key], 40);
   const fullPane = useFullPane();
   /* The plan at the foot of a full page saves the moment it is touched — including its two
      switches, which are the project's own fields. So those two are read from the store
@@ -792,13 +814,18 @@ export function ProjectForm({
               or a task and the date will say so when the work moves past it.
             </p>
           ) : (
-            <table className="table" style={{ marginBottom: 'var(--space-3)' }}>
+            <div style={{ overflowX: 'auto', marginBottom: 'var(--space-3)' }}>
+            <table className="table" style={{ tableLayout: 'fixed', width: invoiceWidth }}>
               <thead>
                 <tr>
-                  <th>What for</th>
-                  <th style={{ width: 110, textAlign: 'right' }}>Amount ({CURRENCIES[draft.currency].symbol})</th>
-                  <th style={{ width: 150 }}>Due</th>
-                  <th style={{ width: 210 }}>Waits on</th>
+                  {INVOICE_EDIT_COLUMNS.map((c) => (
+                    <ResizableHead
+                      key={c.key}
+                      col={c.key === 'amount' ? { ...c, label: `Amount (${CURRENCIES[draft.currency].symbol})` } : c}
+                      width={invoiceCols.widths[c.key]}
+                      onResize={invoiceCols.resize}
+                    />
+                  ))}
                   <th style={{ width: 40 }} />
                 </tr>
               </thead>
@@ -818,6 +845,18 @@ export function ProjectForm({
                         />
                       </td>
                       <td>
+                        {/* The sales system's own reference for the order this is raised
+                            against. Quoted, never parsed: how it is formatted is that
+                            system's business, not this one's. */}
+                        <input
+                          className="input"
+                          value={inv.salesOrder ?? ''}
+                          placeholder="SO-48120"
+                          aria-label="Sales order number"
+                          onChange={(e) => saveInvoice({ ...inv, salesOrder: e.target.value })}
+                        />
+                      </td>
+                      <td>
                         <input
                           className="input"
                           type="number"
@@ -826,7 +865,7 @@ export function ProjectForm({
                           style={{ textAlign: 'right' }}
                           value={inv.amount || ''}
                           aria-label="What the invoice is worth"
-                          onChange={(e) => saveInvoice({ ...inv, amount: cash(e.target.value) })}
+                          onChange={(e) => saveInvoice({ ...inv, amount: exact(e.target.value) })}
                         />
                       </td>
                       <td>
@@ -904,6 +943,7 @@ export function ProjectForm({
                 })}
               </tbody>
             </table>
+            </div>
           )}
           <button
             type="button"
@@ -921,7 +961,7 @@ export function ProjectForm({
             Add an invoice
           </button>
           <span className="field-hint" style={{ marginLeft: 'var(--space-3)' }}>
-            {money(myInvoices.reduce((n, i) => n + i.amount, 0), draft.currency)} listed
+            {moneyExact(myInvoices.reduce((n, i) => n + i.amount, 0), draft.currency)} listed
             {myInvoices.length ? ` across ${myInvoices.length} invoice${myInvoices.length === 1 ? '' : 's'}` : ''}
           </span>
         </fieldset>
