@@ -398,8 +398,22 @@ a:hover { color: var(--color-accent-600); }
 }
 
 /* The credit page: nothing but the lockup and the line, in the middle of the navy. */
-.about { min-height: 100vh; display: grid; place-items: center;
+.about { position: relative; min-height: 100vh; display: grid; place-items: center;
   background: var(--color-accent); color: #ffffff; font-family: var(--font-body); text-align: center; padding: var(--space-8); }
+/* The build number, in the corner. It is out of the grid entirely — pinned to the page's own
+   box — so it neither moves the lockup off centre nor grows the page: a corner mark that
+   changed the layout of what it sits behind would be a poor corner mark.
+   Quiet even when it is showing: a fifth of the way up from the navy, at the size a page
+   number is set, and it arrives a beat behind the credit rather than with it. */
+.about-mk { position: absolute; top: var(--space-6); right: var(--space-6); margin: 0;
+  font-family: var(--font-heading); font-weight: 600; font-size: 12px; letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.3); pointer-events: none;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity 200ms ease, transform 200ms ease; }
+.about:has(.brand-paper:hover) .about-mk {
+  opacity: 1; transform: none;
+  transition: opacity 420ms ease 140ms, transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1) 140ms;
+}
 /* The centred thing is the mark and the name — nothing else is in this box, so the grid
    puts them in the middle of the window on both axes. The lockup sizes its paper against
    whatever holds it, so the width is set here too. */
