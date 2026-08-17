@@ -23,6 +23,10 @@ interface PortfolioStore {
   setActualsShown: (id: string, on: boolean) => void;
   setActualDate: (id: string, phase: number, date: string) => void;
   setActualStart: (id: string, date: string) => void;
+  /** Freeze every task's current dates as the plan's baseline. */
+  baselinePlan: (projectId: string, at: Map<string, { startDate: string; endDate: string }>) => void;
+  setPlanBaselineShown: (id: string, on: boolean) => void;
+  setPlanActualsShown: (id: string, on: boolean) => void;
   savePerson: (person: Person) => void;
   /** Adds or replaces one task in a project's plan. */
   saveTask: (task: Task) => void;
@@ -296,6 +300,39 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  /* Baselining the plan. Unlike the project's own baseline this one lives on the tasks —
+     every task keeps the dates it was given and the days it was given them for, so a task
+     that grew can be told from one that simply slid when the thing before it did.
+
+     Engaging it takes the snapshot if the plan has never been baselined; taking it again is
+     the Re-baseline button, and is agreeing a new plan. `at` is what the schedule currently
+     says, worked out by the caller — the store has no scheduler. */
+  const baselinePlan = useCallback((projectId: string, at: Map<string, { startDate: string; endDate: string }>) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === projectId ? { ...p, planBaselineAt: toISO(new Date()) } : p)),
+      tasks: prev.tasks.map((t) => {
+        if (t.projectId !== projectId) return t;
+        const when = at.get(t.id);
+        return when ? { ...t, baseStart: when.startDate, baseFinish: when.endDate, baseDays: t.days } : t;
+      }),
+    }));
+  }, []);
+
+  const setPlanBaselineShown = useCallback((id: string, on: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, showPlanBaseline: on } : p)),
+    }));
+  }, []);
+
+  const setPlanActualsShown = useCallback((id: string, on: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, showPlanActuals: on } : p)),
+    }));
+  }, []);
+
   const setActualStart = useCallback((id: string, date: string) => {
     setPortfolio((prev) => ({
       ...prev,
@@ -488,6 +525,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setActualsShown,
       setActualDate,
       setActualStart,
+      baselinePlan,
+      setPlanBaselineShown,
+      setPlanActualsShown,
       savePerson,
       saveTask,
       deleteTask,
@@ -518,6 +558,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setActualsShown,
       setActualDate,
       setActualStart,
+      baselinePlan,
+      setPlanBaselineShown,
+      setPlanActualsShown,
       savePerson,
       saveTask,
       deleteTask,

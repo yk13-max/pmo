@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
    leave, which is what keeps the list the same width as the chart beside it however the
    columns are set. */
 
-export type ColKey = 'who' | 'days' | 'pct' | 'rule' | 'start' | 'finish' | 'after' | 'float';
+export type ColKey = 'who' | 'days' | 'pct' | 'rule' | 'start' | 'finish' | 'after' | 'float' | 'baseFinish' | 'actStart' | 'actFinish';
 
 export const DEFAULT_WIDTHS: Record<ColKey, number> = {
   who: 96,
@@ -22,6 +22,9 @@ export const DEFAULT_WIDTHS: Record<ColKey, number> = {
   finish: 70,
   after: 60,
   float: 40,
+  baseFinish: 96,
+  actStart: 116,
+  actFinish: 116,
 };
 
 /** Narrow enough to still show what the column holds, and no narrower. */
@@ -34,6 +37,9 @@ const MIN: Record<ColKey, number> = {
   finish: 50,
   after: 44,
   float: 34,
+  baseFinish: 66,
+  actStart: 74,
+  actFinish: 74,
 };
 
 const MAX = 320;

@@ -115,6 +115,12 @@ export interface Project {
   mirrorPhases?: boolean;
   /** Whether the plan books its people, instead of the bookings being typed by hand. */
   plansResource?: boolean;
+  /** When the plan's tasks were last baselined. The baseline itself lives on the tasks. */
+  planBaselineAt?: string;
+  /** Whether the plan is read against that baseline. */
+  showPlanBaseline?: boolean;
+  /** Whether the plan shows what actually happened beside what was planned. */
+  showPlanActuals?: boolean;
 }
 
 /** The family that carries the sterile question. It is asked of the kind of work rather than
@@ -213,6 +219,19 @@ export interface Task {
   deps: Dep[];
   /** How far through it is, 0–100. */
   done: number;
+  /* The plan as it was agreed, frozen onto the task when the plan is baselined. Dates rather
+     than a duration, because what a reader wants is "it was going to finish on the 14th" —
+     and because a task's dates move when anything it waits on moves, whether or not its own
+     length changed. */
+  baseStart?: string;
+  baseFinish?: string;
+  /** Working days it was given at the time, so a task that grew can be told from one that
+      simply slid. */
+  baseDays?: number;
+  /* What actually happened. Typed as the work runs; the schedule is never rewritten from
+     them, because a plan that quietly agreed with reality would have nothing to report. */
+  actualStart?: string;
+  actualFinish?: string;
 }
 
 /** Keyed `${projectId}|${personId}|${YYYY-MM}` → hours booked that month. */

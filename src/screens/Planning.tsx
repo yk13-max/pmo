@@ -26,6 +26,12 @@ const addDays = (iso: string, n: number) => {
   return toISO(d);
 };
 
+/** Days between two dates. Positive means later than it was meant to be. */
+const slip = (from: string, to: string) => Math.round((fromISO(to).getTime() - fromISO(from).getTime()) / DAY_MS);
+/** Late is the colour of a problem, early the colour of a note, on the day neither. */
+const slipInk = (d: number) =>
+  d > 0 ? 'var(--color-accent-2-700)' : d < 0 ? 'var(--color-accent-700)' : 'var(--color-neutral-600)';
+
 type Row =
   | { kind: 'phase'; key: string; phase: number; name: string; start: string | null; end: string | null }
   | { kind: 'task'; key: string; number: number; task: Task; at: Scheduled | undefined };
@@ -46,7 +52,8 @@ export function Planning({
      the pane is already open on one project and is not the place to wander off to another. */
   embedded?: boolean;
 }) {
-  const { portfolio, saveTask, deleteTask, saveProject } = usePortfolio();
+  const { portfolio, saveTask, deleteTask, saveProject, baselinePlan, setPlanBaselineShown, setPlanActualsShown } =
+    usePortfolio();
   const chosen = projectId ?? view.projects[0]?.id ?? '';
   const [zoom, setZoom] = useState<Zoom>('Weeks');
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
@@ -108,6 +115,48 @@ export function Planning({
     });
   });
   const byNumber = new Map([...numberOf].map(([id, num]) => [num, id]));
+
+  /* The plan against the plan that was agreed, and against what actually happened. Both off
+     until asked for: a plan nobody is tracking is a plan, and two more date columns and two
+     more bars per row would be in the way of building one. */
+  const baselined = Boolean(project.showPlanBaseline) && Boolean(project.planBaselineAt);
+  const planActuals = Boolean(project.showPlanActuals);
+  /** Every task's dates as the schedule currently has them — what a baseline freezes. */
+  const scheduleNow = () => {
+    const at = new Map<string, { startDate: string; endDate: string }>();
+    tasks.forEach((t) => {
+      const s = plan.byId.get(t.id);
+      if (s) at.set(t.id, { startDate: s.startDate, endDate: s.endDate });
+    });
+    return at;
+  };
+
+  /* How wide the task list has to be to hold what is on show. It was a fixed 846, which was
+     right for the eleven columns it had; turning tracking on adds three date columns, and a
+     fixed width would have squeezed the task name to nothing and then spilled the rest over
+     the chart. So the width is the sum of the columns, and the chart takes what is left. */
+  const shownCols = [
+    widths.who,
+    widths.days,
+    widths.pct,
+    widths.rule,
+    widths.start,
+    widths.finish,
+    widths.after,
+    widths.float,
+    ...(baselined ? [widths.baseFinish] : []),
+    ...(planActuals ? [widths.actStart, widths.actFinish] : []),
+  ];
+  /** The narrowest a task name is allowed to be before the list simply gets wider. */
+  const TASK_MIN = 150;
+  const gridWidth =
+    16 /* the row's own padding */ +
+    16 /* the tick */ +
+    26 /* the number */ +
+    TASK_MIN +
+    22 /* the delete button */ +
+    shownCols.reduce((n, w) => n + w, 0) +
+    6 * (shownCols.length + 3) /* the gaps between all of them */;
 
   const zoomPx = ZOOMS.find((z) => z.id === zoom)?.px ?? 8;
   /* The chart opens on the plan, so adding a task shows it rather than leaving the bars
@@ -260,6 +309,50 @@ export function Planning({
             />
             Book people from this plan
           </label>
+          {/* Tracking, the way a planner means it: the plan as agreed, and what happened. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(project.showPlanBaseline)}
+              title="Read the plan against the one that was agreed"
+              onChange={(e) => {
+                /* Engaging it with nothing to compare against takes the snapshot then and
+                   there: being measured against a baseline nobody took is what somebody
+                   ticking this is asking for. */
+                if (e.target.checked && !project.planBaselineAt) baselinePlan(project.id, scheduleNow());
+                setPlanBaselineShown(project.id, e.target.checked);
+              }}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Baseline
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={planActuals}
+              title="Record when each task really started and finished"
+              onChange={(e) => setPlanActualsShown(project.id, e.target.checked)}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Actuals
+          </label>
+          {baselined && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              title={`Baselined ${shortDateYear(project.planBaselineAt as string)}. Taking it again agrees the plan as it stands now as the new one.`}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Re-baseline this plan to the dates it has now? The agreed plan every task is being measured against is replaced.`,
+                  )
+                )
+                  baselinePlan(project.id, scheduleNow());
+              }}
+            >
+              Re-baseline
+            </button>
+          )}
           {/* Only offered once something has been dragged — a button undoing nothing is
               just another thing to read. */}
           {!isDefault && (
@@ -311,7 +404,7 @@ export function Planning({
       <div className="plan-workspace" style={{ display: 'flex', alignItems: 'flex-start', border: '1px solid var(--color-divider)' }}>
         {/* The task list. Everything here is editable in place; the chart to the right is
             drawn from it and never edited directly. */}
-        <div className="plan-grid" style={{ flex: 'none', width: 846, borderRight: '1px solid var(--color-divider)' }}>
+        <div className="plan-grid" style={{ flex: 'none', width: gridWidth, borderRight: '1px solid var(--color-divider)' }}>
           {/* Same padding and the same gap as a task row, so every heading lands over the
               control it names rather than drifting across the row. */}
           <div className="plan-grid-head" style={{ display: 'flex', height: ROW * 2, alignItems: 'flex-end', gap: 6, padding: '0 8px 6px', borderBottom: '1px solid var(--color-divider)', fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>
@@ -339,6 +432,22 @@ export function Planning({
             <ColHead col="finish" width={widths.finish} label="Finish" align="right" onResize={resize} />
             <ColHead col="after" width={widths.after} label="After" align="right" onResize={resize} />
             <ColHead col="float" width={widths.float} label="Float" align="right" onResize={resize} />
+            {baselined && (
+              <ColHead
+                col="baseFinish"
+                width={widths.baseFinish}
+                label="Was"
+                align="right"
+                title="What the agreed plan had this task finishing on, and how far it has moved"
+                onResize={resize}
+              />
+            )}
+            {planActuals && (
+              <>
+                <ColHead col="actStart" width={widths.actStart} label="Began" onResize={resize} />
+                <ColHead col="actFinish" width={widths.actFinish} label="Ended" onResize={resize} />
+              </>
+            )}
             {/* Sits over the delete button, so every heading lands on its own column. */}
             <span style={{ width: 22 }} aria-hidden="true" />
           </div>
@@ -374,6 +483,8 @@ export function Planning({
                 key={row.key}
                 row={row}
                 widths={widths}
+                baselined={baselined}
+                planActuals={planActuals}
                 people={view.people}
                 numberOf={numberOf}
                 byNumber={byNumber}
@@ -468,6 +579,43 @@ export function Planning({
                       }}
                     />
                   )}
+                  {/* The agreed plan, under the bar and thinner, the way a tracking Gantt
+                      shows it: where the task was going to be, so the gap between the two
+                      is the slip, read off the chart rather than out of a column. */}
+                  {row.kind === 'task' && baselined && row.task.baseStart && row.task.baseFinish && (
+                    <span
+                      title={`Agreed: ${shortDateYear(row.task.baseStart)} → ${shortDateYear(row.task.baseFinish)}`}
+                      style={{
+                        position: 'absolute',
+                        left: x(row.task.baseStart),
+                        width: Math.max(3, barEnd(row.task.baseFinish) - x(row.task.baseStart)),
+                        top: ROW / 2 + 7,
+                        height: 5,
+                        background: 'var(--color-neutral-400)',
+                        borderRadius: 2,
+                        display: 'block',
+                      }}
+                    />
+                  )}
+                  {/* And what actually happened, over the top of it. */}
+                  {row.kind === 'task' && planActuals && row.task.actualStart && (
+                    <span
+                      title={`Actually: ${shortDateYear(row.task.actualStart)} → ${row.task.actualFinish ? shortDateYear(row.task.actualFinish) : 'still running'}`}
+                      style={{
+                        position: 'absolute',
+                        left: x(row.task.actualStart),
+                        width: Math.max(3, barEnd(row.task.actualFinish || row.task.actualStart) - x(row.task.actualStart)),
+                        top: ROW / 2 - 13,
+                        height: 5,
+                        background: 'var(--color-teal-700)',
+                        borderRadius: 2,
+                        display: 'block',
+                        /* An unfinished task is drawn to where it has got to and left open
+                           at the end rather than pretending to a finish it has not had. */
+                        opacity: row.task.actualFinish ? 1 : 0.55,
+                      }}
+                    />
+                  )}
                   {row.kind === 'task' && row.at && (
                     <span
                       title={`${row.task.name}: ${shortDateYear(row.at.startDate)} → ${shortDateYear(row.at.endDate)}${row.task.done >= 100 ? ' · complete' : row.at.critical ? ' · on the critical path' : ` · ${row.at.float} days of float`}`}
@@ -543,6 +691,18 @@ export function Planning({
           </span>
           Complete
         </span>
+        {baselined && (
+          <span>
+            <span style={{ width: 26, height: 5, background: 'var(--color-neutral-400)', display: 'block' }} />
+            Where the agreed plan had it
+          </span>
+        )}
+        {planActuals && (
+          <span>
+            <span style={{ width: 26, height: 5, background: 'var(--color-teal-700)', display: 'block' }} />
+            What actually happened
+          </span>
+        )}
         <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
           Today
@@ -652,6 +812,8 @@ function Fig({ value, label, sub, color }: { value: string; label: string; sub: 
 function TaskRow({
   row,
   widths,
+  baselined,
+  planActuals,
   people,
   numberOf,
   byNumber,
@@ -662,6 +824,8 @@ function TaskRow({
 }: {
   row: Extract<Row, { kind: 'task' }>;
   widths: Widths;
+  baselined: boolean;
+  planActuals: boolean;
   people: Person[];
   numberOf: Map<string, number>;
   byNumber: Map<number, string>;
@@ -845,6 +1009,67 @@ function TaskRow({
       >
         {at ? (at.critical ? 'none' : `${at.float}d`) : '—'}
       </span>
+      {/* What the agreed plan had it finishing on, and how far it has moved since. A task
+          added after the baseline was taken has nothing to be measured against and says so
+          rather than reading as on time. */}
+      {baselined && (
+        <span
+          style={{
+            width: widths.baseFinish,
+            flex: 'none',
+            textAlign: 'right',
+            fontSize: 12,
+            fontVariantNumeric: 'tabular-nums',
+            color: 'var(--color-neutral-700)',
+          }}
+          title={
+            task.baseFinish
+              ? `Agreed: ${shortDate(task.baseStart ?? '')} → ${shortDate(task.baseFinish)}${task.baseDays ? `, ${task.baseDays}d` : ''}`
+              : 'Added since the plan was baselined'
+          }
+        >
+          {task.baseFinish ? (
+            <>
+              {shortDate(task.baseFinish)}
+              {at && (
+                <span style={{ color: slipInk(slip(task.baseFinish, at.endDate)) }}>
+                  {' '}
+                  {slip(task.baseFinish, at.endDate) === 0 ? '=' : `${slip(task.baseFinish, at.endDate) > 0 ? '+' : ''}${slip(task.baseFinish, at.endDate)}d`}
+                </span>
+              )}
+            </>
+          ) : (
+            'new'
+          )}
+        </span>
+      )}
+      {/* Typed as the work runs. The schedule is never rewritten from them: a plan that
+          quietly agreed with reality would have nothing left to report. */}
+      {planActuals && (
+        <>
+          <input
+            className="input"
+            type="date"
+            style={{ ...cell, width: widths.actStart, flex: 'none', fontSize: 12 }}
+            value={task.actualStart ?? ''}
+            aria-label={`Task ${row.number} actually began`}
+            onChange={(e) => set({ actualStart: e.target.value })}
+          />
+          <input
+            className="input"
+            type="date"
+            style={{ ...cell, width: widths.actFinish, flex: 'none', fontSize: 12 }}
+            value={task.actualFinish ?? ''}
+            aria-label={`Task ${row.number} actually ended`}
+            title={
+              task.actualFinish && at
+                ? `${slip(at.endDate, task.actualFinish) === 0 ? 'On the day' : `${Math.abs(slip(at.endDate, task.actualFinish))} days ${slip(at.endDate, task.actualFinish) > 0 ? 'later' : 'earlier'}`} than the plan has it`
+                : undefined
+            }
+            onChange={(e) => set({ actualFinish: e.target.value })}
+          />
+        </>
+      )}
       <button
         type="button"
         className="btn btn-ghost"
