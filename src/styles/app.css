@@ -698,6 +698,35 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   /* A plan longer than a page breaks between rows rather than through one. */
   :root[data-print='gantt'] .plan-workspace .task-row { page-break-inside: avoid; }
 
+  /* — the portfolio chart, on its own page —
+
+     The chart is the page: the figures above it, the filters under it and the cards below
+     them all belong to the screen. What goes with it is the table it carries, which is the
+     only way a reader of the printed sheet can tell one circle from another. */
+  :root[data-print='chart'] .main { zoom: 1; padding: 0; }
+  :root[data-print='chart'] .stat-row,
+  :root[data-print='chart'] .chart-block ~ *,
+  :root[data-print='chart'] .chart-block .control-row,
+  :root[data-print='chart'] .chart-block .legend { display: none !important; }
+  /* The plot is drawn at a fixed width and scales with its box, so it only needs the room. */
+  :root[data-print='chart'] .chart-block { margin: 0 !important; }
+  :root[data-print='chart'] .chart-print-table { display: block; page-break-inside: auto; }
+  /* A landscape page is wider than a four-column list wants to be. Rather than stretch the
+     columns across it, the list keeps a readable measure and sits in the middle of the
+     sheet, under the middle of the chart. */
+  :root[data-print='chart'] .chart-print-table .table { font-size: 11px; width: 100%; max-width: 660px; margin-inline: auto; table-layout: fixed; }
+  :root[data-print='chart'] .chart-print-table h3 { max-width: 660px; margin-inline: auto; }
+  :root[data-print='chart'] .chart-print-table td { overflow: hidden; text-overflow: ellipsis; }
+  /* The lede and the page's own blurb explain the chart to somebody looking at the screen;
+     on paper they are two paragraphs between the reader and the picture, and losing them is
+     what lets the chart and its axis caption share the first page with the top of the list. */
+  :root[data-print='chart'] .page-blurb,
+  :root[data-print='chart'] .chart-block .lede { display: none !important; }
+  :root[data-print='chart'] .chart-axis-title { page-break-after: avoid; }
+  :root[data-print='chart'] .chart-print-table tr { page-break-inside: avoid; }
+  /* The callouts are the chart's own labels and print with it; the hover card never does. */
+  :root[data-print='chart'] .chart-tip { display: none !important; }
+
   /* — the same plan, printed from a project's own pane —
 
      An edit pane is normally the one thing print drops: it is a window over the screen, and

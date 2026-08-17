@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { money, ragColor, typeColour } from '../lib/derive';
 import { Spark, Stat } from '../components/Stat';
 import { Stripe, StripeSwatch } from '../components/Stripe';
 import { PhaseBar } from '../components/PhaseBar';
 import { Drawer } from '../components/Drawer';
+import { printChart } from '../lib/printChart';
 import type { ProjectTypeDef } from '../types';
 
 /** The two readings of the horizontal axis, in the order the toggle offers them. */
@@ -454,6 +455,12 @@ function Scatter({
 }) {
   /* Two readings of "how far along": across the whole project, or within the phase it is
      in now. The second answers "is this phase nearly done", which the first hides. */
+  /* Set while the chart is on its way to the printer, so the button can say so. */
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    if (printing) printChart(() => setPrinting(false));
+  }, [printing]);
+
   const overall = xMode === X_MODES[0];
   const xValue = (p: ProjectView) => (overall ? p.overallPct : p.pct);
   const axisTitle = overall ? 'How far through the whole project →' : 'How far through the current phase →';
@@ -579,7 +586,7 @@ function Scatter({
   });
 
   return (
-    <div style={{ marginBottom: 'var(--space-8)' }}>
+    <div className="chart-block" style={{ marginBottom: 'var(--space-8)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-6)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
         <div>
           <h3 style={{ marginBottom: 4 }}>Every project on one chart</h3>
@@ -597,7 +604,18 @@ function Scatter({
             the left, and only the tick is pushed over to the chart's right edge. */}
         <div className="control-row" style={{ flex: '1 1 100%', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
           <FilterChips label="Read across as" options={X_MODES} value={xMode} onChange={(v) => onXMode(v as XMode)} />
-          <label className="names-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+          {/* The chart as it stands, filters and all, with the table under it. */}
+          <button
+            type="button"
+            className="btn btn-secondary no-print"
+            style={{ marginLeft: 'auto' }}
+            title="The chart as it is on screen, on a landscape page, with every project on it listed underneath"
+            disabled={printing}
+            onClick={() => setPrinting(true)}
+          >
+            {printing ? 'Printing…' : 'Export the chart as PDF'}
+          </button>
+          <label className="names-toggle" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input
               type="checkbox"
               checked={showNames}
@@ -838,7 +856,42 @@ function Scatter({
               </div>
             )}
       </div>
-      <div style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>{axisTitle}</div>
+      <div className="chart-axis-title" style={{ textAlign: 'center', fontSize: 14, marginTop: 'var(--space-2)' }}>
+        {axisTitle}
+      </div>
+      {/* Only on paper. A picture of where everything sits is what a room wants on a page;
+          somebody reading it afterwards needs to know which dot was which, and no amount of
+          labelling gets four numbers onto a circle. Listed as the chart ranks them. */}
+      <div className="print-only chart-print-table">
+        <h3 style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>
+          {projects.length} project{projects.length === 1 ? '' : 's'} on the chart
+        </h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th style={{ width: 160 }}>Type</th>
+              <th style={{ width: 130, textAlign: 'right' }}>Value or budget</th>
+              <th style={{ width: 96, textAlign: 'right' }}>{overall ? 'Complete' : 'This phase'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((p) => (
+              <tr key={`pr-${p.id}`}>
+                <td>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.name}</span>
+                  <span style={{ color: 'var(--color-neutral-600)' }}> · {p.client}</span>
+                </td>
+                <td>{p.typeLabel}</td>
+                {/* The same figure the dot is plotted at: what a customer project can
+                    invoice, what an internal one was approved to spend. */}
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{money(worth(p))}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{xValue(p)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>
         <span>
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--color-neutral-500)', display: 'block' }} />
