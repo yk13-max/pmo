@@ -214,6 +214,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     people,
     // Plans are the planner's own work, so the sample portfolio ships without any.
     tasks: [],
+    invoices: [],
     allocations,
     leave,
     roles: [...ROLES],

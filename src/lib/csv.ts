@@ -232,6 +232,25 @@ export function tasksCsv(p: Portfolio): string {
   );
 }
 
+/** One row per invoice, naming what it waits on rather than pointing at an id. */
+export function invoicesCsv(p: Portfolio): string {
+  const project = (id: string) => p.projects.find((x) => x.id === id);
+  return toCsv(
+    ['Project', 'What for', 'Amount', 'Currency', 'Due', 'Waits on'],
+    p.invoices.map((i) => {
+      const proj = project(i.projectId);
+      const phases = p.projectTypes.find((t) => t.id === proj?.type)?.phases ?? [];
+      const waits =
+        i.phase !== undefined && phases[i.phase]
+          ? `Gate: ${phases[i.phase]}`
+          : i.taskId
+            ? `Task: ${p.tasks.find((t) => t.id === i.taskId)?.name ?? ''}`
+            : '';
+      return [proj?.name ?? '', i.label, i.amount, proj?.currency ?? '', i.due, waits];
+    }),
+  );
+}
+
 export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
   const stamp = fileStamp();
   return [
@@ -240,6 +259,7 @@ export function portfolioCsvFiles(p: Portfolio, months: string[]): CsvFile[] {
     { name: `pmo-allocations-${stamp}.csv`, content: allocationsCsv(p, months) },
     { name: `pmo-leave-${stamp}.csv`, content: leaveCsv(p, months) },
     { name: `pmo-tasks-${stamp}.csv`, content: tasksCsv(p) },
+    { name: `pmo-invoices-${stamp}.csv`, content: invoicesCsv(p) },
   ];
 }
 

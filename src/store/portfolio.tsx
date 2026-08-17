@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Baseline, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
+import type { Allocations, Baseline, Invoice, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { DEFAULT_CATEGORY, DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
@@ -25,6 +25,8 @@ interface PortfolioStore {
   setActualStart: (id: string, date: string) => void;
   /** Freeze every task's current dates as the plan's baseline. */
   baselinePlan: (projectId: string, at: Map<string, { startDate: string; endDate: string }>) => void;
+  saveInvoice: (invoice: Invoice) => void;
+  removeInvoice: (id: string) => void;
   setPlanBaselineShown: (id: string, on: boolean) => void;
   setPlanActualsShown: (id: string, on: boolean) => void;
   savePerson: (person: Person) => void;
@@ -122,6 +124,8 @@ export function normalise(p: Portfolio): Portfolio {
     allocations,
     allocationUnit: 'hours',
     leave: p.leave ?? {},
+    // Stores written before invoices were listed one by one simply have none.
+    invoices: p.invoices ?? [],
     // Stores written before planning existed simply have no plans.
     tasks: (p.tasks ?? []).map((t) => {
       // Plans written before constraints existed carried a plain start, which is exactly
@@ -317,6 +321,19 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         return when ? { ...t, baseStart: when.startDate, baseFinish: when.endDate, baseDays: t.days } : t;
       }),
     }));
+  }, []);
+
+  const saveInvoice = useCallback((invoice: Invoice) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      invoices: prev.invoices.some((i) => i.id === invoice.id)
+        ? prev.invoices.map((i) => (i.id === invoice.id ? invoice : i))
+        : [...prev.invoices, invoice],
+    }));
+  }, []);
+
+  const removeInvoice = useCallback((id: string) => {
+    setPortfolio((prev) => ({ ...prev, invoices: prev.invoices.filter((i) => i.id !== id) }));
   }, []);
 
   const setPlanBaselineShown = useCallback((id: string, on: boolean) => {
@@ -526,6 +543,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setActualDate,
       setActualStart,
       baselinePlan,
+      saveInvoice,
+      removeInvoice,
       setPlanBaselineShown,
       setPlanActualsShown,
       savePerson,
@@ -559,6 +578,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setActualDate,
       setActualStart,
       baselinePlan,
+      saveInvoice,
+      removeInvoice,
       setPlanBaselineShown,
       setPlanActualsShown,
       savePerson,

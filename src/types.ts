@@ -127,6 +127,29 @@ export interface Project {
     of the way a particular project of it is run, so every category under it is asked. */
 export const STERILE_FAMILY = 'CS';
 
+/* An invoice a project expects to raise: what it is for, what it is worth, and when.
+
+   It can stand on its own, or it can be tied to a phase gate or a task. The tie drives
+   nothing — it does not move the date, and the date does not move the plan. What it does is
+   let the two disagree out loud: an invoice raised on handover cannot be raised before the
+   handover happens, so if the thing it is tied to now finishes after the invoice is due, the
+   date says so in red. That is a conversation to have, not a number to correct automatically:
+   the answer might be to move the invoice, or to move the work, or to accept it. */
+export interface Invoice {
+  id: string;
+  projectId: string;
+  /** What the invoice is for, as it would be written on it. */
+  label: string;
+  /** In thousands of the project's own currency. */
+  amount: number;
+  /** When it is expected to be raised. */
+  due: string;
+  /** The phase whose gate it waits on, as an index into the type's phases. */
+  phase?: number;
+  /** The task it waits on. */
+  taskId?: string;
+}
+
 /** The points a customer-facing project raises an invoice at. What each one is worth is
     agreed with the client project by project, so no share is assumed here. */
 export const INVOICE_STAGES: string[] = [
@@ -253,6 +276,8 @@ export const CURRENCIES: Record<CurrencyCode, { symbol: string; label: string }>
 
 export interface Portfolio {
   projects: Project[];
+  /** Invoices a project expects to raise. Empty until somebody lists them. */
+  invoices: Invoice[];
   people: Person[];
   /** Every project's plan, in one list. A project with none simply has no plan yet. */
   tasks: Task[];

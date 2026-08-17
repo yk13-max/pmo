@@ -9,7 +9,7 @@ import {
   PRIORITY_LEVELS,
 } from '../types';
 import { RAG_LABEL } from '../data/phases';
-import { days, hoursToPct, ragColor } from '../lib/derive';
+import { days, hoursToPct, money, ragColor } from '../lib/derive';
 import { addMonths, monthKey, shortDateYear, toISO } from '../lib/dates';
 import { AllocationGrid } from './AllocationGrid';
 import { DEFAULT_MONTHS } from './WindowControls';
@@ -17,6 +17,7 @@ import { useFullPane } from './Drawer';
 import { usePortfolio } from '../store/portfolio';
 import { schedule, type Scheduled } from '../lib/schedule';
 import { Planning } from '../screens/Planning';
+import { checkInvoice, invoicesOf } from '../lib/invoices';
 import type { PortfolioView } from '../lib/derive';
 
 type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'billed' | 'load'> & {
@@ -135,7 +136,7 @@ export function ProjectForm({
     const wanted = found >= 0 ? found : thisMonth > (months[months.length - 1] ?? '') ? months.length : 0;
     return Math.max(0, Math.min(wanted, months.length - DEFAULT_MONTHS));
   });
-  const { portfolio } = usePortfolio();
+  const { portfolio, saveInvoice, removeInvoice } = usePortfolio();
   const fullPane = useFullPane();
   /* The plan at the foot of a full page saves the moment it is touched — including its two
      switches, which are the project's own fields. So those two are read from the store
@@ -230,6 +231,12 @@ export function ProjectForm({
   /* Bookings come from the plan while this is on, so the grid below reports rather than
      accepts. The figures in it are the plan's own — every screen reads the same set. */
   const planBooked = Boolean(usesPlan && plansResource);
+
+  /* The invoices listed against this project, and every task they could be tied to. Read
+     live from the store: the rows save as they are typed, the way the plan does, so there is
+     no draft of them to keep in step. */
+  const myInvoices = invoicesOf(portfolio, draft.id);
+  const planTasksAll = portfolio.tasks.filter((t) => t.projectId === draft.id);
 
   const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
   if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
@@ -772,6 +779,153 @@ export function ProjectForm({
           A date on the last phase is when the project finishes, and stands in for the end date above.
         </p>
       </fieldset>
+
+      {/* The invoices this project expects to raise, one line each. They are their own
+          record rather than four fixed stages: work is invoiced in as many pieces as it was
+          sold in, and each piece may or may not wait on something. */}
+      {!internal && project && (
+        <fieldset className="fieldset">
+          <legend>Invoices</legend>
+          {myInvoices.length === 0 ? (
+            <p className="field-hint" style={{ margin: '0 0 var(--space-3)' }}>
+              None listed. Add one for each invoice the project expects to raise; tie it to a phase
+              or a task and the date will say so when the work moves past it.
+            </p>
+          ) : (
+            <table className="table" style={{ marginBottom: 'var(--space-3)' }}>
+              <thead>
+                <tr>
+                  <th>What for</th>
+                  <th style={{ width: 110, textAlign: 'right' }}>Amount ({CURRENCIES[draft.currency].symbol})</th>
+                  <th style={{ width: 150 }}>Due</th>
+                  <th style={{ width: 210 }}>Waits on</th>
+                  <th style={{ width: 40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {myInvoices.map((inv) => {
+                  /* Only the start date is read from it, so the draft's string-typed money fields
+                     are beside the point — but the cast has to go through unknown to say so. */
+                  const check = checkInvoice(inv, draft as unknown as Project, phases, gates, planTasksAll);
+                  return (
+                    <tr key={inv.id}>
+                      <td>
+                        <input
+                          className="input"
+                          value={inv.label}
+                          aria-label="What the invoice is for"
+                          onChange={(e) => saveInvoice({ ...inv, label: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          step="any"
+                          style={{ textAlign: 'right' }}
+                          value={inv.amount || ''}
+                          aria-label="What the invoice is worth"
+                          onChange={(e) => saveInvoice({ ...inv, amount: cash(e.target.value) })}
+                        />
+                      </td>
+                      <td>
+                        {/* Red when the work it waits on now lands after it. Nothing is
+                            corrected: which of the two moves is somebody's decision. */}
+                        <input
+                          className="input"
+                          type="date"
+                          max={MAX_DATE}
+                          value={inv.due}
+                          aria-label="When the invoice is due"
+                          aria-invalid={check.late || undefined}
+                          title={
+                            check.late
+                              ? `${check.waitsOn} finishes ${shortDateYear(check.finishes)}, ${check.by} days after this invoice is due`
+                              : undefined
+                          }
+                          style={
+                            check.late
+                              ? {
+                                  borderColor: 'var(--color-accent-2)',
+                                  color: 'var(--color-accent-2-700)',
+                                  background: 'color-mix(in srgb, var(--color-accent-2) 8%, var(--color-surface))',
+                                }
+                              : undefined
+                          }
+                          onChange={(e) => saveInvoice({ ...inv, due: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          className="input"
+                          aria-label="What the invoice waits on"
+                          value={inv.taskId ? `t:${inv.taskId}` : inv.phase !== undefined ? `p:${inv.phase}` : ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            saveInvoice({
+                              ...inv,
+                              phase: v.startsWith('p:') ? Number(v.slice(2)) : undefined,
+                              taskId: v.startsWith('t:') ? v.slice(2) : undefined,
+                            });
+                          }}
+                        >
+                          <option value="">Nothing — it stands on its own</option>
+                          {phases.map((name: string, i: number) => (
+                            <option key={`p-${name}`} value={`p:${i}`}>
+                              Gate: {i + 1}. {name}
+                            </option>
+                          ))}
+                          {planTasksAll.map((t) => (
+                            <option key={`t-${t.id}`} value={`t:${t.id}`}>
+                              Task: {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        {check.late && (
+                          <div className="field-error">
+                            {check.waitsOn} lands {shortDateYear(check.finishes)}, {check.by}d after this
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ color: 'var(--color-accent-2-700)' }}
+                          aria-label={`Remove the ${inv.label || 'unnamed'} invoice`}
+                          onClick={() => removeInvoice(inv.id)}
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              saveInvoice({
+                id: `invoice-${crypto.randomUUID().slice(0, 8)}`,
+                projectId: draft.id,
+                label: `Invoice ${myInvoices.length + 1}`,
+                amount: 0,
+                due: effectiveEnd || draft.endDate,
+              })
+            }
+          >
+            Add an invoice
+          </button>
+          <span className="field-hint" style={{ marginLeft: 'var(--space-3)' }}>
+            {money(myInvoices.reduce((n, i) => n + i.amount, 0), draft.currency)} listed
+            {myInvoices.length ? ` across ${myInvoices.length} invoice${myInvoices.length === 1 ? '' : 's'}` : ''}
+          </span>
+        </fieldset>
+      )}
 
       {!internal && (
         <fieldset className="fieldset">

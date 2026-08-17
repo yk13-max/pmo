@@ -8,6 +8,8 @@ import { WindowControls } from '../components/WindowControls';
 import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
 import { fromISO, shortDateYear, toISO } from '../lib/dates';
 import { usePortfolio } from '../store/portfolio';
+import { checkInvoice, invoicesOf } from '../lib/invoices';
+import { money } from '../lib/derive';
 
 export function ProjectDetail({
   view,
@@ -22,7 +24,7 @@ export function ProjectDetail({
   onEdit: (project: Project) => void;
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
-  const { setBaselined, rebaseline, setActualsShown, setActualDate } = usePortfolio();
+  const { portfolio, setBaselined, rebaseline, setActualsShown, setActualDate } = usePortfolio();
 
   if (!project) {
     return <p className="empty">No projects yet. Add the first one from the Data screen.</p>;
@@ -47,6 +49,9 @@ export function ProjectDetail({
      end only where it never had one. */
   const baseEnd = baseline ? baseline.phaseDates[project.phases.length - 1] || baseline.endDate : '';
   const endSlip = baseline ? slip(baseEnd, project.endDate) : 0;
+  /** The invoices listed against this project, and the tasks one of them could wait on. */
+  const listed = invoicesOf(portfolio, project.id);
+  const projectTasks = portfolio.tasks.filter((t) => t.projectId === project.id);
 
   // Grouped by the kind of work, which is what the picker is scanned by.
   /* The grid shows the window the controls are set to and nothing else — "for 6 months"
@@ -372,6 +377,65 @@ export function ProjectDetail({
           ...(project.cust
             ? [{ id: 'invoicing', label: 'When the client pays', count: project.toBillLabel, render: () => (
         <div style={{ marginBottom: 'var(--space-8)' }}>
+          {/* The invoices listed against this project, where any have been. They are the
+              better record — one line per invoice actually expected, each with what it is
+              worth and what it waits on — so where they exist they lead, and the four
+              standing stages below become the older, coarser reading. */}
+          {listed.length > 0 && (
+            <>
+              <h3 style={{ margin: '0 0 4px' }}>The invoices</h3>
+              <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+                {money(listed.reduce((n, i) => n + i.amount, 0), project.currency)} across {listed.length} invoice
+                {listed.length === 1 ? '' : 's'}. A date in red is one the work it waits on now lands after — which of
+                the two moves is a decision, not a correction, so nothing here has been adjusted.
+              </p>
+              <table className="table" style={{ maxWidth: 760, marginBottom: 'var(--space-8)' }}>
+                <thead>
+                  <tr>
+                    <th>What for</th>
+                    <th style={{ width: 110, textAlign: 'right' }}>Amount</th>
+                    <th style={{ width: 120 }}>Due</th>
+                    <th style={{ width: 260 }}>Waits on</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listed.map((inv) => {
+                    const check = checkInvoice(inv, project, project.phases, project.phaseDates, projectTasks);
+                    return (
+                      <tr key={inv.id}>
+                        <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{inv.label}</td>
+                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {money(inv.amount, project.currency)}
+                        </td>
+                        <td
+                          style={{
+                            fontVariantNumeric: 'tabular-nums',
+                            color: check.late ? 'var(--color-accent-2-700)' : undefined,
+                            fontWeight: check.late ? 600 : undefined,
+                          }}
+                        >
+                          {inv.due ? shortDateYear(inv.due) : '—'}
+                        </td>
+                        <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                          {check.waitsOn ? (
+                            <>
+                              {check.waitsOn}
+                              {check.finishes && ` · ${shortDateYear(check.finishes)}`}
+                              {check.late && (
+                                <span style={{ color: 'var(--color-accent-2-700)' }}> · {check.by}d after the invoice</span>
+                              )}
+                            </>
+                          ) : (
+                            'Nothing — it stands on its own'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
           <h3 style={{ margin: '0 0 4px' }}>When the client pays</h3>
           <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
             The agreed {project.valueLabel} is billed in {project.currency} across these stages. What each one is worth
