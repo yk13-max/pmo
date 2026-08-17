@@ -102,7 +102,12 @@ export function ProjectDetail({
 
       <div style={{ position: 'relative', paddingLeft: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
         <Stripe project={project} absolute />
-        <div className="kicker">{project.client}</div>
+        {/* The number the business knows it by, where it has one, ahead of the client on
+            the line above the name — it is how the project is asked for. */}
+        <div className="kicker">
+          {project.number ? `${project.number} · ` : ''}
+          {project.client}
+        </div>
         <div className="doc-title" style={{ marginTop: 6 }}>
           {project.name}
         </div>

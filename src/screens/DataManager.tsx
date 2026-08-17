@@ -213,6 +213,11 @@ export function DataManager({
                       {p.name}
                     </span>
                     <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
+                    {p.number && (
+                      <span className="eyebrow" style={{ display: 'block', marginTop: 2 }}>
+                        {p.number}
+                      </span>
+                    )}
                   </button>
                 </td>
                 <td style={{ fontSize: 13 }}>{p.typeShort}</td>

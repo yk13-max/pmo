@@ -244,6 +244,7 @@ export function ProjectForm({
         ...draft,
         name: draft.name.trim(),
         client: draft.client.trim(),
+        number: draft.number?.trim() || undefined,
         milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
         // Owned by the plan below, and already saved by it. See `live` above.
         usesPlan,
@@ -291,6 +292,19 @@ export function ProjectForm({
               onChange={(e) => set('name', e.target.value)}
             />
             {err('name')}
+          </div>
+          {/* Whatever it is called in the systems the tracker does not know about. Optional:
+              plenty of work is only ever known by its name. */}
+          <div className="field">
+            <label htmlFor="pf-number">Project number</label>
+            <input
+              id="pf-number"
+              className="input"
+              value={draft.number ?? ''}
+              placeholder="Optional"
+              onChange={(e) => set('number', e.target.value)}
+            />
+            <div className="field-hint">Your own reference for it — a job number, a contract code.</div>
           </div>
           <div className="field">
             {/* One label for both kinds of work: a customer's name on customer work, the

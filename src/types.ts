@@ -64,6 +64,10 @@ export interface Project {
   phaseDates: string[];
   /** Date each invoice stage is expected to be raised, ISO, aligned to INVOICE_STAGES. */
   invoiceDates: string[];
+  /** Whatever the business calls this project in its own systems — a job number, a contract
+      reference, a code. Optional and free text, because every organisation numbers its work
+      differently and none of them number it the way an id does. */
+  number?: string;
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
   /** Work that is not running at the moment — on hold, awaiting a decision, between

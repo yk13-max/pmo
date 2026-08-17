@@ -76,6 +76,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
   return toCsv(
     [
       'Project',
+      'Project number',
       'Client or function',
       'Delivery type',
       'Category',
@@ -104,6 +105,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
     ],
     p.projects.map((x) => [
       x.name,
+      x.number ?? '',
       x.client,
       familyOf(p, x.type)?.label ?? x.type,
       p.projectTypes.find((t) => t.id === x.type)?.label ?? '',
@@ -339,6 +341,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         archived: headers.some((h) => h.trim().toLowerCase() === 'archived')
           ? col(r, 'Archived').toLowerCase() === 'yes'
           : base?.archived,
+        number: col(r, 'Project number').trim() || base?.number,
         inactive: headers.some((h) => h.trim().toLowerCase() === 'on hold')
           ? col(r, 'On hold').toLowerCase() === 'yes'
           : base?.inactive,
