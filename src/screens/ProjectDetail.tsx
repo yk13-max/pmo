@@ -6,7 +6,8 @@ import { Tabs } from '../components/Tabs';
 import { Stripe } from '../components/Stripe';
 import { WindowControls } from '../components/WindowControls';
 import { INVOICE_STAGES, PRIORITY_LABEL } from '../types';
-import { shortDateYear, toISO } from '../lib/dates';
+import { fromISO, shortDateYear, toISO } from '../lib/dates';
+import { usePortfolio } from '../store/portfolio';
 
 export function ProjectDetail({
   view,
@@ -21,9 +22,31 @@ export function ProjectDetail({
   onEdit: (project: Project) => void;
   onSetWindow: (startMonth: string, months: number) => void;
 }) {
+  const { setBaselined, rebaseline, setActualsShown, setActualDate } = usePortfolio();
+
   if (!project) {
     return <p className="empty">No projects yet. Add the first one from the Data screen.</p>;
   }
+
+  /* Baselining and actuals: the plan as it was agreed, and what actually happened, both off
+     until asked for. A project without either reads exactly as it always did — most work
+     does not need measuring against a frozen plan, and a screen carrying two extra dates
+     per phase for the sake of the ones that do would be worse for everybody. */
+  const baseline = project.showBaseline ? project.baseline : undefined;
+  const actuals = Boolean(project.showActuals);
+  const actualDates = project.actualDates ?? [];
+  /** Working days between two dates, positive when the second is later. */
+  const slip = (from: string, to: string) =>
+    Math.round((fromISO(to).getTime() - fromISO(from).getTime()) / 86400000);
+  const slipLabel = (days: number) => (days === 0 ? 'on the day' : days > 0 ? `${days}d late` : `${-days}d early`);
+  const slipInk = (days: number) =>
+    days > 0 ? 'var(--color-accent-2-700)' : days < 0 ? 'var(--color-accent-700)' : 'var(--color-neutral-600)';
+  /* The end being compared has to be read the same way on both sides. A dated last phase
+     stands in for the typed end everywhere, and the view has already done that to the
+     current one — so the baseline's last gate is what it is measured against, and its typed
+     end only where it never had one. */
+  const baseEnd = baseline ? baseline.phaseDates[project.phases.length - 1] || baseline.endDate : '';
+  const endSlip = baseline ? slip(baseEnd, project.endDate) : 0;
 
   // Grouped by the kind of work, which is what the picker is scanned by.
   /* The grid shows the window the controls are set to and nothing else — "for 6 months"
@@ -153,21 +176,77 @@ export function ProjectDetail({
       <p style={{ margin: 'var(--space-2) 0 var(--space-4)', fontWeight: 600 }}>
         Next due: {project.milestone} on {project.msDateLabel}
       </p>
+      {/* Both off until asked for. Baselining freezes the plan as agreed and reads everything
+          since against it; actuals is where the dates it really hit get typed in. */}
+      <div
+        className="no-print control-row"
+        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}
+      >
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={Boolean(project.showBaseline)}
+            onChange={(e) => setBaselined(project.id, e.target.checked)}
+            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+          />
+          Baseline
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={actuals}
+            onChange={(e) => setActualsShown(project.id, e.target.checked)}
+            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+          />
+          Actuals
+        </label>
+        {baseline && (
+          <>
+            <span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+              Baselined {shortDateYear(baseline.takenAt)} · finish{' '}
+              <strong style={{ color: slipInk(endSlip) }}>{slipLabel(endSlip)}</strong>
+              {baseline.budget !== project.budget && ` · budget ${project.budget > baseline.budget ? 'up' : 'down'}`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              title="Agree the plan as it stands now as the new baseline. What was there is replaced."
+              onClick={() => {
+                if (window.confirm(`Re-baseline ${project.name} to the plan as it stands now? The agreed plan it is being measured against is replaced.`))
+                  rebaseline(project.id);
+              }}
+            >
+              Re-baseline
+            </button>
+          </>
+        )}
+      </div>
       {/* A grid rather than a row of columns, so the four lines of every phase — bar, name,
           date, where it has got to — sit on the same four rows across the strip. A name that
-          takes two lines then pushes every date down together instead of only its own. */}
+          takes two lines then pushes every date down together instead of only its own. Two
+          more rows appear when the plan is being read against its baseline, or against what
+          actually happened, so those line up across the strip too. */}
       <div
         className="phase-strip"
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${project.phases.length}, minmax(0, 1fr))`,
-          gridTemplateRows: 'auto auto auto auto',
+          gridTemplateRows: `repeat(${4 + (baseline ? 1 : 0) + (actuals ? 1 : 0)}, auto)`,
           gap: '8px var(--space-2)',
           marginBottom: 'var(--space-8)',
         }}
       >
         {project.phases.map((name, i) => (
-          <div key={name} style={{ display: 'grid', gridTemplateRows: 'subgrid', gridRow: 'span 4', gap: 8, minWidth: 0 }}>
+          <div
+            key={name}
+            style={{
+              display: 'grid',
+              gridTemplateRows: 'subgrid',
+              gridRow: `span ${4 + (baseline ? 1 : 0) + (actuals ? 1 : 0)}`,
+              gap: 8,
+              minWidth: 0,
+            }}
+          >
             {/* Each phase's own bar, part-filled for the one in hand. */}
             <span style={{ position: 'relative', display: 'block', height: 6, background: 'var(--color-neutral-300)' }}>
               {project.pips[i]?.fill > 0 && (
@@ -202,6 +281,50 @@ export function ProjectDetail({
             >
               {i < project.phase ? 'Completed' : i === project.phase ? 'In progress' : 'Not started'}
             </span>
+            {/* What the gate was when the plan was agreed, and how far the current one has
+                moved from it. Nothing to compare where the baseline never had a date. */}
+            {baseline && (
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', alignSelf: 'end' }}>
+                {baseline.phaseDates[i] ? (
+                  <>
+                    <span className="eyebrow" style={{ display: 'block' }}>Baseline</span>
+                    {shortDateYear(baseline.phaseDates[i])}
+                    {project.phaseDates[i] && (
+                      <span style={{ color: slipInk(slip(baseline.phaseDates[i], project.phaseDates[i])) }}>
+                        {' · '}
+                        {slipLabel(slip(baseline.phaseDates[i], project.phaseDates[i]))}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="eyebrow" style={{ display: 'block' }}>Baseline</span>—
+                  </>
+                )}
+              </span>
+            )}
+            {/* Typed here rather than in the edit pane: it is a fact recorded as the project
+                runs, one phase at a time, and this is the screen it is read on. It saves as
+                it is typed, the way the plan does. */}
+            {actuals && (
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', alignSelf: 'end' }}>
+                <span className="eyebrow" style={{ display: 'block' }}>Actual</span>
+                <input
+                  className="input no-print"
+                  type="date"
+                  value={actualDates[i] ?? ''}
+                  aria-label={`When ${name} actually completed`}
+                  style={{ fontSize: 12, padding: '2px 4px', height: 26, width: '100%', minWidth: 0 }}
+                  onChange={(e) => setActualDate(project.id, i, e.target.value)}
+                />
+                <span className="print-only">{actualDates[i] ? shortDateYear(actualDates[i]) : '—'}</span>
+                {actualDates[i] && project.phaseDates[i] && (
+                  <span style={{ display: 'block', color: slipInk(slip(project.phaseDates[i], actualDates[i])) }}>
+                    {slipLabel(slip(project.phaseDates[i], actualDates[i]))} against plan
+                  </span>
+                )}
+              </span>
+            )}
           </div>
         ))}
       </div>

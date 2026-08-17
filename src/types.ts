@@ -34,6 +34,19 @@ export interface ProjectTypeDef {
 export type Facing = 'C' | 'I';
 export type Rag = 'G' | 'A' | 'R';
 
+/** The plan as it was agreed: what a project's dates and money were at the moment somebody
+    said "this is the plan". Everything the project has done since is read against it. */
+export interface Baseline {
+  /** When the snapshot was taken. */
+  takenAt: string;
+  startDate: string;
+  endDate: string;
+  /** The gates as they stood, index-aligned to the type's phases. */
+  phaseDates: string[];
+  budget: number;
+  value: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -64,6 +77,18 @@ export interface Project {
   phaseDates: string[];
   /** Date each invoice stage is expected to be raised, ISO, aligned to INVOICE_STAGES. */
   invoiceDates: string[];
+  /** The agreed plan, taken when baselining is first engaged. Kept when the comparison is
+      switched off, so turning it back on does not lose the history. */
+  baseline?: Baseline;
+  /** Whether the detail screen reads the project against its baseline. */
+  showBaseline?: boolean;
+  /** When each phase actually completed, index-aligned to the type's phases. Only asked for
+      once actuals are engaged, and blank for anything not finished. */
+  actualDates?: string[];
+  /** When the work actually started. */
+  actualStart?: string;
+  /** Whether the detail screen shows what actually happened beside what was planned. */
+  showActuals?: boolean;
   /** Whatever the business calls this project in its own systems — a job number, a contract
       reference, a code. Optional and free text, because every organisation numbers its work
       differently and none of them number it the way an id does. */

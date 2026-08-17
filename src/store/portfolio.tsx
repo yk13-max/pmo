@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Allocations, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
+import type { Allocations, Baseline, Person, Portfolio, Project, ProjectFamily, ProjectTypeDef, Task } from '../types';
 import { HOURS_PER_FULL_MONTH, WORKING_DAYS_PER_MONTH } from '../types';
 import { buildSeedPortfolio } from '../data/seed';
 import { DEFAULT_CATEGORY, DEFAULT_PROJECT_TYPES, ROLES } from '../data/phases';
-import { planningMonths } from '../lib/dates';
+import { planningMonths, toISO } from '../lib/dates';
 
 const STORAGE_KEY = 'pmo-tracker:portfolio:v1';
 
@@ -16,6 +16,13 @@ interface PortfolioStore {
   setArchived: (id: string, archived: boolean) => void;
   /** Put a project on hold, or take it off hold. See `Project.inactive`. */
   setInactive: (id: string, inactive: boolean) => void;
+  /** Read a project against its baseline, taking one if it has none yet. */
+  setBaselined: (id: string, on: boolean) => void;
+  /** Agree a new plan: take the baseline again from where the project stands now. */
+  rebaseline: (id: string) => void;
+  setActualsShown: (id: string, on: boolean) => void;
+  setActualDate: (id: string, phase: number, date: string) => void;
+  setActualStart: (id: string, date: string) => void;
   savePerson: (person: Person) => void;
   /** Adds or replaces one task in a project's plan. */
   saveTask: (task: Task) => void;
@@ -175,6 +182,19 @@ function load(): Portfolio {
   return buildSeedPortfolio();
 }
 
+/** The project's plan as it stands, frozen. Dates and money only: what a baseline is for is
+    answering "has this moved", and nothing else on a project moves in a way worth measuring. */
+function snapshot(p: Project): Baseline {
+  return {
+    takenAt: toISO(new Date()),
+    startDate: p.startDate,
+    endDate: p.endDate,
+    phaseDates: [...(p.phaseDates ?? [])],
+    budget: p.budget,
+    value: p.value,
+  };
+}
+
 export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [portfolio, setPortfolio] = useState<Portfolio>(load);
 
@@ -230,6 +250,56 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setPortfolio((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => (p.id === id ? { ...p, inactive } : p)),
+    }));
+  }, []);
+
+  /* Baselining. Engaging it takes the snapshot if there is not one already — a baseline
+     nobody took is no use, and taking it at the moment somebody asks to be measured against
+     it is what they mean. Switching it off keeps the snapshot: the comparison is hidden, not
+     thrown away, so turning it back on does not lose the history. */
+  const setBaselined = useCallback((id: string, on: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) =>
+        p.id === id ? { ...p, showBaseline: on, baseline: on ? p.baseline ?? snapshot(p) : p.baseline } : p,
+      ),
+    }));
+  }, []);
+
+  /** Take the baseline again, from where the project stands now. Deliberate: re-baselining
+      is agreeing a new plan, which is why nothing does it automatically. */
+  const rebaseline = useCallback((id: string) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, baseline: snapshot(p) } : p)),
+    }));
+  }, []);
+
+  const setActualsShown = useCallback((id: string, on: boolean) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, showActuals: on } : p)),
+    }));
+  }, []);
+
+  /** When a phase actually completed. An empty date clears it back to unfinished. */
+  const setActualDate = useCallback((id: string, phase: number, date: string) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => {
+        if (p.id !== id) return p;
+        const dates = [...(p.actualDates ?? [])];
+        while (dates.length <= phase) dates.push('');
+        dates[phase] = date;
+        return { ...p, actualDates: dates };
+      }),
+    }));
+  }, []);
+
+  const setActualStart = useCallback((id: string, date: string) => {
+    setPortfolio((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, actualStart: date } : p)),
     }));
   }, []);
 
@@ -413,6 +483,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       setInactive,
+      setBaselined,
+      rebaseline,
+      setActualsShown,
+      setActualDate,
+      setActualStart,
       savePerson,
       saveTask,
       deleteTask,
@@ -438,6 +513,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deleteProject,
       setArchived,
       setInactive,
+      setBaselined,
+      rebaseline,
+      setActualsShown,
+      setActualDate,
+      setActualStart,
       savePerson,
       saveTask,
       deleteTask,
