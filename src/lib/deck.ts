@@ -286,13 +286,16 @@ function titleSlide(pptx: any, period: string, count: number, view: PortfolioVie
   const centre = glassMark(pptx, slide, 11.55, 0.55, 1.15);
   // Centred on the mark itself rather than ranged off the edge of the slide.
   const wordW = 2.0;
-  slide.addText('Project Glass', {
+  /* Not the product's name for its own sake — a line saying where the pack came from, which
+     is what somebody holding a printed copy of it wants to know. */
+  slide.addText('Project Glass generated', {
     x: centre - wordW / 2, y: 1.78, w: wordW, h: 0.24, fontFace: FONT, fontSize: 10,
     color: QUIET, align: 'center', margin: 0, valign: 'middle',
   });
   /* When the pack was made, in the corner nobody looks at until they need to know whether the
      copy in their hand is the current one. */
-  slide.addText(`Generated ${packDate(view.today)} at ${stamp(view.today)}`, {
+  // The mark's line already says the pack was generated; this is only when.
+  slide.addText(`${packDate(view.today)} · ${stamp(view.today)}`, {
     x: 8.33, y: 6.85, w: 4.4, h: 0.24, fontFace: FONT, fontSize: 9, color: RULE,
     align: 'right', margin: 0, valign: 'middle',
   });
@@ -321,16 +324,29 @@ function phaseBar(pptx: any, slide: any, project: ProjectView, x: number, y: num
       x: x + (w * i) / phases - 0.005, y, w: 0.01, h, fill: { color: 'FFFFFF' },
     });
   }
-  /* Where the work has got to inside the phase it is in, written under the point the fill
+  /* Where the work has got to inside the phase it is in, marked above the point the fill
      reaches. The bar says how far through the project the work is; this says how far through
      the phase, which is the figure a review asks for next and the one the bar can only imply.
-     Small, and pinned to the fill rather than to the cell, so it reads as a mark on the bar. */
+
+     The arrow gets a box of its own, a tenth of an inch wide and centred on the fill, so what
+     it points at is where the fill actually ends: written as one string with the words, the
+     arrow sat at the left edge of a box wide enough for all of it and pointed a third of an
+     inch shy of the mark. It points down at the bar because it stands over it, and the words
+     follow it — or precede it, where the fill is far enough right that they would otherwise
+     run out of the column. Both in the navy the pack's headings are set in. */
   const fillEnd = x + (w * Math.min(100, Math.max(0, project.overallPct))) / 100;
-  const label = 0.62;
-  slide.addText(`▲ ${project.pct}% of phase`, {
-    x: Math.min(x + w - label, Math.max(x, fillEnd - label / 2)),
-    y: y + h, w: label + 0.5, h: DASH_MARK_H,
-    fontFace: FONT, fontSize: 6, color: QUIET, margin: 0, valign: 'middle', wrap: false,
+  const markY = y - DASH_MARK_H;
+  const ARROW_W = 0.1;
+  const TEXT_W = 0.62;
+  const arrowX = Math.min(x + w - ARROW_W, Math.max(x, fillEnd - ARROW_W / 2));
+  const mark = { y: markY, h: DASH_MARK_H, fontFace: FONT, fontSize: 6, color: NAVY, margin: 0, valign: 'middle', wrap: false };
+  slide.addText('▼', { ...mark, x: arrowX, w: ARROW_W, align: 'center' });
+  const after = x + w - (arrowX + ARROW_W) >= TEXT_W;
+  slide.addText(`${project.pct}% of phase`, {
+    ...mark,
+    x: after ? arrowX + ARROW_W + 0.01 : arrowX - TEXT_W - 0.01,
+    w: TEXT_W,
+    align: after ? 'left' : 'right',
   });
 }
 
@@ -443,7 +459,8 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
       /* Row i runs from the bottom of the heading. The bar sits on the floor of its own
          cell rather than in the middle of it — a bar floating between two lines of text
          reads as a third line rather than as the measure of them. */
-      const y = DASH_Y + DASH_ROW_H * (i + 2) - DASH_STRIP;
+      // The strip holds the mark, then the bar, then a hair of clearance under it.
+      const y = DASH_Y + DASH_ROW_H * (i + 2) - DASH_BAR_H - DASH_BAR_LIFT;
       const x = DASH_X + DASH_COLS[0] + 0.06;
       const w = DASH_COLS[1] - 0.12;
       phaseBar(pptx, slide, p, x, y, w, DASH_BAR_H);
@@ -540,14 +557,28 @@ function personChartSlides(pptx: any, view: PortfolioView, period: string) {
       `One bar a month, ${view.monthLabels[0]} to ${view.monthLabels[months - 1]}. The dashed line is their full month; a bar above it is oversold.`,
       { x: CARD_MARGIN, y: 0.92, w: 8.4, h: 0.3, fontFace: FONT, fontSize: 10, color: QUIET, margin: 0, valign: 'middle' },
     );
-    // The same key the resourcing screen carries, in the same order the bars stack.
+    /* The same key the resourcing screen carries, in the same order the bars stack, and the
+       two lines drawn across them: what a full month is, and the point past which a month is
+       flagged as filling up. */
     ([['Project work', WORK], ['Days off', NAVY], ['Other work', OFFWORK]] as [string, string][]).forEach(
       ([label, colour], i) => {
-        const x = 9.05 + i * 1.35;
-        slide.addShape(pptx.ShapeType.rect, { x, y: 1.0, w: 0.16, h: 0.12, fill: { color: colour } });
+        const x = 7.75 + i * 1.15;
+        slide.addShape(pptx.ShapeType.rect, { x, y: 1.0, w: 0.14, h: 0.12, fill: { color: colour } });
         slide.addText(label, {
-          x: x + 0.2, y: 0.94, w: 1.15, h: 0.24, fontFace: FONT, fontSize: 8, color: QUIET,
-          margin: 0, valign: 'middle',
+          x: x + 0.18, y: 0.94, w: 0.95, h: 0.24, fontFace: FONT, fontSize: 8, color: QUIET,
+          margin: 0, valign: 'middle', wrap: false,
+        });
+      },
+    );
+    ([['Full month', INK, 'dash'], [`Threshold ${view.threshold}%`, AMBER, 'sysDot']] as [string, string, string][]).forEach(
+      ([label, colour, dash], i) => {
+        const x = 11.0 + i * 1.05;
+        slide.addShape(pptx.ShapeType.line, {
+          x, y: 1.06, w: 0.16, h: 0, line: { color: colour, width: 1, dashType: dash },
+        });
+        slide.addText(label, {
+          x: x + 0.2, y: 0.94, w: 0.95, h: 0.24, fontFace: FONT, fontSize: 8, color: QUIET,
+          margin: 0, valign: 'middle', wrap: false,
         });
       },
     );
@@ -575,7 +606,7 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
      overspill is drawn off the top of their own card. */
   const top = Math.max(full, ...p.committed.slice(0, months), 100);
   const plotY = y + 0.42;
-  const plotH = 0.85;
+  const plotH = 0.72;
   const slot = CARD_W / months;
   const barW = slot * 0.62;
   const height = (pct: number) => (Math.max(0, Math.min(pct, top)) / top) * plotH;
@@ -612,7 +643,13 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
     });
   }
 
-  // Their own full month, and the baseline the bars stand on.
+  /* Their own full month, the line the tracker flags a month at before it gets there, and the
+     baseline the bars stand on. The threshold is a share of their month rather than of a
+     full-time one, so a part-timer is flagged against their own hours. */
+  slide.addShape(pptx.ShapeType.line, {
+    x, y: plotY + plotH - height((full * view.threshold) / 100), w: CARD_W, h: 0,
+    line: { color: AMBER, width: 0.75, dashType: 'sysDot' },
+  });
   slide.addShape(pptx.ShapeType.line, {
     x, y: plotY + plotH - height(full), w: CARD_W, h: 0,
     line: { color: INK, width: 0.75, dashType: 'dash' },
@@ -620,6 +657,35 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
   slide.addShape(pptx.ShapeType.line, {
     x, y: plotY + plotH, w: CARD_W, h: 0, line: { color: RULE, width: 0.75 },
   });
+
+  /* And where a month is oversold, what it is oversold on. A red figure at the top of the card
+     says somebody is over; it does not say what to talk about. The projects they are booked on
+     in those months do, biggest draw first — which is the same reading the resourcing screen's
+     overspill tab gives, in the one line a card has room for. */
+  const overMonths = p.committed
+    .slice(0, months)
+    .map((v, i) => (v > full ? i : -1))
+    .filter((i) => i >= 0);
+  if (overMonths.length) {
+    const drivers = view
+      .spreadFor(p.person.id)
+      .map((row) => ({ name: row.project.name, hours: overMonths.reduce((n, i) => n + (row.hours[i] ?? 0), 0) }))
+      .filter((row) => row.hours > 0)
+      .sort((a, b) => b.hours - a.hours);
+    const named = drivers.slice(0, 2).map((d) => d.name);
+    const rest = drivers.length - named.length;
+    /* Six months of names is longer than a card is wide, so a month list that covers the
+       whole window says so instead of reciting it, only the two biggest draws are named, and
+       what is left wraps inside the card rather than running across its neighbour. */
+    const when =
+      overMonths.length === months
+        ? `all ${months} months`
+        : overMonths.map((i) => view.monthLabels[i]).join(', ');
+    slide.addText(`Over in ${when} — ${named.join(', ')}${rest > 0 ? ` +${rest} more` : ''}`, {
+      x, y: plotY + plotH + 0.19, w: CARD_W, h: 0.28, fontFace: FONT, fontSize: 6.5,
+      color: RED, margin: 0, valign: 'top',
+    });
+  }
 }
 
 /* — the last slide: how the work is classified —
@@ -817,6 +883,13 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
     slide.addText('', { ...writable, x: BAR_X, y: rowY(), w: BAR_W });
     row += 1;
     slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y: rowY(), w: BAR_W, h: BAR_H, fill: { color: TRACK } });
+    /* A stub of colour at the left of the empty bar. Drawing the track alone left whoever is
+       filling the slide in to make a rectangle, match the green, and line it up with the bars
+       above; this gives them one already made, in the same colour and on the same baseline, to
+       drag out to the width the work has reached and recolour if it is late. */
+    slide.addShape(pptx.ShapeType.rect, {
+      x: BAR_X, y: rowY(), w: BAR_W * 0.08, h: BAR_H, fill: { color: GREEN },
+    });
     slide.addText('', {
       x: BAR_X + BAR_W + 0.06, y: rowY(), w: 0.5, h: BAR_H, fontFace: FONT, fontSize: 8,
       color: INK, margin: 0, valign: 'middle',
