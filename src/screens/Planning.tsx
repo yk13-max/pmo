@@ -8,7 +8,7 @@ import { fromISO, shortDate, shortDateYear, toISO } from '../lib/dates';
 import { PRINT_CHART_WIDTH, printGantt } from '../lib/printGantt';
 import { ColHead, usePlanColumns, type Widths } from '../components/PlanColumns';
 import { planToXlsx, planXlsxName, xlsxToPlan } from '../lib/planXlsx';
-import { TaskPeople } from '../components/TaskPeople';
+import { TaskPeople, peopleLabel } from '../components/TaskPeople';
 import { taskDayShare } from '../lib/planLoad';
 
 /** How much of the chart one day takes, at each way of looking at it. */
@@ -62,6 +62,11 @@ export function Planning({
   const [depDraft, setDepDraft] = useState<{ id: string; text: string; error: string } | null>(null);
   // Off to begin with: the critical path is something you ask for, not the default read.
   const [showCritical, setShowCritical] = useState(false);
+  /* What each bar says about itself. Nothing, by default: the list of tasks is beside the
+     chart, row for row, so a chart read at this desk needs no labels at all. They are for the
+     chart read away from the list — printed, in a pack, on a wall — where a bar has to say
+     which task it is, or who is on it, without the grid to read across from. */
+  const [barLabel, setBarLabel] = useState<'none' | 'task' | 'who'>('none');
   /* Set while the plan is on its way to the printer. The chart is redrawn at the width of a
      page for the length of it, which is why this is state rather than something the print
      stylesheet could do on its own. */
@@ -752,11 +757,79 @@ export function Planning({
                       )}
                     </span>
                   )}
+                  {/* The bar's own label, off the end of it where there is nothing else
+                      drawn. A task's name, or who is on it — the same words the Who column
+                      uses, so the chart and the list agree. Never over the bar: a label
+                      inside one would be unreadable on a short task and would cover the
+                      shading that says how far through it is. */}
+                  {barLabel !== 'none' && (() => {
+                    const text =
+                      row.kind === 'phase'
+                        ? barLabel === 'task'
+                          ? `${row.phase + 1}. ${row.name}`
+                          : ''
+                        : barLabel === 'task'
+                          ? row.task.name
+                          : peopleLabel(row.task, view.people);
+                    const from = row.kind === 'phase' ? row.start : row.at?.startDate;
+                    const to = row.kind === 'phase' ? (row.end as string | null) : row.at?.endDate;
+                    if (!text || !from || !to) return null;
+                    /* Roughly how wide it will set at 12px, which is enough to decide which
+                       side of the bar it goes. A label off the right-hand end of a bar that
+                       finishes at the end of the plan would hang past the drawing, so that
+                       one is set before the bar instead and reads back towards it. */
+                    const guess = text.length * 6.2 + 10;
+                    const after = barEnd(to) + 6;
+                    const fits = after + guess <= chartW;
+                    return (
+                      <span
+                        className="plan-bar-label"
+                        title={text}
+                        style={
+                          fits
+                            ? { left: after, top: ROW / 2 - 8 }
+                            : { right: Math.max(0, chartW - x(from) + 6), top: ROW / 2 - 8, textAlign: 'right' }
+                        }
+                      >
+                        {text}
+                      </span>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Under the chart, because it is about the drawing rather than about the plan: the
+          controls that change what the plan says are up beside the task list. */}
+      <div
+        className="no-print control-row"
+        style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}
+      >
+        <span className="eyebrow">Label the bars</span>
+        {([
+          ['none', 'No labels', 'The chart on its own, read against the list beside it'],
+          ['task', 'Task', 'Each bar says which task it is'],
+          ['who', 'Who', 'Each bar says who is on it'],
+        ] as const).map(([id, label, hint]) => (
+          <button
+            key={id}
+            type="button"
+            className="chip"
+            aria-pressed={barLabel === id}
+            title={hint}
+            onClick={() => setBarLabel(id)}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="field-hint" style={{ margin: 0 }}>
+          {barLabel === 'none'
+            ? 'Off. Turn them on for a chart that has to be read away from this list.'
+            : 'Off the end of each bar, and on the printed plan too.'}
+        </span>
       </div>
 
       <div className="legend" style={{ marginTop: 'var(--space-3)' }}>

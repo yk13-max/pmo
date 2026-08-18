@@ -586,6 +586,14 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .skills-matrix th { white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
 .skills-matrix tfoot td { border-top: 2px solid var(--color-text); font-size: 12px; }
 
+/* A bar's label on the Gantt: set off the end of the bar, in the row's own line, never over
+   the drawing. It takes no pointer events so the bar's tooltip still answers when the pointer
+   is anywhere near, and it is set at the size the month scale above it is set at, so the two
+   read as one chart rather than as a drawing with writing on it. */
+.plan-bar-label { position: absolute; display: flex; align-items: center; height: 16px;
+  font-size: 12px; line-height: 1; color: var(--color-neutral-700); white-space: nowrap;
+  pointer-events: none; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+
 /* A sales order's heading inside the invoice table. It is a row of the table rather than a
    table of its own, so the columns under it stay in one set of tracks — but it has to read as
    a heading, so it takes a tint and a rule above it. The first set needs no rule: the table's
