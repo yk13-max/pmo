@@ -67,7 +67,7 @@ const DASH_HEADS = [
   'Current phase / gate',
   'Next Milestone',
   'Milestone Target',
-  'Rev TD. (£k)',
+  'Rev To Date',
   'PM',
   'Team',
   'Project Close',
@@ -91,15 +91,19 @@ const DASH_MARGIN = 0.04;
 /* The phase cell holds its words and its bar. A cell cannot contain a shape, so the strip the
    bar is drawn in is reserved as the cell's own bottom inset — which is what keeps the text
    off it however long the phase is called. In points, as PowerPoint measures insets. */
-const DASH_PHASE_MARGIN: [number, number, number, number] = [2, 3, 11, 3];
+/* The bar's own height, the line under it the phase marker is written on, and how far the
+   two of them sit above the bottom of their cell. */
+const DASH_BAR_H = 0.09;
+const DASH_MARK_H = 0.11;
+const DASH_BAR_LIFT = 0.03;
+/** Everything the strip under the words has to hold. */
+const DASH_STRIP = DASH_BAR_H + DASH_MARK_H + DASH_BAR_LIFT;
+const DASH_PHASE_MARGIN: [number, number, number, number] = [2, 3, Math.round(DASH_STRIP * 72), 3];
 /* The phase reads a half point smaller than the rest of the row. It is the one cell carrying
    two things — what the phase is called and how far through it the work is — and a business
    whose phases are called "Detailed Design & Verification Planning" would otherwise cost the
    whole table a line of height for every row. */
 const DASH_PHASE_PT = 7.5;
-/** The bar's own height, and how far its underside sits above the bottom of its cell. */
-const DASH_BAR_H = 0.09;
-const DASH_BAR_LIFT = 0.05;
 /** The foot of the table: below this is the summary line. */
 const DASH_BOTTOM = 6.85;
 
@@ -317,6 +321,17 @@ function phaseBar(pptx: any, slide: any, project: ProjectView, x: number, y: num
       x: x + (w * i) / phases - 0.005, y, w: 0.01, h, fill: { color: 'FFFFFF' },
     });
   }
+  /* Where the work has got to inside the phase it is in, written under the point the fill
+     reaches. The bar says how far through the project the work is; this says how far through
+     the phase, which is the figure a review asks for next and the one the bar can only imply.
+     Small, and pinned to the fill rather than to the cell, so it reads as a mark on the bar. */
+  const fillEnd = x + (w * Math.min(100, Math.max(0, project.overallPct))) / 100;
+  const label = 0.62;
+  slide.addText(`▲ ${project.pct}% of phase`, {
+    x: Math.min(x + w - label, Math.max(x, fillEnd - label / 2)),
+    y: y + h, w: label + 0.5, h: DASH_MARK_H,
+    fontFace: FONT, fontSize: 6, color: QUIET, margin: 0, valign: 'middle', wrap: false,
+  });
 }
 
 /* — the portfolio dashboard —
@@ -337,7 +352,11 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
         `${p.phaseName}\n${p.phaseStep} · ${p.overallPct}% of project`,
         p.milestone || '—',
         p.msDateLabel || '—',
-        p.cust ? p.billedLabel : moneyOrZero(p.actual),
+        /* Revenue to date is what the client has been invoiced. Internal work invoices nobody,
+           so it is nought rather than its spend — a figure in that column that was not revenue
+           read as revenue. A customer project with nothing raised yet is nought too, not a
+           dash: nought is the answer, and the column is a column of figures. */
+        p.cust ? moneyOrZero(p.billed, p.currency) : moneyOrZero(0, p.currency),
         p.pmName,
         eng.map((x) => initials(x.name)).join(', ') || '—',
         p.endLabel,
@@ -355,7 +374,7 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
       ...row.cells.map((text, i) => linesNeeded(text, DASH_COLS[i], i === 1 ? DASH_PHASE_PT : 9)),
     );
     const phaseLines = linesNeeded(row.cells[1], DASH_COLS[1], DASH_PHASE_PT);
-    return Math.max(most, lines * lineH + 0.1, phaseLines * phaseLineH + 0.12 + DASH_BAR_H + DASH_BAR_LIFT);
+    return Math.max(most, lines * lineH + 0.1, phaseLines * phaseLineH + 0.12 + DASH_STRIP);
   }, DASH_ROW_MIN);
   const DASH_ROW_H = Math.min(0.9, Math.round(tallest * 100) / 100);
   const DASH_ROWS = Math.max(1, Math.floor((DASH_BOTTOM - DASH_Y - DASH_ROW_H) / DASH_ROW_H));
@@ -404,8 +423,8 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
         { text: cells[5], options: { fontSize: 9, color: INK } },
         { text: cells[6], options: { fontSize: 9, color: INK } },
         { text: cells[7], options: { fontSize: 9, color: INK } },
-        // Nobody but a person can answer this one.
-        { text: '', options: {} },
+        // Nobody but a person can answer this one, so it is left set in the row's own type.
+        { text: '', options: { fontSize: 9, color: INK } },
         { text: cells[9], options: { fontSize: 9, bold: true, color: 'FFFFFF', fill: { color: rag(p) }, align: 'center' } },
       ]);
     });
@@ -424,7 +443,7 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
       /* Row i runs from the bottom of the heading. The bar sits on the floor of its own
          cell rather than in the middle of it — a bar floating between two lines of text
          reads as a third line rather than as the measure of them. */
-      const y = DASH_Y + DASH_ROW_H * (i + 2) - DASH_BAR_H - DASH_BAR_LIFT;
+      const y = DASH_Y + DASH_ROW_H * (i + 2) - DASH_STRIP;
       const x = DASH_X + DASH_COLS[0] + 0.06;
       const w = DASH_COLS[1] - 0.12;
       phaseBar(pptx, slide, p, x, y, w, DASH_BAR_H);
@@ -665,9 +684,14 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   const slide = pptx.addSlide();
   const head = (text: string, x: number, y: number, w: number) =>
     slide.addText(text, { x, y, w, h: 0.24, fontFace: FONT, fontSize: 11, bold: true, color: NAVY });
-  const shell = (x: number, y: number, w: number, h: number) =>
-    slide.addShape(pptx.ShapeType.rect, {
-      x, y, w, h, fill: { color: 'FFFFFF' }, line: { color: RULE, width: 0.75, dashType: 'dash' },
+  /* Somewhere to write, rather than a box drawn to look like it. Every empty space on this
+     slide is an empty text box carrying the deck's own typeface, size and colour, so the first
+     thing somebody types into it comes out in the pack's type rather than in PowerPoint's
+     default eighteen-point Calibri. */
+  const shell = (x: number, y: number, w: number, h: number, fontSize = 10) =>
+    slide.addText('', {
+      x, y, w, h, fontFace: FONT, fontSize, color: INK, valign: 'top', margin: 0.06,
+      fill: { color: 'FFFFFF' }, line: { color: RULE, width: 0.75, dashType: 'dash' },
     });
 
   /* The kind of work, whose it is, and what it is called: "CDMO: Aveltis Bio – Rolex". The
@@ -709,27 +733,27 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   );
 
   head('Description of final product', 0.6, 2.23, 6.1);
-  shell(0.6, 2.5, 6.1, 1.2);
+  shell(0.6, 2.5, 6.1, 1.0);
 
   /* "Vital few tasks" was the template's phrase for a block that now carries the project's
      own progress as well as room to write in, so it says what it is. */
-  head('Project status and progress', 0.6, 3.84, 6.09);
+  head('Project status and progress', 0.6, 3.66, 6.09);
   /* Three words, each kept on its own line: the template's boxes are cut to its own type and
      anything else breaks "On Plan" in half. */
   ([['On Plan', GREEN, 4.86], ['At risk', AMBER, 5.53], ['Late', RED, 6.2]] as [string, string, number][]).forEach(
     ([label, colour, x]) => {
       slide.addText(label, {
-        x, y: 3.85, w: 0.66, h: 0.21, fontFace: FONT, fontSize: 8, color: colour, bold: true,
+        x, y: 3.67, w: 0.66, h: 0.21, fontFace: FONT, fontSize: 8, color: colour, bold: true,
         margin: 0, valign: 'middle', wrap: false,
       });
     },
   );
   /* The scale, each mark over the point of the bar it names rather than spaced out in one
      string and hoped for. */
-  slide.addText('% complete', { x: 0.6, y: 4.12, w: 1.2, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET, margin: 0, valign: 'middle' });
+  slide.addText('% complete', { x: 0.6, y: 3.94, w: 1.2, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET, margin: 0, valign: 'middle' });
   ([['0%', 2.74], ['50%', 4.52], ['100%', 6.3]] as [string, number][]).forEach(([label, at]) => {
     slide.addText(label, {
-      x: at - 0.25, y: 4.12, w: 0.5, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET,
+      x: at - 0.25, y: 3.94, w: 0.5, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET,
       align: 'center', margin: 0, valign: 'middle',
     });
   });
@@ -751,13 +775,14 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   const next = phases[project.phase + 1];
   const BAR_X = 2.74;
   const BAR_W = 3.56;
-  const BAR_H = 0.14;
+  const BAR_H = 0.13;
   const LABEL_W = 2.05;
-  /* Eleven rows now — the project, the two phases and four places to write — so the step is
-     cut to what holds them between the scale above and the foot of the slide. */
-  const STEP = 0.21;
+  /* Thirteen rows now — the project, the two phases and five places to write, each of those
+     being a line to name the work and a bar to shade — so the step is cut to what holds them
+     between the scale above and the foot of the slide. */
+  const STEP = 0.19;
   let row = 0;
-  const rowY = () => 4.38 + row * STEP;
+  const rowY = () => 4.18 + row * STEP;
 
   /** One phase, named on the left and measured on the right. */
   const drawnPhase = (label: string, bar: { name: string; done: number; colour: string }) => {
@@ -784,14 +809,17 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
 
   /** A line to write on, and a bar to shade. */
   const blankEntry = () => {
-    const dashed = { line: { color: RULE, width: 0.75, dashType: 'dash' }, fill: { color: 'FFFFFF' } };
-    slide.addShape(pptx.ShapeType.rect, { x: 0.6, y: rowY(), w: LABEL_W, h: BAR_H, ...dashed });
-    slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y: rowY(), w: BAR_W, h: BAR_H, ...dashed });
+    const writable = {
+      h: BAR_H, fontFace: FONT, fontSize: 8, color: INK, margin: 0.02, valign: 'middle',
+      fill: { color: 'FFFFFF' }, line: { color: RULE, width: 0.75, dashType: 'dash' },
+    };
+    slide.addText('', { ...writable, x: 0.6, y: rowY(), w: LABEL_W });
+    slide.addText('', { ...writable, x: BAR_X, y: rowY(), w: BAR_W });
     row += 1;
     slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y: rowY(), w: BAR_W, h: BAR_H, fill: { color: TRACK } });
-    slide.addText('%', {
+    slide.addText('', {
       x: BAR_X + BAR_W + 0.06, y: rowY(), w: 0.5, h: BAR_H, fontFace: FONT, fontSize: 8,
-      color: RULE, margin: 0, valign: 'middle',
+      color: INK, margin: 0, valign: 'middle',
     });
     row += 1;
   };
@@ -800,6 +828,7 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
      is, four lines to fill in, and where it goes next. */
   drawnPhase('', { name: 'Total Project', done: project.overallPct, colour: rag(project) });
   if (now) drawnPhase('Now ·', now);
+  blankEntry();
   blankEntry();
   blankEntry();
   blankEntry();
@@ -834,7 +863,7 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
     ],
     {
       x: 7.1, y: 2.6, w: 5.89, colW: [2.07, 2.32, 1.5], rowH: 0.25, fontFace: FONT, fontSize: 9,
-      color: INK, border: { type: 'solid', color: RULE, pt: 0.5 },
+      color: INK, border: { type: 'solid', color: RULE, pt: 0.5 }, valign: 'middle',
     },
   );
 
@@ -885,7 +914,7 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   }
   slide.addTable(stepRows, {
     x: 7.1, y: 5.9, w: 5.89, colW: [2.81, 1.58, 1.5], rowH: 0.25, fontFace: FONT, fontSize: 9,
-    color: INK, border: { type: 'solid', color: RULE, pt: 0.5 },
+    color: INK, border: { type: 'solid', color: RULE, pt: 0.5 }, valign: 'middle',
   });
 
   slide.slideNumber = { x: 12.79, y: 7.0, w: 0.4, h: 0.24, fontFace: FONT, fontSize: 9, color: QUIET };
