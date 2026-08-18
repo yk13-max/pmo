@@ -7,13 +7,18 @@ import { useCallback, useEffect, useState } from 'react';
    wants After and Float; somebody with long task names wants everything else out of the way.
    So the widths are the reader's, dragged from the heading and remembered.
 
-   The task name is the one column with no width of its own: it takes whatever the others
-   leave, which is what keeps the list the same width as the chart beside it however the
-   columns are set. */
+   The task name used to be the one column with no width of its own, taking whatever the
+   others left. It is dragged like the rest now: a name is the thing most often too long for
+   its column, and being the only heading that could not be widened made it the one that
+   needed it most. The list's whole width is added up from the columns either way, so the
+   chart beside it still starts where the list ends. */
 
-export type ColKey = 'who' | 'days' | 'pct' | 'rule' | 'start' | 'finish' | 'after' | 'float' | 'baseFinish' | 'actStart' | 'actFinish';
+export type ColKey =
+  | 'task'
+  | 'who' | 'days' | 'pct' | 'rule' | 'start' | 'finish' | 'after' | 'float' | 'baseFinish' | 'actStart' | 'actFinish';
 
 export const DEFAULT_WIDTHS: Record<ColKey, number> = {
+  task: 200,
   who: 96,
   days: 48,
   pct: 52,
@@ -29,6 +34,7 @@ export const DEFAULT_WIDTHS: Record<ColKey, number> = {
 
 /** Narrow enough to still show what the column holds, and no narrower. */
 const MIN: Record<ColKey, number> = {
+  task: 90,
   who: 56,
   days: 38,
   pct: 40,
@@ -42,7 +48,9 @@ const MIN: Record<ColKey, number> = {
   actFinish: 74,
 };
 
-const MAX = 320;
+/* Wide enough for a task name that says what the task is, which is the column most likely
+   to want the room. */
+const MAX = 480;
 const KEY = 'pmo-tracker:plan-columns';
 
 export type Widths = Record<ColKey, number>;

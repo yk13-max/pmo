@@ -159,13 +159,11 @@ export function Planning({
     ...(baselined ? [widths.baseFinish] : []),
     ...(planActuals ? [widths.actStart, widths.actFinish] : []),
   ];
-  /** The narrowest a task name is allowed to be before the list simply gets wider. */
-  const TASK_MIN = 150;
   const gridWidth =
     16 /* the row's own padding */ +
     16 /* the tick */ +
     26 /* the number */ +
-    TASK_MIN +
+    widths.task +
     22 /* the delete button */ +
     shownCols.reduce((n, w) => n + w, 0) +
     6 * (shownCols.length + 3) /* the gaps between all of them */;
@@ -503,7 +501,7 @@ export function Planning({
               ✓
             </span>
             <span style={{ width: 26 }}>#</span>
-            <span style={{ flex: 1, minWidth: 0 }}>Task</span>
+            <ColHead col="task" width={widths.task} label="Task" onResize={resize} />
             {/* Every one of these can be dragged by its right-hand edge, double-clicked
                 back to where it started, or nudged with the arrow keys. */}
             <ColHead col="who" width={widths.who} label="Who" onResize={resize} />
@@ -959,7 +957,7 @@ function TaskRow({
       </span>
       <input
         className="input"
-        style={{ ...cell, flex: 1, minWidth: 0, textDecoration: task.done >= 100 ? 'line-through' : undefined }}
+        style={{ ...cell, width: widths.task, flex: 'none', minWidth: 0, textDecoration: task.done >= 100 ? 'line-through' : undefined }}
         defaultValue={task.name}
         aria-label={`Task ${row.number} name`}
         onBlur={(e) => e.target.value !== task.name && set({ name: e.target.value })}

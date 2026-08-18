@@ -56,7 +56,7 @@ a:hover { color: var(--color-accent-600); }
 /* Who is on a task: a cell that reads as a field and opens a panel. The panel hangs over
    whatever is under it rather than pushing the row taller — a plan is read by its rows, and
    one row growing to four would move every bar beside it. */
-.plan-people-button { display: block; width: 100%; text-align: left; font-size: 12px; height: 26px;
+.plan-people-button { display: block; width: 100%; text-align: left; font-size: 13px; height: 26px;
   padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .plan-people-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: block;
   min-width: 280px; padding: var(--space-3); background: var(--color-bg);
@@ -731,12 +731,30 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
   /* Narrower without those, which is what leaves the chart half the page. */
   :root[data-print='gantt'] .plan-grid { width: 560px !important; }
 
+  /* On paper the task name goes back to being the column with no width of its own. On
+     screen it is dragged like the rest, but the printed list is pinned to 560px so the chart
+     gets the other half of the page — and a name column carrying a width somebody chose for
+     a 1600px window would push the row straight through the chart. Third cell of the row and
+     third heading above it, the same order both sides. */
+  :root[data-print='gantt'] .plan-grid-head > :nth-child(3),
+  :root[data-print='gantt'] .task-row > :nth-child(3) {
+    width: auto !important; flex: 1 1 auto !important; min-width: 0 !important;
+  }
+
   /* The grid is built from form controls, which on paper would print as a page of empty
-     boxes. Here they are just the text they hold. */
+     boxes. Here they are just the text they hold. The Who cell is a button rather than a
+     field — it opens a panel — but on paper it is the same kind of thing, a name in a
+     column, so it is stripped the same way. Left as a control it printed as the one boxed
+     cell in a row of plain text, which read as heavier and larger than everything beside
+     it even though it was set a point smaller. */
   :root[data-print='gantt'] .plan-workspace input,
-  :root[data-print='gantt'] .plan-workspace select {
+  :root[data-print='gantt'] .plan-workspace select,
+  :root[data-print='gantt'] .plan-workspace .plan-people-button {
     border: 0 !important; background: transparent !important; padding: 0 2px !important;
     -webkit-appearance: none; appearance: none; color: var(--color-text);
+    /* A field is 36px tall so it can be typed into; on paper nothing is typed into, and a
+       36px cell inside a 26px row is the other half of why this column read as oversized. */
+    min-height: 0 !important; height: auto !important; font-size: 13px;
   }
   /* A plan longer than a page breaks between rows rather than through one. */
   :root[data-print='gantt'] .plan-workspace .task-row { page-break-inside: avoid; }

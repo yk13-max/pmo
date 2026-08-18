@@ -13,13 +13,35 @@ import { assigneesOf, taskDayShare } from '../lib/planLoad';
    plan; making the two shares add to a hundred would be inventing an arithmetic nobody
    asked for. */
 
-/** How the cell reads with the panel shut: one name, or the first and a count. */
+/** Somebody's initials: one letter per word of their name, at most three. */
+function initials(name: string): string {
+  return (
+    name
+      .split(/[\s-]+/)
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((word) => word[0].toUpperCase())
+      .join('') || '?'
+  );
+}
+
+/**
+ * How the cell reads with the panel shut: the first person in full, and the others by their
+ * initials.
+ *
+ * It used to say "Saranan +1", which answered the wrong question. Whether a task has one
+ * person on it or two is rarely the thing being scanned for; *who else is on it* is. Initials
+ * fit in a column that has to stay narrow enough for the eight beside it, and a reader who
+ * knows the team reads them as names. The full list is on the cell's tooltip and in the panel.
+ */
 export function peopleLabel(task: Task, people: Person[]): string {
   const on = assigneesOf(task);
   if (!on.length) return '—';
   const name = (a: Assignee) => people.find((p) => p.id === a.personId)?.name ?? a.name ?? '—';
   if (on.length === 1) return name(on[0]);
-  return `${name(on[0])} +${on.length - 1}`;
+  /* A plus before each of them, not one plus in front of the lot: "Rachel +E +S" is two
+     more people, where "Rachel +E S" could be read as one person called ES. */
+  return `${name(on[0])} ${on.slice(1).map((a) => `+${initials(name(a))}`).join(' ')}`;
 }
 
 export function TaskPeople({
