@@ -236,10 +236,20 @@ export async function buildDeck(view: PortfolioView, portfolio: Portfolio): Prom
 
   const period = periodOf(view.today);
   const today = packDate(view.today).toUpperCase();
-  const projects = view.projects;
+  /* The order the pack runs in: by the number the business knows a project by, and then by
+     priority. A review is worked through against a numbered list, so the numbers lead;
+     priority decides between anything sharing a number and orders the work that has none,
+     which sorts to the back because a pack cannot be followed by a number that is not there. */
+  const byNumber = new Intl.Collator('en-GB', { numeric: true, sensitivity: 'base' });
+  const projects = [...view.projects].sort((a, b) => {
+    const an = (a.number ?? '').trim();
+    const bn = (b.number ?? '').trim();
+    if (Boolean(an) !== Boolean(bn)) return an ? -1 : 1;
+    return byNumber.compare(an, bn) || a.priority - b.priority || byNumber.compare(a.name, b.name);
+  });
 
   titleSlide(pptx, period, projects.length, view);
-  dashboardSlides(pptx, view, period, today);
+  dashboardSlides(pptx, view, projects, period, today);
   resourceSlide(pptx, view, period);
   projects.forEach((project) => projectSlide(pptx, view, portfolio, project));
   familiesSlide(pptx, view, period);
@@ -283,19 +293,11 @@ function titleSlide(pptx: any, period: string, count: number, view: PortfolioVie
     x: 0.9, y: 4.04, w: 11.81, h: 0.6, fontFace: FONT, fontSize: 18, color: QUIET,
   });
   // The mark in the top corner, and its name under it at the size a credit is set.
-  const centre = glassMark(pptx, slide, 11.55, 0.55, 1.15);
-  // Centred on the mark itself rather than ranged off the edge of the slide.
-  const wordW = 2.0;
-  /* Not the product's name for its own sake — a line saying where the pack came from, which
-     is what somebody holding a printed copy of it wants to know. */
-  slide.addText('Project Glass generated', {
-    x: centre - wordW / 2, y: 1.78, w: wordW, h: 0.24, fontFace: FONT, fontSize: 10,
-    color: QUIET, align: 'center', margin: 0, valign: 'middle',
-  });
+  // The mark alone: the pack's own line in the far corner says whose it is and when.
+  glassMark(pptx, slide, 11.55, 0.55, 1.15);
   /* When the pack was made, in the corner nobody looks at until they need to know whether the
      copy in their hand is the current one. */
-  // The mark's line already says the pack was generated; this is only when.
-  slide.addText(`${packDate(view.today)} · ${stamp(view.today)}`, {
+  slide.addText(`Generated ${packDate(view.today)} · ${stamp(view.today)}`, {
     x: 8.33, y: 6.85, w: 4.4, h: 0.24, fontFace: FONT, fontSize: 9, color: RULE,
     align: 'right', margin: 0, valign: 'middle',
   });
@@ -355,8 +357,8 @@ function phaseBar(pptx: any, slide: any, project: ProjectView, x: number, y: num
    One row per project, and as many slides as that takes: the template has room for six, and a
    portfolio of thirty would otherwise be six projects and a lie. Each slide carries the key
    and the count, and the ones after the first say they are a continuation. */
-function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: string) {
-  const projects = view.projects;
+function dashboardSlides(pptx: any, view: PortfolioView, projects: ProjectView[], period: string, today: string) {
+  // The same running order as the slides behind it: the dashboard is their contents page.
   /* What every row is made of, worked out once so the height can be taken from the tallest of
      them and the bars placed from that. */
   const rowsData = projects.map((p) => {
@@ -781,10 +783,7 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   // The facts, in the four rows the template asks for.
   slide.addTable(
     [
-      [
-        { text: 'Project phase', options: { bold: true } },
-        { text: `${project.phaseName} · ${project.phaseStep} · ${project.overallPct}% of project` },
-      ],
+      [{ text: 'Project phase', options: { bold: true } }, { text: `${project.phaseName} · ${project.phaseStep}` }],
       [{ text: 'Customer delivery date', options: { bold: true } }, { text: shortDateYear(project.endDate) }],
       [{ text: 'Project start date', options: { bold: true } }, { text: shortDateYear(project.startDate) }],
       [
@@ -883,12 +882,13 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
     slide.addText('', { ...writable, x: BAR_X, y: rowY(), w: BAR_W });
     row += 1;
     slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y: rowY(), w: BAR_W, h: BAR_H, fill: { color: TRACK } });
-    /* A stub of colour at the left of the empty bar. Drawing the track alone left whoever is
-       filling the slide in to make a rectangle, match the green, and line it up with the bars
-       above; this gives them one already made, in the same colour and on the same baseline, to
-       drag out to the width the work has reached and recolour if it is late. */
+    /* A stub at the left of the empty bar: something already made, on the same baseline as
+       the bars above, to be dragged out to the width the work has reached. Grey rather than
+       green and barely a nick of the bar, so an untouched slide does not read as a project
+       that has started something — the colour is the first thing whoever fills it in
+       chooses. */
     slide.addShape(pptx.ShapeType.rect, {
-      x: BAR_X, y: rowY(), w: BAR_W * 0.08, h: BAR_H, fill: { color: GREEN },
+      x: BAR_X, y: rowY(), w: (BAR_W * 0.08) / 3, h: BAR_H, fill: { color: QUIET },
     });
     slide.addText('', {
       x: BAR_X + BAR_W + 0.06, y: rowY(), w: 0.5, h: BAR_H, fontFace: FONT, fontSize: 8,
