@@ -538,7 +538,8 @@ function ReviewNarrative({ project, onEdit }: { project: ProjectView; onEdit: (p
         </table>
       ) : (
         <p className="empty">
-          None written down. A risk worth ten minutes of the review belongs here; the rest belong in the register.
+          Risks and their mitigations, and whether you require support. Do not wait until the next PRC to raise a
+          critical risk.
         </p>
       )}
     </>

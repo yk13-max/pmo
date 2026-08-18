@@ -1118,7 +1118,8 @@ export function ProjectForm({
           <label>Risks and mitigations</label>
           {(draft.risks ?? []).length === 0 ? (
             <p className="field-hint" style={{ margin: '0 0 var(--space-2)' }}>
-              None written down. A risk here is one worth ten minutes of the review — the rest belong in the register.
+              Risks and their mitigations, and whether you require support. Do not wait until the next PRC to raise a
+              critical risk.
             </p>
           ) : (
             <ul className="risk-list">
