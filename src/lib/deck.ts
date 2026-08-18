@@ -27,6 +27,11 @@ function periodOf(d: Date): string {
   return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
 }
 
+/** The time, to the minute, for the pack's own footer. */
+function stamp(d: Date): string {
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
 /** A date the way the template dates a pack: 18 Aug 2026. */
 function packDate(d: Date): string {
   return `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'short' })} ${d.getFullYear()}`;
@@ -42,6 +47,11 @@ const INK = '16252F';
 const QUIET = '5C6B79';
 const RULE = 'BDC7CC';
 const TRACK = 'E9EDEF';
+/* The resourcing bars, in the colours the screens draw them: project work in the neutral the
+   app uses for it, days off in the brand navy at the base, and the non-project time in the
+   slate blue that stands apart from both. */
+const WORK = 'B4BEC6';
+const OFFWORK = '5C7F9E';
 const GREEN = '92D050';
 const AMBER = 'FFC000';
 const RED = 'FF0000';
@@ -51,7 +61,7 @@ const RED = 'FF0000';
 const FONT = 'Poppins';
 
 /** The dashboard's ten columns, in the inches the template gives them. */
-const DASH_COLS = [1.81, 1.8, 1.9, 1.01, 0.78, 0.86, 0.86, 1.06, 1.27, 0.95];
+const DASH_COLS = [1.85, 1.9, 1.55, 0.85, 0.75, 1.15, 1.1, 0.85, 1.4, 0.9];
 const DASH_HEADS = [
   'Customer / Project',
   'Current phase / gate',
@@ -59,7 +69,7 @@ const DASH_HEADS = [
   'Milestone Target',
   'Rev TD. (£k)',
   'PM',
-  'Eng.',
+  'Team',
   'Project Close',
   'Customer Expectations Met?',
   'Status',
@@ -74,8 +84,15 @@ const DASH_Y = 1.25;
    lot — and it is set to hold two lines of 9pt with its margins, because PowerPoint grows any
    row whose text does not fit and the progress bars are drawn over the table from these
    figures. A row that grew would take its bar out of line with it. */
-const DASH_ROW_H = 0.44;
+const DASH_ROW_H = 0.5;
 const DASH_MARGIN = 0.04;
+/* The phase cell holds its words and its bar. A cell cannot contain a shape, so the strip the
+   bar is drawn in is reserved as the cell's own bottom inset — which is what keeps the text
+   off it however long the phase is called. In points, as PowerPoint measures insets. */
+const DASH_PHASE_MARGIN: [number, number, number, number] = [2, 3, 11, 3];
+/** The bar's own height, and how far its underside sits above the bottom of its cell. */
+const DASH_BAR_H = 0.09;
+const DASH_BAR_LIFT = 0.05;
 /** How many projects fit on one dashboard before it runs into the footer. */
 const DASH_ROWS = Math.floor((6.85 - DASH_Y - DASH_ROW_H) / DASH_ROW_H);
 
@@ -191,7 +208,7 @@ export async function buildDeck(view: PortfolioView, portfolio: Portfolio): Prom
   const today = packDate(view.today).toUpperCase();
   const projects = view.projects;
 
-  titleSlide(pptx, period, projects.length);
+  titleSlide(pptx, period, projects.length, view);
   dashboardSlides(pptx, view, period, today);
   resourceSlide(pptx, view, period);
   projects.forEach((project) => projectSlide(pptx, view, portfolio, project));
@@ -201,13 +218,46 @@ export async function buildDeck(view: PortfolioView, portfolio: Portfolio): Prom
 }
 
 /* — the title — */
-function titleSlide(pptx: any, period: string, count: number) {
+
+/* The mark, drawn rather than embedded: three rounded panes on a rising diagonal, each showing
+   through the last, which is what the brand file says it is. Redrawing it in the deck's own
+   shapes rather than dropping in a picture keeps it sharp at any size a projector asks for,
+   and keeps the pack to one file with nothing linked. The geometry is the mark's own 96-unit
+   box, scaled to whatever room it is given. */
+function glassMark(pptx: any, slide: any, x: number, y: number, size: number) {
+  const at = (v: number) => (v / 96) * size;
+  const panes: [number, number, number, string, number][] = [
+    [11, 47, 38, '0A4B75', 68],
+    [27, 27, 41, '0A4B75', 40],
+    [44, 8, 44, '12AEBE', 12],
+  ];
+  panes.forEach(([px, py, pw, colour, transparency]) => {
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: x + at(px), y: y + at(py), w: at(pw), h: at(pw),
+      rectRadius: at(9), fill: { color: colour, transparency },
+    });
+  });
+}
+
+function titleSlide(pptx: any, period: string, count: number, view: PortfolioView) {
   const slide = pptx.addSlide();
   slide.addText('Project One-slides', {
     x: 0.9, y: 3.01, w: 11.81, h: 1.03, fontFace: FONT, fontSize: 40, bold: true, color: NAVY,
   });
   slide.addText(`${period}  ·  ${count} project${count === 1 ? '' : 's'} in progress`, {
     x: 0.9, y: 4.04, w: 11.81, h: 0.6, fontFace: FONT, fontSize: 18, color: QUIET,
+  });
+  // The mark in the top corner, and its name under it at the size a credit is set.
+  glassMark(pptx, slide, 11.55, 0.55, 1.15);
+  slide.addText('Project Glass', {
+    x: 10.9, y: 1.78, w: 1.94, h: 0.24, fontFace: FONT, fontSize: 10, color: QUIET,
+    align: 'right', margin: 0, valign: 'middle',
+  });
+  /* When the pack was made, in the corner nobody looks at until they need to know whether the
+     copy in their hand is the current one. */
+  slide.addText(`Generated ${packDate(view.today)} at ${stamp(view.today)}`, {
+    x: 8.33, y: 6.85, w: 4.4, h: 0.24, fontFace: FONT, fontSize: 9, color: RULE,
+    align: 'right', margin: 0, valign: 'middle',
   });
 }
 
@@ -226,11 +276,12 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
   for (let page = 0; page < pages; page += 1) {
     const mine = projects.slice(page * DASH_ROWS, (page + 1) * DASH_ROWS);
     const slide = pptx.addSlide();
+    // Short of the key in the corner, so a long "(2 of 4)" never runs into it.
     slide.addText(`${period} – Projects Dashboard${pages > 1 ? ` (${page + 1} of ${pages})` : ''}`, {
-      x: 0.55, y: 0.4, w: 9, h: 0.6, fontFace: FONT, fontSize: 28, bold: true, color: NAVY,
+      x: 0.55, y: 0.4, w: 8.6, h: 0.6, fontFace: FONT, fontSize: 26, bold: true, color: NAVY,
     });
     slide.addText(`Last Updated: ${today}`, {
-      x: 0.02, y: 0.02, w: 2.24, h: 0.29, fontFace: FONT, fontSize: 11, color: QUIET,
+      x: 0.02, y: 0.02, w: 3.4, h: 0.29, fontFace: FONT, fontSize: 11, color: QUIET, margin: 0.02,
     });
     // The key, in the corner the template puts it in.
     [
@@ -255,11 +306,14 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
       rows.push([
         { text: `${p.client}\n${p.number ? `${p.number} · ` : ''}${p.name}`, options: { fontSize: 9, color: INK } },
         // The bar for this row is drawn over the cell below; the words go above it.
-        { text: `${p.phaseName}\n${p.phaseStep} · ${p.overallPct}%`, options: { fontSize: 9, color: QUIET } },
+        {
+          text: `${p.phaseName}\n${p.phaseStep} · ${p.overallPct}%`,
+          options: { fontSize: 8, color: QUIET, valign: 'top', margin: DASH_PHASE_MARGIN },
+        },
         { text: p.milestone || '—', options: { fontSize: 9, color: INK } },
         { text: p.msDateLabel || '—', options: { fontSize: 9, color: INK } },
         { text: p.cust ? p.billedLabel : moneyOrZero(p.actual), options: { fontSize: 9, color: INK, align: 'right' } },
-        { text: initials(p.pmName), options: { fontSize: 9, color: INK } },
+        { text: p.pmName, options: { fontSize: 9, color: INK } },
         { text: eng.map((x) => initials(x.name)).join(' ') || '—', options: { fontSize: 9, color: INK } },
         { text: p.endLabel, options: { fontSize: 9, color: INK } },
         // Nobody but a person can answer this one.
@@ -279,13 +333,15 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
        each one is placed from the table's own geometry — which is why the row height is
        fixed above rather than left to the text. */
     mine.forEach((p, i) => {
-      // Row i runs from the heading's bottom; the bar sits just above the row's own bottom.
-      const y = DASH_Y + DASH_ROW_H * (i + 2) - 0.13;
+      /* Row i runs from the bottom of the heading. The bar sits on the floor of its own
+         cell rather than in the middle of it — a bar floating between two lines of text
+         reads as a third line rather than as the measure of them. */
+      const y = DASH_Y + DASH_ROW_H * (i + 2) - DASH_BAR_H - DASH_BAR_LIFT;
       const x = DASH_X + DASH_COLS[0] + 0.06;
       const w = DASH_COLS[1] - 0.12;
-      slide.addShape(pptx.ShapeType.rect, { x, y, w, h: 0.06, fill: { color: TRACK } });
+      slide.addShape(pptx.ShapeType.rect, { x, y, w, h: DASH_BAR_H, fill: { color: TRACK } });
       slide.addShape(pptx.ShapeType.rect, {
-        x, y, w: Math.max(0.02, (w * Math.min(100, p.overallPct)) / 100), h: 0.06, fill: { color: rag(p) },
+        x, y, w: Math.max(0.02, (w * Math.min(100, p.overallPct)) / 100), h: DASH_BAR_H, fill: { color: rag(p) },
       });
     });
 
@@ -299,9 +355,11 @@ function dashboardSlides(pptx: any, view: PortfolioView, period: string, today: 
 
 /* — the resource overview —
 
-   A divider in the template, and an empty page in a generated pack is a wasted one, so it
-   carries the team behind the work: who they are, how full their busiest month is, and how
-   many months they are booked past what they have. */
+   A divider in the template, and an empty page in a generated pack is a wasted one. It carries
+   the team behind the work: the table of who they are and how full their busiest month is, and
+   then a card for each of them — six months of bars against the line of what they have to
+   give, which is the one reading a table cannot do. The cards run twelve to a slide and take
+   another slide when the team is bigger than that. */
 function resourceSlide(pptx: any, view: PortfolioView, period: string) {
   const slide = pptx.addSlide();
   slide.addText(`${period} – Resource Overview`, {
@@ -337,6 +395,118 @@ function resourceSlide(pptx: any, view: PortfolioView, period: string) {
     fontFace: FONT, valign: 'middle', border: { type: 'solid', color: RULE, pt: 0.5 }, autoPage: false,
   });
   slide.slideNumber = { x: 12.79, y: 7.0, fontFace: FONT, fontSize: 9, color: QUIET };
+
+  personChartSlides(pptx, view, period);
+}
+
+/** How the cards are laid out: four across, three down, on a slide of their own. */
+const CARD_COLS = 4;
+const CARD_ROWS = 3;
+const CARD_W = 2.9;
+const CARD_H = 1.62;
+const CARD_X = 0.76;
+const CARD_Y = 1.35;
+const CARD_GAP_X = 0.28;
+const CARD_GAP_Y = 0.28;
+
+/**
+ * A card per person: six months of what they have promised, drawn the way the resourcing
+ * screen draws them.
+ *
+ * The bar is everything that consumes their month — project work, days off and the non-project
+ * time that is left once those have taken their share — and the dashed line across it is their
+ * own full month. A bar over the line is a month somebody has to do something about, which is
+ * the whole reason for putting the picture on the page rather than another column of figures.
+ */
+function personChartSlides(pptx: any, view: PortfolioView, period: string) {
+  const people = view.peopleViews;
+  const perSlide = CARD_COLS * CARD_ROWS;
+  const pages = Math.ceil(people.length / perSlide);
+  const months = Math.min(6, view.months.length);
+
+  for (let page = 0; page < pages; page += 1) {
+    const slide = pptx.addSlide();
+    slide.addText(`${period} – Resource Overview · person by person${pages > 1 ? ` (${page + 1} of ${pages})` : ''}`, {
+      x: CARD_X, y: 0.45, w: 11.81, h: 0.5, fontFace: FONT, fontSize: 22, bold: true, color: NAVY,
+    });
+    slide.addText(
+      `One bar a month, ${view.monthLabels[0]} to ${view.monthLabels[months - 1]}. The dashed line is their full month; a bar above it is oversold.`,
+      { x: CARD_X, y: 0.92, w: 8.4, h: 0.3, fontFace: FONT, fontSize: 10, color: QUIET, margin: 0, valign: 'middle' },
+    );
+    // The same key the resourcing screen carries, in the same order the bars stack.
+    ([['Project work', WORK], ['Days off', NAVY], ['Other work', OFFWORK]] as [string, string][]).forEach(
+      ([label, colour], i) => {
+        const x = 9.35 + i * 1.35;
+        slide.addShape(pptx.ShapeType.rect, { x, y: 1.0, w: 0.16, h: 0.12, fill: { color: colour } });
+        slide.addText(label, {
+          x: x + 0.2, y: 0.94, w: 1.15, h: 0.24, fontFace: FONT, fontSize: 8, color: QUIET,
+          margin: 0, valign: 'middle',
+        });
+      },
+    );
+
+    people.slice(page * perSlide, (page + 1) * perSlide).forEach((p, i) => {
+      const col = i % CARD_COLS;
+      const row = Math.floor(i / CARD_COLS);
+      const x = CARD_X + col * (CARD_W + CARD_GAP_X);
+      const y = CARD_Y + row * (CARD_H + CARD_GAP_Y);
+      personCard(pptx, slide, view, p, x, y, months);
+    });
+    slide.slideNumber = { x: 12.79, y: 7.0, fontFace: FONT, fontSize: 9, color: QUIET };
+  }
+}
+
+function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView['peopleViews'][number], x: number, y: number, months: number) {
+  const full = p.person.capacity;
+  /* The chart reaches the taller of a full month and the fullest month they have, so nobody's
+     overspill is drawn off the top of their own card. */
+  const top = Math.max(full, ...p.committed.slice(0, months), 100);
+  const plotY = y + 0.42;
+  const plotH = 0.85;
+  const slot = CARD_W / months;
+  const barW = slot * 0.62;
+  const height = (pct: number) => (Math.max(0, Math.min(pct, top)) / top) * plotH;
+
+  slide.addText(p.person.name, {
+    x, y, w: CARD_W - 0.5, h: 0.22, fontFace: FONT, fontSize: 11, bold: true, color: INK, margin: 0, valign: 'middle',
+  });
+  slide.addText(`${p.peak}%`, {
+    x: x + CARD_W - 0.5, y, w: 0.5, h: 0.22, fontFace: FONT, fontSize: 11, bold: true, margin: 0,
+    align: 'right', valign: 'middle', color: p.peak > full ? RED : INK,
+  });
+  slide.addText(p.person.role, {
+    x, y: y + 0.2, w: CARD_W, h: 0.18, fontFace: FONT, fontSize: 8, color: QUIET, margin: 0, valign: 'middle',
+  });
+
+  for (let i = 0; i < months; i += 1) {
+    const bx = x + i * slot + (slot - barW) / 2;
+    const project = p.loads[i] ?? 0;
+    const leave = p.leaveLoads[i] ?? 0;
+    const other = p.overheadLoads[i] ?? 0;
+    // Days off at the base, as the screens draw them, then project work, then what is left.
+    let stack = 0;
+    ([[leave, NAVY], [project, WORK], [other, OFFWORK]] as [number, string][]).forEach(([pct, colour]) => {
+      const h = height(pct);
+      if (h <= 0.004) return;
+      slide.addShape(pptx.ShapeType.rect, {
+        x: bx, y: plotY + plotH - stack - h, w: barW, h, fill: { color: colour },
+      });
+      stack += h;
+    });
+    slide.addText(view.monthLabels[i] ?? '', {
+      x: x + i * slot, y: plotY + plotH + 0.02, w: slot, h: 0.16, fontFace: FONT, fontSize: 7,
+      color: QUIET, align: 'center', margin: 0, valign: 'middle',
+    });
+  }
+
+  // Their own full month, and the baseline the bars stand on.
+  slide.addShape(pptx.ShapeType.line, {
+    x, y: plotY + plotH - height(full), w: CARD_W, h: 0,
+    line: { color: INK, width: 0.75, dashType: 'dash' },
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x, y: plotY + plotH, w: CARD_W, h: 0, line: { color: RULE, width: 0.75 },
+  });
 }
 
 /* — one slide per project —
@@ -353,11 +523,18 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
       x, y, w, h, fill: { color: 'FFFFFF' }, line: { color: RULE, width: 0.75, dashType: 'dash' },
     });
 
-  slide.addText(`${project.cust ? 'Customer Solution' : 'Internal Project'}: ${project.client} – ${project.name}`, {
-    x: 0.62, y: 0.54, w: 11.81, h: 1.03, fontFace: FONT, fontSize: 25, bold: true, color: NAVY,
+  /* The kind of work, whose it is, and what it is called: "CDMO: Aveltis Bio – Rolex". The
+     box is anchored to its bottom rather than its top, so a title long enough to take two
+     lines grows up the slide instead of down into the headings under it — and the type comes
+     down a step for the longest of them, which is what keeps two lines to two. */
+  const title = `${project.typeShort}: ${project.client} – ${project.name}`;
+  slide.addText(title, {
+    x: 0.62, y: 0.22, w: 11.81, h: 0.78, fontFace: FONT, fontSize: title.length > 58 ? 20 : 25,
+    bold: true, color: NAVY, valign: 'bottom', margin: 0,
   });
   slide.addText(`Date: ${packDate(view.today)}`, {
-    x: 0.62, y: 0.23, w: 2.33, h: 0.29, fontFace: FONT, fontSize: 11, color: QUIET,
+    x: 7.6, y: 0.06, w: 2.5, h: 0.21, fontFace: FONT, fontSize: 9, color: QUIET, margin: 0,
+    valign: 'middle', align: 'right',
   });
   slide.addTable([[{ text: 'Owner', options: { bold: true } }, { text: project.pmName }]], {
     x: 10.29, y: 0.06, w: 3.0, colW: [0.83, 2.17], rowH: 0.21, fontFace: FONT, fontSize: 8,
@@ -385,11 +562,24 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   shell(0.6, 2.5, 6.1, 1.4);
 
   head('Project status – vital few tasks', 0.6, 4.04, 6.09);
-  slide.addText('On Plan', { x: 4.93, y: 4.05, w: 0.6, h: 0.21, fontFace: FONT, fontSize: 8, color: GREEN, bold: true });
-  slide.addText('At risk', { x: 5.53, y: 4.05, w: 0.6, h: 0.21, fontFace: FONT, fontSize: 8, color: AMBER, bold: true });
-  slide.addText('Late', { x: 6.13, y: 4.05, w: 0.53, h: 0.21, fontFace: FONT, fontSize: 8, color: RED, bold: true });
-  slide.addText('% complete            0%                    50%                  100%', {
-    x: 0.6, y: 4.33, w: 6.12, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET,
+  /* Three words, each kept on its own line: the template's boxes are cut to its own type and
+     anything else breaks "On Plan" in half. */
+  ([['On Plan', GREEN, 4.86], ['At risk', AMBER, 5.53], ['Late', RED, 6.2]] as [string, string, number][]).forEach(
+    ([label, colour, x]) => {
+      slide.addText(label, {
+        x, y: 4.05, w: 0.66, h: 0.21, fontFace: FONT, fontSize: 8, color: colour, bold: true,
+        margin: 0, valign: 'middle', wrap: false,
+      });
+    },
+  );
+  /* The scale, each mark over the point of the bar it names rather than spaced out in one
+     string and hoped for. */
+  slide.addText('% complete', { x: 0.6, y: 4.33, w: 1.2, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET, margin: 0, valign: 'middle' });
+  ([['0%', 2.74], ['50%', 4.52], ['100%', 6.3]] as [string, number][]).forEach(([label, at]) => {
+    slide.addText(label, {
+      x: at - 0.25, y: 4.33, w: 0.5, h: 0.2, fontFace: FONT, fontSize: 9, color: QUIET,
+      align: 'center', margin: 0, valign: 'middle',
+    });
   });
 
   /* The bars: the whole project first, then a row per phase. Track and fill, at the width and
@@ -398,17 +588,21 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   const bars = [{ name: 'Total Project', done: project.overallPct, colour: rag(project) }, ...phases];
   const BAR_X = 2.74;
   const BAR_W = 3.56;
+  const BAR_H = 0.15;
   bars.slice(0, 9).forEach((bar, i) => {
     const y = 4.62 + i * 0.24;
-    slide.addText(bar.name, { x: 0.6, y: y - 0.05, w: 2.05, h: 0.2, fontFace: FONT, fontSize: 8, color: INK });
-    slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y, w: BAR_W, h: 0.15, fill: { color: TRACK } });
+    /* The name and the figure are given the bar's own box and told to sit in the middle of
+       it, with the text inset taken off. A text box in PowerPoint starts its words at the
+       top and holds them a twentieth of an inch in, which is what had the percentages
+       reading a line above the bars they belong to. */
+    const beside = { y, h: BAR_H, valign: 'middle', margin: 0, fontFace: FONT, fontSize: 8 };
+    slide.addText(bar.name, { ...beside, x: 0.6, w: 2.05, color: INK });
+    slide.addShape(pptx.ShapeType.rect, { x: BAR_X, y, w: BAR_W, h: BAR_H, fill: { color: TRACK } });
     slide.addShape(pptx.ShapeType.rect, {
-      x: BAR_X, y, w: Math.max(0.02, (BAR_W * Math.min(100, Math.max(0, bar.done))) / 100), h: 0.15,
+      x: BAR_X, y, w: Math.max(0.02, (BAR_W * Math.min(100, Math.max(0, bar.done))) / 100), h: BAR_H,
       fill: { color: bar.colour },
     });
-    slide.addText(`${Math.round(bar.done)}%`, {
-      x: BAR_X + BAR_W + 0.06, y: y - 0.05, w: 0.45, h: 0.2, fontFace: FONT, fontSize: 8, color: QUIET,
-    });
+    slide.addText(`${Math.round(bar.done)}%`, { ...beside, x: BAR_X + BAR_W + 0.06, w: 0.5, color: QUIET });
   });
 
   // The rule down the middle, and the right-hand half.
@@ -418,8 +612,12 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   shell(7.1, 1.32, 5.89, 0.95);
 
   head('Risks & mitigations', 7.1, 2.34, 5.89);
+  /* The template's chip is 0.54in wide, which holds the word only in its own type at its own
+     size; anything else spills it onto a second line inside a box drawn for one. Given the
+     room it needs, with the inset taken off so the word is not squeezed by it. */
   slide.addText('Critical', {
-    x: 12.43, y: 2.37, w: 0.54, h: 0.21, fontFace: FONT, fontSize: 8, color: 'FFFFFF', fill: { color: RED }, align: 'center',
+    x: 12.19, y: 2.35, w: 0.8, h: 0.24, fontFace: FONT, fontSize: 8, color: 'FFFFFF',
+    fill: { color: RED }, align: 'center', valign: 'middle', margin: 0.02, wrap: false,
   });
   slide.addTable(
     [
@@ -440,16 +638,28 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
       text: t, options: { bold: true },
     })),
   ];
-  for (let i = 0; i < Math.max(2, Math.ceil(team.length / 2)); i += 1) {
+  /* Two people to a row, and only as many rows as there is room for between this table and
+     the heading beneath it. A project with a dozen people on it would otherwise grow the
+     table straight through "Next steps" — so the ones that do not fit are counted instead of
+     being drawn, which is the honest way for a fixed slide to hold a list that is not. */
+  const RES_ROW_H = 0.2;
+  const RES_ROWS = Math.max(1, Math.floor((5.63 - 0.08 - 4.44) / RES_ROW_H) - 1);
+  const shownPairs = Math.min(RES_ROWS, Math.max(2, Math.ceil(team.length / 2)));
+  for (let i = 0; i < shownPairs; i += 1) {
     const left = team[i * 2];
     const right = team[i * 2 + 1];
+    const last = i === shownPairs - 1;
+    const spare = team.length - shownPairs * 2;
     pairs.push([
       left?.name ?? '', left?.fte ?? '', left?.duration ?? '', '',
-      right?.name ?? '', right?.fte ?? '', right?.duration ?? '',
+      last && spare > 0 ? `+${spare} more` : right?.name ?? '',
+      last && spare > 0 ? '' : right?.fte ?? '',
+      last && spare > 0 ? '' : right?.duration ?? '',
     ]);
   }
   slide.addTable(pairs, {
-    x: 7.1, y: 4.44, w: 5.89, colW: [1.21, 0.54, 1.05, 0.23, 1.18, 0.84, 0.84], rowH: 0.22,
+    x: 7.1, y: 4.44, w: 5.89, colW: [1.21, 0.54, 1.05, 0.23, 1.18, 0.84, 0.84], rowH: RES_ROW_H,
+    margin: 0.02, valign: 'middle',
     fontFace: FONT, fontSize: 8, color: INK, border: { type: 'solid', color: RULE, pt: 0.5 },
   });
 

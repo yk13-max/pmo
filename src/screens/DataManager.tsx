@@ -7,6 +7,7 @@ import { Tabs } from '../components/Tabs';
 import { ProjectTypeEditor } from '../components/ProjectTypeEditor';
 import { SkillsMatrix } from '../components/SkillsMatrix';
 import { ProjectFilters, ProjectHeaders, useProjectsTable } from '../components/ProjectsTable';
+import { buildDeck, deckFileName } from '../lib/deck';
 
 /* CSV is what people exchange, but it is one sheet per kind of thing. The JSON pair moves
    the portfolio whole — every project, person, booking, day off, plan, delivery type and
@@ -61,6 +62,31 @@ export function DataManager({
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [newRole, setNewRole] = useState('');
   const [danger, setDanger] = useState<{ kind: 'reset' | 'clear'; step: 1 | 2 | 3 } | null>(null);
+  /* The review pack, built on demand. The library that writes a PowerPoint file weighs about
+     a megabyte, so it is fetched by the click rather than by the page — which is also why
+     this is state: the button has to say something while that is happening. */
+  const [packing, setPacking] = useState(false);
+  const buildPack = async () => {
+    setPacking(true);
+    setMessage(null);
+    try {
+      const blob = await buildDeck(view, portfolio);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = deckFileName(view);
+      a.click();
+      URL.revokeObjectURL(url);
+      setMessage({
+        tone: 'ok',
+        text: `Review pack built: the dashboard, the team, and a slide for each of ${view.projects.length} projects in progress.`,
+      });
+    } catch (e) {
+      setMessage({ tone: 'bad', text: `The pack could not be built — ${e instanceof Error ? e.message : 'unknown error'}.` });
+    } finally {
+      setPacking(false);
+    }
+  };
   /* How the team is listed. Order added is the order the list is held in, which is the one
      a small team is remembered by; the alphabet is what you want the moment it stops being
      small. A view rather than a change to the data, so nothing is reordered by looking. */
@@ -160,6 +186,19 @@ export function DataManager({
             </button>
           </>
         )}
+        {/* The pack for the review meeting: a PowerPoint of the work in progress, built to
+            the firm's own template. It lives here with the other exports rather than on the
+            portfolio screen — it is a file the tracker hands over, and this is where the
+            files are. */}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          title="A PowerPoint pack: the dashboard, the team, and a one-slide summary of every project in progress"
+          disabled={packing}
+          onClick={() => void buildPack()}
+        >
+          {packing ? 'Building the pack…' : 'Export review pack'}
+        </button>
         <button type="button" className="btn btn-secondary" onClick={exportCsv}>
           Export CSV
         </button>
