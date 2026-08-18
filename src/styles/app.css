@@ -586,11 +586,36 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .skills-matrix th { white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
 .skills-matrix tfoot td { border-top: 2px solid var(--color-text); font-size: 12px; }
 
-/* A note about how a chart's figures are arrived at, under the key it belongs to. Set below
-   the lede and above the drawing, quieter than either: it is read once, by somebody asking
-   why a bar says what it says, and then not again. */
-.calc-note { margin: var(--space-3) 0 0; max-width: 76ch; font-size: 13px; line-height: 1.55;
-  color: var(--color-neutral-700); text-wrap: pretty; }
+/* A key item that carries an explanation. The note about how other work is squeezed used to
+   stand under the key as a paragraph, where it was six lines of prose in front of everybody
+   who already knew. It hangs off the swatch instead: reach for the thing you are asking
+   about and it answers, on hover or on keyboard focus.
+
+   The dotted underline is the only standing sign that there is anything to reach for, which
+   is the right amount for a footnote — visible to somebody looking, silent to somebody not.
+   Driven entirely by :hover and :focus-within, so it needs no state and no script. */
+.legend-note { position: relative; display: inline-flex; align-items: center; gap: 7px;
+  cursor: help; }
+.legend-note-word { border-bottom: 1px dotted var(--color-neutral-500); }
+.legend-note:hover .legend-note-word,
+.legend-note:focus-visible .legend-note-word { border-bottom-color: var(--color-accent); }
+.legend-note:focus-visible { outline: 2px solid var(--color-brand-teal); outline-offset: 3px; }
+.legend-note-panel { position: absolute; left: -8px; top: calc(100% + 8px); z-index: 6;
+  width: min(460px, calc(100vw - 32px)); padding: var(--space-3) var(--space-4);
+  background: var(--color-bg); border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  font-size: 13px; line-height: 1.55; letter-spacing: normal; text-transform: none;
+  color: var(--color-neutral-700); text-wrap: pretty;
+  opacity: 0; visibility: hidden; transition: opacity 140ms ease, visibility 0s linear 140ms; }
+.legend-note:hover .legend-note-panel,
+.legend-note:focus-visible .legend-note-panel,
+.legend-note:focus-within .legend-note-panel {
+  opacity: 1; visibility: visible; transition: opacity 140ms ease; }
+/* On paper there is nobody to hover, so the note is simply part of the key. */
+@media print {
+  .legend-note-panel { position: static; opacity: 1; visibility: visible; width: auto;
+    box-shadow: none; border: 0; padding: 0; }
+}
 
 /* A bar's label on the Gantt: set off the end of the bar, in the row's own line, never over
    the drawing. It takes no pointer events so the bar's tooltip still answers when the pointer

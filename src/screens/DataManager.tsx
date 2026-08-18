@@ -315,11 +315,17 @@ export function DataManager({
           <option value="za">Name Z–A</option>
         </select>
       </div>
-      <table className="table" style={{ maxWidth: 900 }}>
+      {/* The two columns that hold words rather than figures are left to size themselves to
+          their longest entry, and told not to wrap: a name broken over two lines, or a job
+          title reading "Senior regulatory affairs / specialist", makes the row twice as tall
+          for no gain. The table gives up its 900px cap for the same reason, and scrolls
+          inside its own box on a screen too narrow to hold it. */}
+      <div style={{ overflowX: 'auto' }}>
+      <table className="table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th style={{ width: 180 }}>Role</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Name</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Role</th>
             <th style={{ width: 170 }}>Project family</th>
             <th style={{ textAlign: 'right', width: 120 }}>Available week</th>
             <th style={{ textAlign: 'right', width: 110 }}>Non-project</th>
@@ -331,10 +337,10 @@ export function DataManager({
         <tbody>
           {sortedPeople.map((row) => (
             <tr key={row.person.id}>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{row.person.name}</span>
               </td>
-              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.role}</td>
+              <td style={{ fontSize: 13, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{row.person.role}</td>
               {/* People are assigned to kinds of work, so this reads against the families. */}
               <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{row.person.types.map((id) => view.families.find((f) => f.id === id)?.label ?? id).join(', ') || 'All'}</td>
               <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.person.capacity}%</td>
@@ -380,6 +386,7 @@ export function DataManager({
           ))}
         </tbody>
       </table>
+      </div>
       </>) },
           { id: 'types', label: 'Project types', count: view.projectTypes.length, render: () => <ProjectTypeEditor view={view} /> },
           { id: 'titles', label: 'Job titles', count: view.roles.length, render: () => (<>

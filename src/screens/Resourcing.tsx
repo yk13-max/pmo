@@ -133,9 +133,21 @@ export function Resourcing({
               <span style={{ width: 14, height: 12, background: 'var(--color-accent)', display: 'block' }} />
               Days off, at the base of each bar
             </span>
-            <span>
+            {/* The one item in the key whose band is not simply what somebody entered, so
+                the arithmetic behind it hangs off the key itself: reach for the thing you
+                are asking about and it answers. Hover or tab to it. */}
+            <span className="legend-note" tabIndex={0} role="note" aria-label="How other work is counted">
               <span style={{ width: 14, height: 12, background: 'var(--color-offwork)', display: 'block' }} />
-              Other work
+              <span className="legend-note-word">Other work</span>
+              <span className="legend-note-panel">
+                Other work is the elastic part of a month. The figure on a person&rsquo;s record — meetings, admin,
+                training, line management — is what they would spend on it in a month with room for it, so it is not
+                simply added on top. Projects and days off are counted first, because both are commitments to somebody
+                else; other work then takes whatever is left of the month, down to none of it. So a bar reading past a
+                person&rsquo;s full month is one where the projects and the leave alone are past it — never one where the
+                meetings tipped it over — and a heavily booked month shows a thinner band of other work than a quiet one,
+                which is what actually happens to it.
+              </span>
             </span>
             <span>
               <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
@@ -146,18 +158,6 @@ export function Resourcing({
               Over-allocation threshold ({view.threshold}%)
             </span>
           </div>
-          {/* The one piece of arithmetic in these bars that is not the sum of what was
-              entered, so it is written down rather than left to be worked out from the
-              drawing. */}
-          <p className="calc-note">
-            Other work is the elastic part of a month. The figure on a person&rsquo;s record — meetings, admin, training,
-            line management — is what they would spend on it in a month with room for it, so it is not simply added on
-            top. Projects and days off are counted first, because both are commitments to somebody else; other work then
-            takes whatever is left of the month, down to none of it. So a bar reading past a person&rsquo;s full month is
-            one where the projects and the leave alone are past it — never one where the meetings tipped it over — and a
-            heavily booked month shows a thinner band of other work than a quiet one, which is what actually happens to
-            it.
-          </p>
         </div>
         <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: '1 1 100%' }}>
           <label className="field" style={{ margin: 0 }}>
