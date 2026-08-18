@@ -13,7 +13,9 @@ delivery lead actually uses — portfolio, resourcing, financials, timeline, pro
 planning (a Gantt with a real scheduling engine), alerts, and a Data screen where everything is
 entered.
 
-- **Stack**: React 18 + Vite 5 + TypeScript. No backend, no framework beyond that.
+- **Stack**: React 18 + Vite 5 + TypeScript. No backend, no framework beyond that. Two
+  libraries do file work: SheetJS (`xlsx`) for the plan's workbook, and `pptxgenjs` for the
+  review pack — the latter behind a dynamic `import()` so it stays out of the main bundle.
 - **Data**: one JSON document in `localStorage`, key `pmo-tracker:portfolio:v1`. It starts from
   the sample portfolio in `src/data/seed.ts`.
 - **Repo**: `https://github.com/yk13-max/pmo.git`, branch `main`. Working copy `/home/claude/repo`.
@@ -173,7 +175,9 @@ Hard-won gotchas, all of which have cost time at least once:
 ## 6. What exists, screen by screen
 
 - **Portfolio** — the scatter of every project by value/budget against phase, leader lines for
-  crowded labels, clickable metrics, export the chart as a PDF with a table of what is on it.
+  crowded labels, clickable metrics, export the chart as a PDF with a table of what is on it,
+  and **Export the review pack**: a PowerPoint deck built to the firm's PRC template (title,
+  dashboard, resource overview, one slide per project in progress) from `src/lib/deck.ts`.
 - **Resourcing** — person-by-person bars (project work, leave, other work, threshold line),
   people the work needs, **Skillset with no cover**, **Skill by skill**, where the overspill
   comes from, annual leave and public holidays.

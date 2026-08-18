@@ -6,6 +6,8 @@ import { Stripe, StripeSwatch } from '../components/Stripe';
 import { PhaseBar } from '../components/PhaseBar';
 import { Drawer } from '../components/Drawer';
 import { printChart } from '../lib/printChart';
+import { buildDeck, deckFileName } from '../lib/deck';
+import { usePortfolio } from '../store/portfolio';
 import type { ProjectTypeDef } from '../types';
 
 /** The two readings of the horizontal axis, in the order the toggle offers them. */
@@ -28,6 +30,25 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
   const [sort, setSort] = useState<'status' | 'priority'>('priority');
   const [xMode, setXMode] = useState<XMode>(X_MODES[0]);
   const [showNames, setShowNames] = useState(false);
+  /* The review pack, built on demand. The library that writes a PowerPoint file weighs about
+     a megabyte, so it is fetched by the click rather than by the page — which is also why
+     this is state: the button has to say something while that is happening. */
+  const { portfolio } = usePortfolio();
+  const [packing, setPacking] = useState(false);
+  const buildPack = async () => {
+    setPacking(true);
+    try {
+      const blob = await buildDeck(view, portfolio);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = deckFileName(view);
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setPacking(false);
+    }
+  };
 
   const shown = view.projects
     .filter(
@@ -58,6 +79,19 @@ export function Portfolio({ view, onOpenProject }: { view: PortfolioView; onOpen
 
   return (
     <div>
+      {/* The pack, for the review this screen is the front page of: a title, the dashboard,
+          the team, and a slide for every project in progress. */}
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          title="A PowerPoint pack: the dashboard and a one-slide summary of every project in progress"
+          disabled={packing}
+          onClick={() => void buildPack()}
+        >
+          {packing ? 'Building the pack…' : 'Export the review pack'}
+        </button>
+      </div>
       <div className="stat-row one-line">
         <Stat
           value={view.projects.length}
