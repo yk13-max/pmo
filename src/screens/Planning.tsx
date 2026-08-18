@@ -183,11 +183,21 @@ export function Planning({
   const chartFrom = plan.end && plan.end > (plan.start ?? '') ? plan.end : last;
   const chartStart = addDays(first, -7);
   const totalDays = Math.max(30, Math.round((fromISO(chartFrom).getTime() - fromISO(chartStart).getTime()) / DAY_MS) + 21);
+  /* Labels are written off the end of a bar, so a labelled chart needs somewhere to write
+     them: the last task in a plan finishes at the right-hand edge of the drawing, and its
+     label would have nowhere to go. So the drawing reserves a strip on the right whenever
+     the labels are on — wide enough for a name, not so wide that a chart nobody has labelled
+     pays for it.
+
+     On screen that simply makes the chart wider, since it scrolls. On paper it cannot: the
+     page is the page. There the strip comes out of the chart's width, and the plan is drawn
+     into what is left — which is what stops the labels running off the sheet. */
+  const gutter = barLabel === 'none' ? 0 : 190;
   /* On paper a day is worth whatever makes the whole plan reach the right edge of the page,
      rather than what the zoom says: the zoom is for reading a stretch of the plan on screen,
      and a printed plan has to arrive whole. */
-  const px = printing ? PRINT_CHART_WIDTH / totalDays : zoomPx;
-  const chartW = totalDays * px;
+  const px = printing ? Math.max(0.02, (PRINT_CHART_WIDTH - gutter) / totalDays) : zoomPx;
+  const chartW = totalDays * px + gutter;
   const x = (iso: string) => (Math.round((fromISO(iso).getTime() - fromISO(chartStart).getTime()) / DAY_MS)) * px;
   const barEnd = (iso: string) => x(iso) + px;
   const todayX = x(toISO(view.today));
@@ -774,22 +784,35 @@ export function Planning({
                     const from = row.kind === 'phase' ? row.start : row.at?.startDate;
                     const to = row.kind === 'phase' ? (row.end as string | null) : row.at?.endDate;
                     if (!text || !from || !to) return null;
-                    /* Roughly how wide it will set at 12px, which is enough to decide which
-                       side of the bar it goes. A label off the right-hand end of a bar that
-                       finishes at the end of the plan would hang past the drawing, so that
-                       one is set before the bar instead and reads back towards it. */
+                    /* Roughly how wide it will set at 12px, which is enough to choose a side
+                       and a width without measuring the text.
+
+                       After the bar by preference. Where the bar finishes too near the right
+                       edge for that, the label goes before it and reads back towards it. At
+                       the coarse zooms neither side may have the room — a whole plan can be
+                       364px across at Quarters, which is narrower than some task names — so
+                       the label then takes the roomier side and is cut off with an ellipsis
+                       rather than being drawn over the bars or off the edge of the drawing.
+                       Its full text is on the hover either way. */
                     const guess = text.length * 6.2 + 10;
                     const after = barEnd(to) + 6;
-                    const fits = after + guess <= chartW;
+                    const roomAfter = chartW - after;
+                    const roomBefore = x(from) - 6;
+                    const goesAfter = guess <= roomAfter || roomAfter >= roomBefore;
+                    const room = goesAfter ? roomAfter : roomBefore;
+                    // Nowhere to put it that would show a word of it. Better said by nothing.
+                    if (room < 28) return null;
                     return (
                       <span
                         className="plan-bar-label"
                         title={text}
-                        style={
-                          fits
-                            ? { left: after, top: ROW / 2 - 8 }
-                            : { right: Math.max(0, chartW - x(from) + 6), top: ROW / 2 - 8, textAlign: 'right' }
-                        }
+                        style={{
+                          top: ROW / 2 - 8,
+                          maxWidth: Math.floor(room),
+                          ...(goesAfter
+                            ? { left: after }
+                            : { right: chartW - x(from) + 6, textAlign: 'right', justifyContent: 'flex-end' }),
+                        }}
                       >
                         {text}
                       </span>
