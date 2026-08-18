@@ -586,6 +586,14 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .skills-matrix th { white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
 .skills-matrix tfoot td { border-top: 2px solid var(--color-text); font-size: 12px; }
 
+/* A sales order's heading inside the invoice table. It is a row of the table rather than a
+   table of its own, so the columns under it stay in one set of tracks — but it has to read as
+   a heading, so it takes a tint and a rule above it. The first set needs no rule: the table's
+   own heading row is already above it. */
+.invoice-set td { background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  border-top: 2px solid var(--color-text); padding-top: 9px; padding-bottom: 9px; }
+.invoice-set:first-of-type td { border-top: 0; }
+
 .row-actions { display: flex; gap: var(--space-2); }
 .empty { padding: var(--space-8); text-align: center; color: var(--color-neutral-700); border: 1px dashed var(--color-divider); border-radius: var(--radius-md); }
 
