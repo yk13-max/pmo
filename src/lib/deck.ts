@@ -15,9 +15,10 @@ import { assigneesOf } from './planLoad';
    The shape of the deck is not invented. It is the firm's own template — a title, a portfolio
    dashboard, a divider, and a one-slide-per-project — measured out of the file: 13.333 x 7.5
    inches, Poppins, the navy of its headings, the green, amber and red of its RAG key, and the
-   position and width of every block on the project slide. What the tracker cannot know —
-   what the product is, what has been achieved, what the risks are — is drawn as an empty
-   shell of the right size, to be filled in PowerPoint by whoever presents it.
+   position and width of every block on the project slide. What no figure can answer — what
+   the product is, what has been achieved, what the risks are — is written on the project
+   itself, under "For the review", and printed here; anything nobody has written yet is drawn
+   as an empty shell of the right size, to be filled in PowerPoint by whoever presents it.
 
    The library is imported where the deck is built rather than at the top of a screen, so the
    megabyte it weighs is fetched by the one person exporting a pack and by nobody else. */
@@ -124,6 +125,24 @@ function linesNeeded(text: string, widthIn: number, fontPt: number): number {
   return text
     .split('\n')
     .reduce((n, line) => n + Math.max(1, Math.ceil(line.length / Math.max(4, usable * perInch))), 0);
+}
+
+/**
+ * The same text, cut to what a fixed cell can hold.
+ *
+ * PowerPoint grows a table row whose text does not fit, which on a slide laid out to the inch
+ * means one long sentence pushes everything under it off the bottom. Where the row cannot
+ * grow, the sentence has to give: it is cut on a word boundary and ended with an ellipsis, so
+ * a reader can see there is more and go and look at the project for the rest of it.
+ */
+function clip(text: string, widthIn: number, fontPt: number, lines: number): string {
+  if (!text) return '';
+  if (linesNeeded(text, widthIn, fontPt) <= lines) return text;
+  const perLine = Math.max(4, (widthIn - 0.12) * (130 / fontPt));
+  const room = Math.max(8, Math.floor(perLine * lines) - 1);
+  const cut = text.slice(0, room);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > room * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
 /** Somebody's initials: first name and surname, as the plan's Who column gives them. */
@@ -234,8 +253,15 @@ export async function buildDeck(view: PortfolioView, portfolio: Portfolio): Prom
   pptx.layout = 'PRC';
   pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
 
-  const period = periodOf(view.today);
-  const today = packDate(view.today).toUpperCase();
+  /* The clock is read here, at the moment the pack is asked for, rather than taken from the
+     derived view — that date is fixed when the view is worked out, which is when the app was
+     opened, and a tracker left open on a desk over a weekend or a quarter end would go on
+     stamping every pack it made with the day and the quarter it was opened on. Every title on
+     every slide, and the generated line on the first one, come from this one reading, so the
+     whole pack agrees with itself as well as with the calendar. */
+  const now = new Date();
+  const period = periodOf(now);
+  const today = packDate(now).toUpperCase();
   /* The order the pack runs in: by the number the business knows a project by, and then by
      priority. A review is worked through against a numbered list, so the numbers lead;
      priority decides between anything sharing a number and orders the work that has none,
@@ -248,10 +274,10 @@ export async function buildDeck(view: PortfolioView, portfolio: Portfolio): Prom
     return byNumber.compare(an, bn) || a.priority - b.priority || byNumber.compare(a.name, b.name);
   });
 
-  titleSlide(pptx, period, projects.length, view);
+  titleSlide(pptx, period, projects.length, now);
   dashboardSlides(pptx, view, projects, period, today);
   resourceSlide(pptx, view, period);
-  projects.forEach((project) => projectSlide(pptx, view, portfolio, project));
+  projects.forEach((project) => projectSlide(pptx, view, portfolio, project, now));
   familiesSlide(pptx, view, period);
 
   const data = (await pptx.write({ outputType: 'blob' })) as Blob;
@@ -284,7 +310,7 @@ function glassMark(pptx: any, slide: any, x: number, y: number, size: number): n
   return x + at((11 + 88) / 2);
 }
 
-function titleSlide(pptx: any, period: string, count: number, view: PortfolioView) {
+function titleSlide(pptx: any, period: string, count: number, now: Date) {
   const slide = pptx.addSlide();
   slide.addText('Project One-slides', {
     x: 0.9, y: 3.01, w: 11.81, h: 1.03, fontFace: FONT, fontSize: 40, bold: true, color: NAVY,
@@ -297,7 +323,7 @@ function titleSlide(pptx: any, period: string, count: number, view: PortfolioVie
   glassMark(pptx, slide, 11.55, 0.55, 1.15);
   /* When the pack was made, in the corner nobody looks at until they need to know whether the
      copy in their hand is the current one. */
-  slide.addText(`Generated ${packDate(view.today)} · ${stamp(view.today)}`, {
+  slide.addText(`Generated ${packDate(now)} · ${stamp(now)}`, {
     x: 8.33, y: 6.85, w: 4.4, h: 0.24, fontFace: FONT, fontSize: 9, color: RULE,
     align: 'right', margin: 0, valign: 'middle',
   });
@@ -748,7 +774,7 @@ function familiesSlide(pptx: any, view: PortfolioView, period: string) {
    Every block sits where the template puts it, to the inch. The left half is what the project
    is and how far it has got; the right half is the conversation — what has been achieved,
    what is at risk, who is on it next, what happens before the next review. */
-function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, project: ProjectView) {
+function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, project: ProjectView, packedAt: Date) {
   const slide = pptx.addSlide();
   const head = (text: string, x: number, y: number, w: number) =>
     slide.addText(text, { x, y, w, h: 0.24, fontFace: FONT, fontSize: 11, bold: true, color: NAVY });
@@ -756,8 +782,13 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
      slide is an empty text box carrying the deck's own typeface, size and colour, so the first
      thing somebody types into it comes out in the pack's type rather than in PowerPoint's
      default eighteen-point Calibri. */
-  const shell = (x: number, y: number, w: number, h: number, fontSize = 10) =>
-    slide.addText('', {
+  /* A box with whatever the project has written in it — and, where it has written nothing,
+     the same box empty. Either way it is a box somebody can type into in PowerPoint, dashed
+     so an unwritten one reads as a form rather than as a mistake, and carrying the deck's own
+     typeface and size so the first thing typed comes out in the pack's type rather than in
+     PowerPoint's default eighteen-point Calibri. */
+  const shell = (x: number, y: number, w: number, h: number, fontSize = 10, text: string | any[] = '') =>
+    slide.addText(text as any, {
       x, y, w, h, fontFace: FONT, fontSize, color: INK, valign: 'top', margin: 0.06,
       fill: { color: 'FFFFFF' }, line: { color: RULE, width: 0.75, dashType: 'dash' },
     });
@@ -771,7 +802,7 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
     x: 0.62, y: 0.22, w: 11.81, h: 0.78, fontFace: FONT, fontSize: title.length > 58 ? 20 : 25,
     bold: true, color: NAVY, valign: 'bottom', margin: 0,
   });
-  slide.addText(`Date: ${packDate(view.today)}`, {
+  slide.addText(`Date: ${packDate(packedAt)}`, {
     x: 7.6, y: 0.06, w: 2.5, h: 0.21, fontFace: FONT, fontSize: 9, color: QUIET, margin: 0,
     valign: 'middle', align: 'right',
   });
@@ -786,10 +817,21 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
       [{ text: 'Project phase', options: { bold: true } }, { text: `${project.phaseName} · ${project.phaseStep}` }],
       [{ text: 'Customer delivery date', options: { bold: true } }, { text: shortDateYear(project.endDate) }],
       [{ text: 'Project start date', options: { bold: true } }, { text: shortDateYear(project.startDate) }],
-      [
-        { text: 'Budget Invoice / spend', options: { bold: true } },
-        { text: `${project.cust ? project.valueLabel : project.budgetLabel} / ${project.actualLabel}` },
-      ],
+      /* Money reads differently depending on who is paying for the work. A customer project
+         is judged on what it is worth against what it has cost, so it says the contract
+         value and the spend. Internal work invoices nobody, so a row headed "Invoice" was
+         either blank or quietly showing the budget under the wrong word; it says spend
+         against the whole budget instead, which is the only question there is about work
+         the business is paying for itself. */
+      project.cust
+        ? [
+            { text: 'Budget Invoice / spend', options: { bold: true } },
+            { text: `${project.valueLabel} / ${project.actualLabel}` },
+          ]
+        : [
+            { text: 'Budget spend / total', options: { bold: true } },
+            { text: `${project.actualLabel} / ${project.budgetLabel}` },
+          ],
     ],
     {
       x: 0.6, y: 1.21, w: 6.1, colW: [2.16, 3.94], rowH: 0.22, fontFace: FONT, fontSize: 9,
@@ -798,7 +840,12 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   );
 
   head('Description of final product', 0.6, 2.23, 6.1);
-  shell(0.6, 2.5, 6.1, 1.0);
+  /* Whatever the project says it is delivering, in the words somebody wrote on the project
+     itself. The type comes down a step for a description long enough to overrun the box, so a
+     paragraph that would otherwise be cut off is still readable rather than half missing —
+     six lines at ten point, eight at eight. */
+  const product = (project.productDescription ?? '').trim();
+  shell(0.6, 2.5, 6.1, 1.0, linesNeeded(product, 5.98, 10) > 6 ? 8 : 10, product);
 
   /* "Vital few tasks" was the template's phrase for a block that now carries the project's
      own progress as well as room to write in, so it says what it is. */
@@ -918,7 +965,36 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
   slide.addShape(pptx.ShapeType.line, { x: 6.9, y: 1.2, w: 0, h: 6.02, line: { color: RULE, width: 1 } });
 
   head('Key accomplishments to date (update monthly)', 7.1, 1.05, 5.89);
-  shell(7.1, 1.32, 5.89, 0.95);
+  /* One accomplishment per line as it was typed on the project, printed as bullets. The box
+     holds about six lines at nine point; a project that has listed more than fits says how
+     many are not shown rather than quietly losing them off the bottom of the box, which is
+     the same bargain the resources table makes with a big team. */
+  const wins = (project.accomplishments ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const WIN_LINES = 6;
+  const shownWins: string[] = [];
+  let winLines = 0;
+  wins.forEach((w) => {
+    const needs = linesNeeded(w, 5.6, 9);
+    if (winLines + needs <= WIN_LINES) {
+      shownWins.push(w);
+      winLines += needs;
+    }
+  });
+  const spareWins = wins.length - shownWins.length;
+  shell(
+    7.1, 1.32, 5.89, 0.95, 9,
+    shownWins.length
+      ? [
+          /* The bullet close to its line rather than at the far edge of the box: the default
+             hangs the mark against the box's own margin and leaves half an inch of white
+             between it and the words. */
+          ...shownWins.map((w) => ({ text: w, options: { bullet: { indent: 12 }, breakLine: true } })),
+          ...(spareWins > 0
+            ? [{ text: `+${spareWins} more`, options: { bullet: false, color: QUIET, italic: true } }]
+            : []),
+        ]
+      : '',
+  );
 
   head('Risks & mitigations', 7.1, 2.34, 5.89);
   /* The template's chip is 0.54in wide, which holds the word only in its own type at its own
@@ -928,17 +1004,47 @@ function projectSlide(pptx: any, view: PortfolioView, portfolio: Portfolio, proj
     x: 12.19, y: 2.35, w: 0.8, h: 0.24, fontFace: FONT, fontSize: 8, color: 'FFFFFF',
     fill: { color: RED }, align: 'center', valign: 'middle', margin: 0.02, wrap: false,
   });
-  slide.addTable(
-    [
-      ['Risk', 'Mitigation/plan', 'Assistance required'].map((t) => ({ text: t, options: { bold: true } })),
-      ['', '', ''],
-      ['', '', ''],
-    ],
-    {
-      x: 7.1, y: 2.6, w: 5.89, colW: [2.07, 2.32, 1.5], rowH: 0.25, fontFace: FONT, fontSize: 9,
-      color: INK, border: { type: 'solid', color: RULE, pt: 0.5 }, valign: 'middle',
-    },
-  );
+  /* The risks written on the project, in the order they were written. Four rows fit between
+     this heading and the resources table below it; a project carrying more than that says so
+     in the last row rather than growing the table through what is under it — PowerPoint
+     grows a row whose text does not fit, and one long risk would otherwise push the whole
+     slide out of shape. Two rows are always drawn, so a project with nothing written down
+     still has somewhere to write it in the meeting. */
+  const risks = project.risks ?? [];
+  const RISK_ROWS = 4;
+  /* A point down on the rest of the slide's tables. Two lines of eight point is a sentence
+     worth of risk in a two-inch column and still leaves the four rows inside the room between
+     the heading and the resources table; at nine it is two rows or a slide out of shape. */
+  const RISK_PT = 8;
+  const riskRows = Math.max(2, Math.min(RISK_ROWS, risks.length));
+  const spareRisks = risks.length - riskRows;
+  const riskTable: any[] = [
+    ['Risk', 'Mitigation/plan', 'Assistance required'].map((t) => ({ text: t, options: { bold: true } })),
+  ];
+  for (let i = 0; i < riskRows; i += 1) {
+    const last = i === riskRows - 1;
+    if (last && spareRisks > 0) {
+      riskTable.push([
+        { text: `+${spareRisks} more risk${spareRisks === 1 ? '' : 's'} on the project`, options: { color: QUIET, italic: true } },
+        { text: '' },
+        { text: '' },
+      ]);
+      break;
+    }
+    const r = risks[i];
+    riskTable.push([
+      /* A critical risk is the one the review is really about, so it is said in the same red
+         the chip above the table is set in rather than left to be picked out by reading. */
+      { text: clip(r?.risk ?? '', 2.07, RISK_PT, 2), options: r?.critical ? { color: RED, bold: true } : {} },
+      { text: clip(r?.mitigation ?? '', 2.32, RISK_PT, 2) },
+      { text: clip(r?.assistance ?? '', 1.5, RISK_PT, 2) },
+    ]);
+  }
+  slide.addTable(riskTable, {
+    x: 7.1, y: 2.6, w: 5.89, colW: [2.07, 2.32, 1.5], rowH: 0.25, fontFace: FONT, fontSize: RISK_PT,
+    color: INK, border: { type: 'solid', color: RULE, pt: 0.5 }, valign: 'middle',
+    margin: [1, 3, 1, 3], autoPage: false,
+  });
 
   head('Resources (forward view)', 7.1, 4.17, 5.89);
   const team = forwardResources(view, project);

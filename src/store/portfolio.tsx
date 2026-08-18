@@ -180,6 +180,11 @@ export function normalise(p: Portfolio): Portfolio {
       // Projects that predate planning keep their own dates until they are opted in.
       usesPlan: project.usesPlan ?? false,
       mirrorPhases: project.mirrorPhases ?? false,
+      /* The review narrative. A store written before it existed has none, and an empty list
+         of risks is the honest starting point — it means nobody has written any down, which
+         is what every project began as. Each risk is given an id on the way in so a store
+         hand-edited or imported from a sheet still has rows React can tell apart. */
+      risks: (project.risks ?? []).map((r, i) => ({ ...r, id: r.id || `risk-${project.id}-${i}` })),
     })),
     people: p.people.map((person) => ({
       ...person,

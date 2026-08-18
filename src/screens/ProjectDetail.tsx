@@ -415,6 +415,16 @@ export function ProjectDetail({
           onSetWindow={onSetWindow}
         />
           ) },
+          {
+            /* The written half of a project, and the only half nothing here can derive. It
+               reads on its own tab because it is prose among figures: what the project
+               delivers, what it has achieved, and what could still go wrong. The count is
+               the risks, since that is the part of it anybody comes looking for. */
+            id: 'review',
+            label: 'For the review',
+            count: (project.risks ?? []).length,
+            render: () => <ReviewNarrative project={project} onEdit={onEdit} />,
+          },
           { id: 'watch', label: 'What to watch', count: notes.length, render: () => (<>
       <h3 style={{ margin: '0 0 var(--space-3)' }}>What to watch</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxWidth: '64ch' }}>
@@ -428,6 +438,110 @@ export function ProjectDetail({
         ]}
       />
     </div>
+  );
+}
+
+/* What the review asks for in words: the product, what has been achieved, and the risks with
+   what is being done about them. It is read here and written on the project form — the same
+   arrangement as every other field on this screen, and the reason the empty state points at
+   the Edit button rather than offering a box to type in.
+
+   The review pack prints this straight onto each project's slide, so what is written here is
+   what goes in front of the meeting. That is worth saying on the page, because it changes how
+   carefully somebody writes it. */
+function ReviewNarrative({ project, onEdit }: { project: ProjectView; onEdit: (project: Project) => void }) {
+  // One accomplishment per line, blank lines thrown away — the same reading the deck takes.
+  const wins = (project.accomplishments ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const risks = project.risks ?? [];
+  const anything = Boolean(project.productDescription) || wins.length > 0 || risks.length > 0;
+
+  return (
+    <>
+      <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+        <div>
+          <h3 style={{ margin: '0 0 4px' }}>For the review</h3>
+          <p className="lede" style={{ margin: 0, maxWidth: '70ch' }}>
+            The three things a review asks for that no figure can answer. They are printed onto this project&rsquo;s slide
+            in the review pack exactly as they are written here.
+          </p>
+        </div>
+        <button type="button" className="btn btn-secondary" style={{ flex: 'none' }} onClick={() => onEdit(project)}>
+          {anything ? 'Edit the wording' : 'Write it'}
+        </button>
+      </div>
+
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>Description of final product</h4>
+      {project.productDescription ? (
+        <p style={{ margin: '0 0 var(--space-6)', maxWidth: '70ch', fontSize: 16, textWrap: 'pretty', whiteSpace: 'pre-wrap' }}>
+          {project.productDescription}
+        </p>
+      ) : (
+        <p className="empty" style={{ marginBottom: 'var(--space-6)' }}>
+          Nothing written yet. A sentence or two on what this project actually delivers.
+        </p>
+      )}
+
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>Key accomplishments to date</h4>
+      {wins.length ? (
+        <ul style={{ margin: '0 0 var(--space-6)', paddingLeft: '1.2em', maxWidth: '70ch', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {wins.map((w, i) => (
+            <li key={i} style={{ fontSize: 16, textWrap: 'pretty' }}>
+              {w}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="empty" style={{ marginBottom: 'var(--space-6)' }}>
+          Nothing listed yet. One line per thing achieved; they are printed as bullets.
+        </p>
+      )}
+
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>Risks and mitigations</h4>
+      {risks.length ? (
+        <table className="table" style={{ maxWidth: 1000 }}>
+          <thead>
+            <tr>
+              <th style={{ width: '34%' }}>Risk</th>
+              <th style={{ width: '36%' }}>Mitigation or plan</th>
+              <th>Assistance required</th>
+            </tr>
+          </thead>
+          <tbody>
+            {risks.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  {/* Critical is the pack's red chip, and it is said the same way here so
+                      the screen and the slide cannot disagree about which risk it is. */}
+                  {r.critical && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        padding: '1px 6px',
+                        borderRadius: 3,
+                        marginRight: 8,
+                        background: 'var(--color-accent-2)',
+                        color: 'var(--color-surface)',
+                      }}
+                    >
+                      Critical
+                    </span>
+                  )}
+                  {r.risk || <span style={{ color: 'var(--color-neutral-600)' }}>—</span>}
+                </td>
+                <td>{r.mitigation || <span style={{ color: 'var(--color-neutral-600)' }}>—</span>}</td>
+                <td>{r.assistance || <span style={{ color: 'var(--color-neutral-600)' }}>—</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="empty">
+          None written down. A risk worth ten minutes of the review belongs here; the rest belong in the register.
+        </p>
+      )}
+    </>
   );
 }
 

@@ -553,6 +553,24 @@ a:hover { color: var(--color-accent-600); }
   .drawer.is-full .fieldset { padding: var(--space-3) var(--space-4) var(--space-4); }
 }
 
+/* The risks on a project, as they are written for the review. Each risk is three sentences
+   that belong together, so a risk is a block with its own rule under it rather than a row of
+   a table: the three fields stack when the pane is narrow and sit side by side when there is
+   width, and the tick and the cross stay on the same line as each other whichever it is. */
+.risk-list { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.risk-row { display: flex; gap: var(--space-2); align-items: flex-start; padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-divider); }
+.risk-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.risk-fields { display: grid; grid-template-columns: 1fr; gap: 6px; flex: 1; min-width: 0; }
+.risk-controls { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.risk-critical { display: flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.risk-critical input { accent-color: var(--color-accent-2); width: 15px; height: 15px; }
+/* Two columns of narrative and one of the ask, once there is room for the three to be read
+   across rather than down. */
+.drawer.is-full .risk-fields { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 860px) {
+  .drawer.is-full .risk-fields { grid-template-columns: 1fr; }
+}
+
 .alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .alloc-table th { text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
 .alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }

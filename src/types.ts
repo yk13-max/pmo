@@ -47,6 +47,21 @@ export interface Baseline {
   value: number;
 }
 
+/* One risk on a project, and what is being done about it.
+
+   Three fields because that is the conversation: what could go wrong, what is being done
+   about it, and what is being asked of the people in the room — the third being the only
+   reason a risk is on a review slide rather than in a register. "Critical" is the flag the
+   review pack's own red chip stands for; nothing else reads it, and nothing is derived from
+   it. A risk is free text throughout on purpose: this is somebody's sentence, not a code. */
+export interface ProjectRisk {
+  id: string;
+  risk: string;
+  mitigation?: string;
+  assistance?: string;
+  critical?: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -125,6 +140,20 @@ export interface Project {
   showPlanBaseline?: boolean;
   /** Whether the plan shows what actually happened beside what was planned. */
   showPlanActuals?: boolean;
+
+  /* The three things a review asks for that no amount of arithmetic can answer. Every other
+     field on a project is a figure the tracker can check; these are the sentences somebody
+     has to write, and until now they were written straight into the deck each quarter and
+     lost the moment the file was closed. Kept here, they survive from one review to the
+     next and the pack is generated with them already in it. */
+
+  /** What the project is actually delivering, in the words a customer would recognise. */
+  productDescription?: string;
+  /** What has been achieved so far, kept up to date as the work goes. One line per
+      accomplishment; the deck prints them as bullets and the detail screen as a list. */
+  accomplishments?: string;
+  /** What could go wrong, what is being done about it, and what help is wanted. */
+  risks?: ProjectRisk[];
 }
 
 /** The family that carries the sterile question. It is asked of the kind of work rather than

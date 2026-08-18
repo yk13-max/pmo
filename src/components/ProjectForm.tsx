@@ -275,6 +275,20 @@ export function ProjectForm({
         client: draft.client.trim(),
         number: draft.number?.trim() || undefined,
         salesLead: draft.salesLead?.trim() || undefined,
+        /* The review narrative, tidied on the way out. An empty box is not an answer of ""
+           but no answer at all, so it is dropped rather than saved as blank — and a risk row
+           somebody added and then thought better of goes with it. A risk is kept if anything
+           at all is written in it, including a mitigation with the risk still to be worded. */
+        productDescription: draft.productDescription?.trim() || undefined,
+        accomplishments: draft.accomplishments?.trim() || undefined,
+        risks: (draft.risks ?? [])
+          .map((r) => ({
+            ...r,
+            risk: r.risk.trim(),
+            mitigation: r.mitigation?.trim() || undefined,
+            assistance: r.assistance?.trim() || undefined,
+          }))
+          .filter((r) => r.risk || r.mitigation || r.assistance),
         milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
         // Owned by the plan below, and already saved by it. See `live` above.
         usesPlan,
@@ -731,6 +745,135 @@ export function ProjectForm({
               </button>
             )}
           </div>
+        </div>
+      </fieldset>
+
+      {/* The three things a review asks for that the tracker cannot work out for itself.
+
+          Everything else on this form is a figure something checks: a date against a gate, a
+          spend against a budget. These are sentences, and until they were held here they
+          were typed into the slide deck each quarter and thrown away with it. Written down
+          once, they come back next quarter as the last person left them — which is what
+          makes them worth keeping rather than worth retyping. The review pack prints them
+          where it used to draw an empty box. */}
+      <fieldset className="fieldset">
+        <legend>For the review</legend>
+        <div className="field">
+          <label htmlFor="pf-product">Description of final product</label>
+          <textarea
+            id="pf-product"
+            className="input"
+            rows={3}
+            value={draft.productDescription ?? ''}
+            placeholder="What this project actually delivers, in words a customer would recognise."
+            onChange={(e) => set('productDescription', e.target.value)}
+          />
+        </div>
+        <div className="field" style={{ marginTop: 'var(--space-3)' }}>
+          <label htmlFor="pf-accomplishments">Key accomplishments to date</label>
+          <textarea
+            id="pf-accomplishments"
+            className="input"
+            rows={4}
+            value={draft.accomplishments ?? ''}
+            placeholder={'One per line — they are printed as bullets.\nFirst articles built and released\nStability study started'}
+            onChange={(e) => set('accomplishments', e.target.value)}
+          />
+          <div className="field-hint">One per line. Each line becomes a bullet on the slide.</div>
+        </div>
+
+        <div className="field" style={{ marginTop: 'var(--space-3)' }}>
+          <label>Risks and mitigations</label>
+          {(draft.risks ?? []).length === 0 ? (
+            <p className="field-hint" style={{ margin: '0 0 var(--space-2)' }}>
+              None written down. A risk here is one worth ten minutes of the review — the rest belong in the register.
+            </p>
+          ) : (
+            <ul className="risk-list">
+              {(draft.risks ?? []).map((risk, i) => (
+                <li key={risk.id} className="risk-row">
+                  <div className="risk-fields">
+                    <input
+                      className="input"
+                      value={risk.risk}
+                      placeholder="What could go wrong"
+                      aria-label={`Risk ${i + 1}`}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          risks: (d.risks ?? []).map((r) => (r.id === risk.id ? { ...r, risk: e.target.value } : r)),
+                        }))
+                      }
+                    />
+                    <input
+                      className="input"
+                      value={risk.mitigation ?? ''}
+                      placeholder="Mitigation or plan"
+                      aria-label={`Mitigation for risk ${i + 1}`}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          risks: (d.risks ?? []).map((r) => (r.id === risk.id ? { ...r, mitigation: e.target.value } : r)),
+                        }))
+                      }
+                    />
+                    <input
+                      className="input"
+                      value={risk.assistance ?? ''}
+                      placeholder="Assistance required"
+                      aria-label={`Assistance required for risk ${i + 1}`}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          risks: (d.risks ?? []).map((r) => (r.id === risk.id ? { ...r, assistance: e.target.value } : r)),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="risk-controls">
+                    {/* The pack's own red chip. It marks the one risk the review is really
+                        about, so it is a tick rather than a severity scale nobody agrees on. */}
+                    <label className="risk-critical" title="Marked critical on the review slide">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(risk.critical)}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            risks: (d.risks ?? []).map((r) => (r.id === risk.id ? { ...r, critical: e.target.checked } : r)),
+                          }))
+                        }
+                      />
+                      Critical
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      aria-label={`Remove risk ${i + 1}`}
+                      title="Remove this risk"
+                      onClick={() =>
+                        setDraft((d) => ({ ...d, risks: (d.risks ?? []).filter((r) => r.id !== risk.id) }))
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              setDraft((d) => ({
+                ...d,
+                risks: [...(d.risks ?? []), { id: `risk-${crypto.randomUUID().slice(0, 8)}`, risk: '' }],
+              }))
+            }
+          >
+            Add a risk
+          </button>
         </div>
       </fieldset>
       </div>

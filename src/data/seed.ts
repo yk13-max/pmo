@@ -61,6 +61,49 @@ type PersonSeed = [
   overheadPct?: number,
 ];
 
+/* The written half of a few sample projects: what the work delivers, what it has achieved,
+   and what could still go wrong. Only a handful carry any, which is the honest picture of a
+   portfolio — the narrative is written on the projects somebody is being asked about, and the
+   rest of the sample shows what an unwritten one looks like on the screen and in the pack.
+   One internal project is among them, because internal work is reviewed too. */
+const NARRATIVE_SEED: Record<
+  string,
+  { product: string; wins: string[]; risks: [risk: string, mitigation: string, assistance: string, critical?: boolean][] }
+> = {
+  Rolex: {
+    product:
+      'A sterile pre-filled syringe for a monoclonal antibody, filled at the Aveltis site and released to EU and US markets. Two presentations: 1ml and 2.25ml.',
+    wins: [
+      'Process performance qualification completed on all three batches',
+      'Container closure integrity method validated and transferred',
+      'EU stability protocol agreed with the client’s regulatory team',
+      'Second filling line released for commercial use',
+    ],
+    risks: [
+      ['Stopper supplier has a 22-week lead time against a 14-week need', 'Second source qualified in parallel; buffer stock ordered', 'Sign-off on the dual-source change', true],
+      ['Client’s own analytical transfer is four weeks behind', 'Weekly joint review; our method retained as backup', 'Escalate at the steering group'],
+    ],
+  },
+  'Red Bull': {
+    product:
+      'A single-use delivery set for the client’s infusion pump, moulded and assembled at volume, CE marked under MDR.',
+    wins: [
+      'Design freeze reached and the design history file brought up to date',
+      'Pilot tooling delivered and first articles measured',
+    ],
+    risks: [
+      ['Notified body review slot not confirmed for the submission window', 'Application filed early; slot chased weekly', 'A director-level call with the notified body', true],
+      ['Biocompatibility testing may repeat if the adhesive changes', 'Adhesive locked in the design freeze', 'None for now'],
+    ],
+  },
+  Seiko: {
+    product:
+      'A rebuild of the site’s batch record system, from paper to electronic, covering every operations area on the site.',
+    wins: ['Requirements agreed with all four areas', 'Supplier chosen and the validation plan written'],
+    risks: [['No named owner in operations once the project team hands over', 'Handover plan drafted with the operations lead', 'Name the owner before go-live']],
+  },
+};
+
 /** Monthly loads are the mockup's tuned figures; they become allocations spread over each
     person's projects, so the resourcing screens still read the same. */
 const PEOPLE_SEED: PersonSeed[] = [
@@ -203,6 +246,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
   });
 
   const projects: Project[] = PROJECT_SEED.map((row, i) => {
+    const said = NARRATIVE_SEED[row[0]];
     const [name, client, type, facing, phase, pct, rag, budget, actual, value, billed, load] = row;
     const duration = type === 'CDMO' ? 18 + (i % 4) * 6 : 6 + (i % 3) * 3;
     const elapsed = Math.round((pct / 100) * duration);
@@ -240,6 +284,16 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
         facing === 'C'
           ? [0.1, 0.35, 0.7, 1].map((share) => toISO(addMonths(start, Math.round(share * duration))))
           : [],
+      // What somebody has written about this project for the review, where anybody has.
+      productDescription: said?.product,
+      accomplishments: said?.wins.join('\n'),
+      risks: (said?.risks ?? []).map(([risk, mitigation, assistance, critical], k) => ({
+        id: `risk-${name.toLowerCase().replace(/\s+/g, '-')}-${k + 1}`,
+        risk,
+        mitigation,
+        assistance,
+        critical,
+      })),
     };
   });
 

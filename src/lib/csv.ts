@@ -401,6 +401,13 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
         currency: (CURRENCY_CODES.find((c) => c === col(r, 'Invoice currency').trim().toUpperCase()) ??
           base?.currency ??
           'GBP') as CurrencyCode,
+        /* The review narrative is not in this sheet and is kept as it was found. It is prose
+           with line breaks in it and a list of risks besides, which is a spreadsheet's worst
+           shape; JSON is the export that carries it. What matters here is that importing a
+           figures file does not silently rub out what somebody wrote for the review. */
+        productDescription: base?.productDescription,
+        accomplishments: base?.accomplishments,
+        risks: base?.risks ?? [],
       };
       if (!merged.startDate || !merged.endDate) {
         skipped.push(`${name}: missing start or end date`);
