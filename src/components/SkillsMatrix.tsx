@@ -160,9 +160,12 @@ export function SkillsMatrix({ view }: { view: PortfolioView }) {
                 <tbody>
                   {people.map((person) => (
                     <tr key={person.id}>
+                      {/* Name and job title on one line, the way the rest of the tracker
+                          names somebody: the row is one person, and two lines of it made
+                          the grid twice as tall as the ticks needed. */}
                       <td>
                         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{person.name}</span>
-                        <span style={{ display: 'block', fontSize: 12, color: 'var(--color-neutral-700)' }}>{person.role}</span>
+                        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}> · {person.role}</span>
                       </td>
                       {skills.map((s) => {
                         const on = Boolean(person.skills?.includes(s.id));

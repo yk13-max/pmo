@@ -198,20 +198,29 @@ export function Resourcing({
             return (
               <div key={p.person.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 <div style={{ minWidth: 0 }}>
-                  <button
-                    type="button"
-                    className="card-link"
-                    onClick={() => onOpenPerson(p.person)}
-                    title={`See ${p.person.name}'s spread across projects`}
-                    style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.15 }}
-                  >
-                    <span className="project-name">{p.person.name}</span>
-                  </button>
-                  <div style={{ fontSize: 13, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4 }}>
-                    {p.person.role}
-                    {p.person.types.length
-                      ? ` · ${p.person.types.map((id) => view.families.find((f) => f.id === id)?.label ?? id).join(', ')}`
-                      : ''}
+                  {/* Name and job title on one line, sharing a baseline: they are one
+                      answer to "who is this", and stacking them spent a line of every card
+                      on the second half of it. On a narrow card the title drops under the
+                      name rather than squeezing it. */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap', minWidth: 0 }}>
+                    <button
+                      type="button"
+                      className="card-link"
+                      onClick={() => onOpenPerson(p.person)}
+                      title={`See ${p.person.name}'s spread across projects`}
+                      /* The class fills its line by default, which is right for a card
+                         whose whole width is the link and wrong here, where the job title
+                         has to sit beside it. */
+                      style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.15, width: 'auto', flex: '0 1 auto', minWidth: 0 }}
+                    >
+                      <span className="project-name">{p.person.name}</span>
+                    </button>
+                    <span style={{ fontSize: 13, color: 'var(--color-accent-700)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                      {p.person.role}
+                      {p.person.types.length
+                        ? ` · ${p.person.types.map((id) => view.families.find((f) => f.id === id)?.label ?? id).join(', ')}`
+                        : ''}
+                    </span>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
                     {p.projectNames.length ? p.projectNames.join(', ') : 'Not booked on anything yet'}
