@@ -13,16 +13,26 @@ import { assigneesOf, taskDayShare } from '../lib/planLoad';
    plan; making the two shares add to a hundred would be inventing an arithmetic nobody
    asked for. */
 
-/** Somebody's initials: one letter per word of their name, at most three. */
+/**
+ * Somebody's initials: the first letter of their first name and the first letter of their
+ * surname.
+ *
+ * Two letters, always — never a letter for every word in the name. Somebody with a middle
+ * name, or a surname in two or three parts, is initialled the same way everybody else is,
+ * because "MRV" beside "RH" reads as a different kind of thing rather than as another
+ * person. What sits between the first name and the last is not part of it.
+ *
+ * A name of one word gives one letter, which is the whole of what there is to give.
+ *
+ * Split on spaces only, never on hyphens: Osei-Bonsu is one surname and its initial is O, and
+ * Anne-Marie is one first name whose initial is A.
+ */
 function initials(name: string): string {
-  return (
-    name
-      .split(/[\s-]+/)
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((word) => word[0].toUpperCase())
-      .join('') || '?'
-  );
+  const words = name.split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  const first = words[0][0].toUpperCase();
+  const last = words.length > 1 ? words[words.length - 1][0].toUpperCase() : '';
+  return `${first}${last}`;
 }
 
 /**
