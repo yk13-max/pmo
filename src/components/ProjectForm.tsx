@@ -624,130 +624,6 @@ export function ProjectForm({
         )}
       </fieldset>
 
-      <fieldset className="fieldset">
-        <legend>Where it has got to</legend>
-        <div className="form-grid">
-          <div className="field">
-            <label htmlFor="pf-phase">Current phase</label>
-            <select
-              id="pf-phase"
-              className="input"
-              value={draft.phase}
-              onChange={(e) => {
-                const phase = Number(e.target.value);
-                setDraft((d) => ({ ...d, phase, milestone: typeDef?.milestones[phase] ?? d.milestone }));
-              }}
-            >
-              {phases.map((p: string, i: number) => (
-                <option key={p} value={i}>
-                  {i + 1}. {p}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="pf-pct">% through current phase</label>
-            <input
-              id="pf-pct"
-              className="input"
-              type="number"
-              min={0}
-              max={100}
-              value={draft.pct}
-              onChange={(e) => set('pct', e.target.value)}
-            />
-            <div className="field-hint">Progress through the current phase</div>
-          </div>
-          <div className="field">
-            <label htmlFor="pf-start">Started</label>
-            <input id="pf-start" className="input" type="date" max={MAX_DATE} value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="pf-end">Finishes</label>
-            <input
-              id="pf-end"
-              className="input"
-              type="date"
-              max={MAX_DATE}
-              /* A date on the last phase is the project finishing, so it takes this field
-                 over rather than sitting beside it disagreeing. */
-              disabled={Boolean(lastGate)}
-              value={effectiveEnd}
-              aria-invalid={invalid('endDate')}
-              onChange={(e) => set('endDate', e.target.value)}
-            />
-            {err('endDate')}
-            {lastGate && (
-              <div className="field-hint">
-                From the last phase date below. What was typed here is kept, and comes back if that is cleared.
-              </div>
-            )}
-          </div>
-          <div className="field">
-            <label htmlFor="pf-ms">Next thing due</label>
-            {/* A planned project can point at a task rather than retyping its name and
-                date. Custom comes first, because anything not in the plan is still a
-                perfectly good answer — a board date, an audit, a customer visit. */}
-            {canMirror && (
-              <select
-                id="pf-ms-pick"
-                className="input"
-                aria-label="Take the next thing due from the plan"
-                style={{ marginBottom: 6 }}
-                value={planTasks.find((x) => x.task.name === draft.milestone)?.task.id ?? ''}
-                onChange={(e) => {
-                  const picked = planTasks.find((x) => x.task.id === e.target.value);
-                  if (!picked) return;
-                  // Taking the task takes its date too, which is the point of picking one.
-                  setDraft((d) => ({
-                    ...d,
-                    milestone: picked.task.name,
-                    milestoneDate: (picked.at as Scheduled).endDate,
-                  }));
-                }}
-              >
-                <option value="">Custom — type it below</option>
-                {planTasks.map(({ task, at }) => (
-                  <option key={task.id} value={task.id}>
-                    {task.name} · {shortDateYear((at as Scheduled).endDate)}
-                  </option>
-                ))}
-              </select>
-            )}
-            <input
-              id="pf-ms"
-              className="input"
-              value={draft.milestone}
-              placeholder={typeDef?.milestones[draft.phase] ?? ''}
-              onChange={(e) => set('milestone', e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="pf-msdate">Due on</label>
-            <input
-              id="pf-msdate"
-              className="input"
-              type="date"
-              max={effectiveEnd || MAX_DATE}
-              value={draft.milestoneDate}
-              aria-invalid={invalid('milestoneDate')}
-              onChange={(e) => set('milestoneDate', e.target.value)}
-            />
-            {err('milestoneDate')}
-            {touched && errors.milestoneDate && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ paddingInline: 0 }}
-                onClick={() => set('milestoneDate', effectiveEnd)}
-              >
-                Set it to the end date
-              </button>
-            )}
-          </div>
-        </div>
-      </fieldset>
-
       {/* The three things a review asks for that the tracker cannot work out for itself.
 
           Everything else on this form is a figure something checks: a date against a gate, a
@@ -876,6 +752,131 @@ export function ProjectForm({
           </button>
         </div>
       </fieldset>
+
+      <fieldset className="fieldset">
+        <legend>Where it has got to</legend>
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="pf-phase">Current phase</label>
+            <select
+              id="pf-phase"
+              className="input"
+              value={draft.phase}
+              onChange={(e) => {
+                const phase = Number(e.target.value);
+                setDraft((d) => ({ ...d, phase, milestone: typeDef?.milestones[phase] ?? d.milestone }));
+              }}
+            >
+              {phases.map((p: string, i: number) => (
+                <option key={p} value={i}>
+                  {i + 1}. {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="pf-pct">% through current phase</label>
+            <input
+              id="pf-pct"
+              className="input"
+              type="number"
+              min={0}
+              max={100}
+              value={draft.pct}
+              onChange={(e) => set('pct', e.target.value)}
+            />
+            <div className="field-hint">Progress through the current phase</div>
+          </div>
+          <div className="field">
+            <label htmlFor="pf-start">Started</label>
+            <input id="pf-start" className="input" type="date" max={MAX_DATE} value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="pf-end">Finishes</label>
+            <input
+              id="pf-end"
+              className="input"
+              type="date"
+              max={MAX_DATE}
+              /* A date on the last phase is the project finishing, so it takes this field
+                 over rather than sitting beside it disagreeing. */
+              disabled={Boolean(lastGate)}
+              value={effectiveEnd}
+              aria-invalid={invalid('endDate')}
+              onChange={(e) => set('endDate', e.target.value)}
+            />
+            {err('endDate')}
+            {lastGate && (
+              <div className="field-hint">
+                From the last phase date below. What was typed here is kept, and comes back if that is cleared.
+              </div>
+            )}
+          </div>
+          <div className="field">
+            <label htmlFor="pf-ms">Next thing due</label>
+            {/* A planned project can point at a task rather than retyping its name and
+                date. Custom comes first, because anything not in the plan is still a
+                perfectly good answer — a board date, an audit, a customer visit. */}
+            {canMirror && (
+              <select
+                id="pf-ms-pick"
+                className="input"
+                aria-label="Take the next thing due from the plan"
+                style={{ marginBottom: 6 }}
+                value={planTasks.find((x) => x.task.name === draft.milestone)?.task.id ?? ''}
+                onChange={(e) => {
+                  const picked = planTasks.find((x) => x.task.id === e.target.value);
+                  if (!picked) return;
+                  // Taking the task takes its date too, which is the point of picking one.
+                  setDraft((d) => ({
+                    ...d,
+                    milestone: picked.task.name,
+                    milestoneDate: (picked.at as Scheduled).endDate,
+                  }));
+                }}
+              >
+                <option value="">Custom — type it below</option>
+                {planTasks.map(({ task, at }) => (
+                  <option key={task.id} value={task.id}>
+                    {task.name} · {shortDateYear((at as Scheduled).endDate)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              id="pf-ms"
+              className="input"
+              value={draft.milestone}
+              placeholder={typeDef?.milestones[draft.phase] ?? ''}
+              onChange={(e) => set('milestone', e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="pf-msdate">Due on</label>
+            <input
+              id="pf-msdate"
+              className="input"
+              type="date"
+              max={effectiveEnd || MAX_DATE}
+              value={draft.milestoneDate}
+              aria-invalid={invalid('milestoneDate')}
+              onChange={(e) => set('milestoneDate', e.target.value)}
+            />
+            {err('milestoneDate')}
+            {touched && errors.milestoneDate && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ paddingInline: 0 }}
+                onClick={() => set('milestoneDate', effectiveEnd)}
+              >
+                Set it to the end date
+              </button>
+            )}
+          </div>
+        </div>
+      </fieldset>
+
       </div>
 
       <div className="form-col">
