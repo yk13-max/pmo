@@ -146,6 +146,18 @@ export function Resourcing({
               Over-allocation threshold ({view.threshold}%)
             </span>
           </div>
+          {/* The one piece of arithmetic in these bars that is not the sum of what was
+              entered, so it is written down rather than left to be worked out from the
+              drawing. */}
+          <p className="calc-note">
+            Other work is the elastic part of a month. The figure on a person&rsquo;s record — meetings, admin, training,
+            line management — is what they would spend on it in a month with room for it, so it is not simply added on
+            top. Projects and days off are counted first, because both are commitments to somebody else; other work then
+            takes whatever is left of the month, down to none of it. So a bar reading past a person&rsquo;s full month is
+            one where the projects and the leave alone are past it — never one where the meetings tipped it over — and a
+            heavily booked month shows a thinner band of other work than a quiet one, which is what actually happens to
+            it.
+          </p>
         </div>
         <div className="control-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flex: '1 1 100%' }}>
           <label className="field" style={{ margin: 0 }}>

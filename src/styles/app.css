@@ -586,6 +586,12 @@ th[aria-sort='ascending'] .sort-header, th[aria-sort='descending'] .sort-header 
 .skills-matrix th { white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
 .skills-matrix tfoot td { border-top: 2px solid var(--color-text); font-size: 12px; }
 
+/* A note about how a chart's figures are arrived at, under the key it belongs to. Set below
+   the lede and above the drawing, quieter than either: it is read once, by somebody asking
+   why a bar says what it says, and then not again. */
+.calc-note { margin: var(--space-3) 0 0; max-width: 76ch; font-size: 13px; line-height: 1.55;
+  color: var(--color-neutral-700); text-wrap: pretty; }
+
 /* A bar's label on the Gantt: set off the end of the bar, in the row's own line, never over
    the drawing. It takes no pointer events so the bar's tooltip still answers when the pointer
    is anywhere near, and it is set at the size the month scale above it is set at, so the two
