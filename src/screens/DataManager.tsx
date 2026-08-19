@@ -12,8 +12,15 @@ import { buildDeck, deckFileName } from '../lib/deck';
 /* CSV is what people exchange, but it is one sheet per kind of thing. The JSON pair moves
    the portfolio whole — every project, person, booking, day off, plan, delivery type and
    setting in one file — which is what you want for a backup or for moving between
-   machines. Both are on the toolbar. */
+   machines. */
 const SHOW_JSON_TRANSFER = true;
+
+/* The CSV pair is off the toolbar. Exporting it is five files at once and importing one is a
+   merge nobody can see the shape of before it happens, and with JSON doing the whole job in a
+   single file neither is what somebody reaching for this toolbar wants. Everything behind
+   them still works and is still reached from Settings, where the guarded reset makes its own
+   CSV backup before it destroys anything — turning this back on is the one word below. */
+const SHOW_CSV_TRANSFER = false;
 
 /* The two things on Settings that destroy work. Both are asked three times over, and the
    first yes is what downloads the backup, so nobody can walk past it. */
@@ -199,12 +206,16 @@ export function DataManager({
         >
           {packing ? 'Building the pack…' : 'Export review pack'}
         </button>
-        <button type="button" className="btn btn-secondary" onClick={exportCsv}>
-          Export CSV
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={() => csvRef.current?.click()}>
-          Import CSV
-        </button>
+        {SHOW_CSV_TRANSFER && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={exportCsv}>
+              Export CSV
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => csvRef.current?.click()}>
+              Import CSV
+            </button>
+          </>
+        )}
         <input
           ref={csvRef}
           type="file"
@@ -507,8 +518,8 @@ export function DataManager({
       <h3 style={{ margin: '0 0 4px' }}>Settings</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-6)' }}>
         Everything lives in this browser and nowhere else, so the two actions below cannot be undone from inside the
-        tracker. Both take you through three questions and make you download a full CSV backup on the way — import
-        those five files again to put things back as they were.
+        tracker. Both take you through three questions and make you download a full backup on the way — one JSON file
+        holding the whole portfolio, which Import JSON puts back exactly as it was.
       </p>
 
       <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
@@ -543,9 +554,9 @@ export function DataManager({
                   </p>
                   <p style={{ margin: 0, fontSize: 15 }}>
                     {step === 1 &&
-                      'Take a backup first. Continuing downloads five CSV files — projects, people, allocations, leave and the task plans. They are the only way back, so put them somewhere you will find them again.'}
+                      'Take a backup first. Continuing downloads one JSON file holding the whole portfolio — every project, person, booking, day off and plan. It is the only way back, so put it somewhere you will find it again.'}
                     {step === 2 &&
-                      'Check those five CSVs really did download before you go any further. Nothing has changed yet.'}
+                      'Check that file really did download before you go any further. Nothing has changed yet.'}
                     {step === 3 &&
                       `Last chance. ${portfolio.projects.length} project${portfolio.projects.length === 1 ? '' : 's'}, ${portfolio.people.length} ${portfolio.people.length === 1 ? 'person' : 'people'} and ${Object.keys(portfolio.allocations).length} booking${Object.keys(portfolio.allocations).length === 1 ? '' : 's'} ${action.fate}.`}
                   </p>
@@ -556,7 +567,7 @@ export function DataManager({
                       style={{ color: 'var(--color-accent-2-700)' }}
                       onClick={() => {
                         // The backup is not optional: the first yes downloads it, then the asking goes on.
-                        if (step === 1) exportCsv();
+                        if (step === 1) onExport();
                         if (step < 3) {
                           setDanger({ kind: action.kind, step: (step + 1) as 2 | 3 });
                           return;
@@ -566,7 +577,7 @@ export function DataManager({
                           setMessage({ tone: 'ok', text: 'Sample portfolio restored.' });
                         } else {
                           clearAll();
-                          setMessage({ tone: 'ok', text: 'Everything cleared. Import your CSVs to put it back.' });
+                          setMessage({ tone: 'ok', text: 'Everything cleared. Import the JSON backup to put it back.' });
                         }
                         setDanger(null);
                       }}
