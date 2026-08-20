@@ -2,7 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ScreenId } from '../App';
 
 // `about` is reachable by address but never by the menu, which is the point of it.
-const SCREENS: ScreenId[] = ['portfolio', 'resources', 'financials', 'timeline', 'detail', 'planning', 'alerts', 'data', 'about'];
+const SCREENS: ScreenId[] = [
+  'portfolio',
+  'resources',
+  'financials',
+  'timeline',
+  'detail',
+  'planning',
+  'workstreams',
+  'alerts',
+  'data',
+  'about',
+];
 
 export interface Route {
   screen: ScreenId;

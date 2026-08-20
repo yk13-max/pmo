@@ -20,9 +20,20 @@ import { Timeline } from './screens/Timeline';
 import { ProjectDetail } from './screens/ProjectDetail';
 import { Alerts } from './screens/Alerts';
 import { Planning } from './screens/Planning';
+import { Workstreams } from './screens/Workstreams';
 import { DataManager } from './screens/DataManager';
 
-export type ScreenId = 'portfolio' | 'resources' | 'financials' | 'timeline' | 'detail' | 'planning' | 'alerts' | 'data' | 'about';
+export type ScreenId =
+  | 'portfolio'
+  | 'resources'
+  | 'financials'
+  | 'timeline'
+  | 'detail'
+  | 'planning'
+  | 'workstreams'
+  | 'alerts'
+  | 'data'
+  | 'about';
 
 /* Every screen that wears the shell. The credit page is not one of them — it takes over
    the window instead, so it has no header to fill in. */
@@ -57,6 +68,11 @@ const HEADS: Record<Exclude<ScreenId, 'about'>, [kicker: string, title: string, 
     'Planning',
     'Build one project\u2019s plan: nest tasks under its phases, link what waits on what, and see which of them the finish date actually turns on.',
   ],
+  workstreams: [
+    'Work that does not finish',
+    'Workstreams',
+    'Standing work with no start and no end — one lane each, month by month, and the plan behind whichever one you pick. Out of the portfolio, in the resourcing.',
+  ],
   alerts: [
     'Things needing attention',
     'Alerts',
@@ -70,7 +86,9 @@ const HEADS: Record<Exclude<ScreenId, 'about'>, [kicker: string, title: string, 
 };
 
 type Editing =
-  | { kind: 'project'; project: Project | null }
+  /* `workstream` only says what an empty form is for. An existing record knows what it is
+     from its own flag, and the form reads that. */
+  | { kind: 'project'; project: Project | null; workstream?: boolean }
   | { kind: 'person'; person: Person | null }
   | { kind: 'person-detail'; person: Person }
   | null;
@@ -82,6 +100,7 @@ type Editing =
 const PRINTABLE = new Set<ScreenId>(['detail', 'alerts']);
 
 const SCREEN_WIDTH: Partial<Record<ScreenId, number>> = {
+  workstreams: 1240,
   timeline: 1240,
   detail: 1100,
   alerts: 1180,
@@ -164,6 +183,7 @@ export function App() {
     ['timeline', 'Timeline', 'Two years'],
     ['detail', 'Project detail', selected?.name ?? '—'],
     ['planning', 'Planning', selected?.name ?? '—'],
+    ['workstreams', 'Workstreams', view.workstreams.length],
     ['alerts', 'Alerts', view.totals.atRisk],
     ['data', 'Data', 'Add & edit'],
   ];
@@ -176,6 +196,7 @@ export function App() {
     editing?.kind === 'project' && editing.project
       ? view.monthsFor(
           view.projects.find((p) => p.id === editing.project?.id) ??
+            view.workstreams.find((p) => p.id === editing.project?.id) ??
             view.inactiveProjects.find((p) => p.id === editing.project?.id) ??
             editing.project,
         )
@@ -284,12 +305,20 @@ export function App() {
 {screen === 'planning' && (
           <Planning view={view} projectId={selected?.id ?? null} onSelectProject={setLastProjectId} />
         )}
+        {screen === 'workstreams' && (
+          <Workstreams
+            view={view}
+            onNew={() => setEditing({ kind: 'project', project: null, workstream: true })}
+            onEdit={(project) => setEditing({ kind: 'project', project })}
+          />
+        )}
                 {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}
         {screen === 'data' && (
           <DataManager
             view={view}
             onEditProject={(project) => setEditing({ kind: 'project', project })}
             onNewProject={() => setEditing({ kind: 'project', project: null })}
+            onNewWorkstream={() => setEditing({ kind: 'project', project: null, workstream: true })}
             onEditPerson={(person) => setEditing({ kind: 'person', person })}
             onNewPerson={() => setEditing({ kind: 'person', person: null })}
             onOpenProject={openProject}
@@ -301,13 +330,28 @@ export function App() {
 
       {editing?.kind === 'project' && (
         <Drawer
-          title={editing.project ? `Edit ${editing.project.name}` : 'New project'}
-          kicker={editing.project ? 'Project' : 'Add to the portfolio'}
+          title={
+            editing.project
+              ? `Edit ${editing.project.name}`
+              : editing.workstream
+                ? 'New workstream'
+                : 'New project'
+          }
+          kicker={
+            editing.project
+              ? editing.project.workstream
+                ? 'Workstream'
+                : 'Project'
+              : editing.workstream
+                ? 'Standing work, no dates'
+                : 'Add to the portfolio'
+          }
           onClose={() => setEditing(null)}
           expandable
         >
           <ProjectForm
             project={editing.project}
+            newWorkstream={Boolean(editing.workstream)}
             view={view}
             people={view.people}
             months={editSpan.months}

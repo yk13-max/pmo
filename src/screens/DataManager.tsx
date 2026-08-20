@@ -49,6 +49,7 @@ export function DataManager({
   view,
   onEditProject,
   onNewProject,
+  onNewWorkstream,
   onEditPerson,
   onNewPerson,
   onOpenProject,
@@ -57,6 +58,7 @@ export function DataManager({
   view: PortfolioView;
   onEditProject: (project: Project) => void;
   onNewProject: () => void;
+  onNewWorkstream: () => void;
   onEditPerson: (person: Person) => void;
   onNewPerson: () => void;
   onOpenProject: (id: string) => void;
@@ -110,8 +112,14 @@ export function DataManager({
      and filtered alongside it, and marked for what it is. */
   const { rows, filters, setFilters, sort, setSort } = useProjectsTable([
     ...view.projects,
-    ...view.inactiveProjects,
+    ...view.inactiveProjects.filter((p) => !p.workstream),
   ]);
+  /* Workstreams keep their own list. They are the same record and they are edited by the
+     same form, but a table of them alongside the projects would be a table with four empty
+     columns in it — no phase, no progress, no dates — and the eye reads empty columns as
+     something missing rather than as something that does not apply. Paused ones are listed
+     here too, for the same reason paused projects are listed above: this is the data. */
+  const streams = [...view.workstreams, ...view.inactiveProjects.filter((p) => p.workstream)];
 
   /* What an archived person is still on the books for, across every project and every
      month — the reason their record is worth keeping. */
@@ -179,6 +187,9 @@ export function DataManager({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-8)' }}>
         <button type="button" className="btn btn-primary" onClick={onNewProject}>
           Add project
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onNewWorkstream}>
+          Add workstream
         </button>
         <button type="button" className="btn btn-secondary" onClick={onNewPerson}>
           Add person
@@ -340,6 +351,97 @@ export function DataManager({
       )}
 
       </>) },
+          {
+            id: 'workstreams',
+            label: 'Workstreams',
+            count: streams.length,
+            render: () => (
+              <>
+                <h3 style={{ margin: '0 0 4px' }}>Workstreams</h3>
+                <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>
+                  Work with no start and no end — sustaining engineering, a standing support agreement, the upkeep of a
+                  rig. It is booked and planned exactly like a project and counts in the resourcing, but it stays out of
+                  the portfolio chart, the timeline, the financial totals and the review pack, where work with no dates
+                  cannot be drawn honestly. The lanes and the plans are on the Workstreams screen.
+                </p>
+                {streams.length === 0 ? (
+                  <p className="empty">None yet. Add workstream, above.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Workstream</th>
+                          <th>Delivery type</th>
+                          <th>For</th>
+                          <th>Run by</th>
+                          <th>Driven by</th>
+                          <th style={{ textAlign: 'right' }}>Budget</th>
+                          <th style={{ textAlign: 'right' }}>Spent</th>
+                          <th style={{ textAlign: 'right' }}>Draw this month</th>
+                          <th>Status</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {streams.map((p) => (
+                          <tr key={p.id}>
+                            <td>
+                              <span className="project-name" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
+                                {p.name}
+                              </span>
+                              <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.client}</span>
+                              {p.inactive && (
+                                <div className="eyebrow is-on-hold" title="Out of the resourcing and drawing nobody’s time">
+                                  On hold
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ fontSize: 13 }}>{p.typeShort}</td>
+                            <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{p.facingLabel}</td>
+                            <td style={{ fontSize: 13 }}>{p.pmName}</td>
+                            {/* The same two ways a project is driven, said in the same words. */}
+                            <td style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                              {p.usesPlan && p.plansResource ? 'Its plan' : p.usesPlan ? 'Hours, planned too' : 'Hours a month'}
+                            </td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.budgetLabel}</td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.actualLabel}</td>
+                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: p.loadInk }}>
+                              {p.loadDaysLabel}
+                            </td>
+                            <td>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'block', background: p.ragColor }} />
+                                {p.ragLabel}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => onEditProject(p)}>
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost"
+                                  onClick={() => {
+                                    if (window.confirm(`Archive ${p.name}? It keeps all its data and can be restored from the Archive tab.`)) {
+                                      setArchived(p.id, true);
+                                    }
+                                  }}
+                                >
+                                  Archive
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ),
+          },
           { id: 'people', label: 'People', count: view.people.length, render: () => (<>
       <h3 style={{ margin: '0 0 4px' }}>People</h3>
       <p className="lede" style={{ marginBottom: 'var(--space-4)' }}>

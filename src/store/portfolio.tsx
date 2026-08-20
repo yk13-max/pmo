@@ -177,6 +177,10 @@ export function normalise(p: Portfolio): Portfolio {
       currency: project.currency ?? 'GBP',
       // The same for what the work asks for: a tag that has gone is no longer asked for.
       skills: (project.skills ?? []).filter((id) => (p.skills ?? []).some((s) => s.id === id)),
+      /* Everything written before workstreams existed is a project, which is what the
+         absent flag means. A workstream keeps its dates blank rather than nought: blank is
+         "there is no such date", and the screens that would have shown one say so. */
+      workstream: project.workstream ?? false,
       // Projects that predate planning keep their own dates until they are opted in.
       usesPlan: project.usesPlan ?? false,
       mirrorPhases: project.mirrorPhases ?? false,

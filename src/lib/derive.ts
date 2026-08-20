@@ -247,10 +247,12 @@ export function viewProject(
     valueBase: Math.round(project.value * fx),
     billedBase: Math.round(project.billed * fx),
     currencyLabel: `${CURRENCIES[project.currency]?.symbol ?? '£'} ${project.currency}`,
-    msDateLabel: shortDate(project.milestoneDate),
+    msDateLabel: project.milestoneDate ? shortDate(project.milestoneDate) : '—',
     priorityLabel: PRIORITY_LABEL[project.priority] ?? 'Normal',
-    startLabel: monthLabel(start),
-    endLabel: monthLabel(end),
+    /* A workstream has no dates, so it has no date labels either. An em dash rather than a
+       formatted Invalid Date, and rather than a guess at what the dates would have been. */
+    startLabel: project.startDate ? monthLabel(start) : '—',
+    endLabel: endDate ? monthLabel(end) : '—',
     plannedStart: planSpan?.start ?? null,
     plannedEnd: planSpan?.end ?? null,
     planPhaseEnds,
@@ -260,7 +262,7 @@ export function viewProject(
     planned: Boolean(planSpan),
     spanStart: planSpan?.start ?? project.startDate,
     spanEnd: planSpan?.end ?? endDate,
-    durationMonths: monthSpan(start, end),
+    durationMonths: project.startDate && endDate ? monthSpan(start, end) : 0,
   };
 }
 
@@ -336,6 +338,8 @@ export interface SkillShortage {
 
 export interface PortfolioView {
   projects: ProjectView[];
+  /** Standing work: no start, no end, out of the portfolio and in the resourcing. */
+  workstreams: ProjectView[];
   archivedProjects: ProjectView[];
   /** Projects on hold: out of every screen the way archived work is, but still listed with
       the live ones on the Data screen so they can be picked up again. */
@@ -493,7 +497,12 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
        Work on hold is out of the portfolio the same way, but it has not gone anywhere: it
        is listed with the rest on the Data screen, marked as what it is, and one click from
        running again. */
-    const projects = allProjectViews.filter(running);
+    /* Projects and workstreams are the same record and the same arithmetic, and they part
+       company here. `projects` is what every screen built around dates and value reads, and
+       it holds no workstreams; `workstreams` is the standing work, which has its own screen.
+       Anything counting hours reads both, because both are hours somebody owes. */
+    const projects = allProjectViews.filter((p) => running(p) && !p.workstream);
+    const workstreams = allProjectViews.filter((p) => running(p) && p.workstream);
     const inactiveProjects = allProjectViews.filter((p) => !p.archived && p.inactive);
     const archivedProjects = allProjectViews.filter((p) => p.archived);
 
@@ -581,7 +590,8 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
        so both sides of the sentence now point at the same tag. */
     const skills = portfolio.skills ?? [];
     const wantedBy = new Map<string, { id: string; name: string }[]>();
-    projects.forEach((p) => {
+    // Standing work asks for skills as surely as a dated project does, so both are counted.
+    [...projects, ...workstreams].forEach((p) => {
       (p.skills ?? []).forEach((id) => {
         wantedBy.set(id, [...(wantedBy.get(id) ?? []), { id: p.id, name: p.name }]);
       });
@@ -689,8 +699,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
        the work was booked still has those hours, and the edit pane speaks for every month it
        shows, so a month left out of it would be dropped on the next save. */
     const monthsFor = (project: { id?: string; startDate: string; endDate: string }) => {
-      let first = project.startDate.slice(0, 7);
-      let last = project.endDate.slice(0, 7);
+      /* Work with no dates on it — a workstream — is booked over the resourcing window and
+         whatever is already booked outside it, which is the same rule as everything else
+         once its own life has nothing to say. */
+      let first = project.startDate ? project.startDate.slice(0, 7) : months[0];
+      let last = project.endDate ? project.endDate.slice(0, 7) : months[months.length - 1];
       if (months[0] < first) first = months[0];
       if (months[months.length - 1] > last) last = months[months.length - 1];
       if (project.id) {
@@ -726,7 +739,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     };
 
     const spreadFor = (personId: string) =>
-      projects
+      [...projects, ...workstreams]
         .map((project) => ({ project, ...row(months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0)) }))
         .filter((r) => r.totalHours > 0)
         .sort((a, b) => b.totalHours - a.totalHours);
@@ -753,6 +766,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     return {
       projects,
+      workstreams,
       archivedProjects,
       inactiveProjects,
       people,

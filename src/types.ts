@@ -115,6 +115,21 @@ export interface Project {
       it is what the project is asking the team for, so it can be read against who is on the
       books and who has room. */
   skills?: string[];
+  /** A workstream rather than a project.
+   *
+   * The same record, run the same way — a delivery type, a manager, a budget, people booked
+   * on it and a plan if it wants one — but with no start and no end. It is work that is
+   * simply there: sustaining engineering, a customer's standing support, the lab's own
+   * upkeep. It comes and goes in bursts and nobody can say when it finishes, which is
+   * exactly what makes it wrong for the portfolio chart — a scatter of value against phase
+   * has no honest place to put work with no phase to be in and no date to be judged by.
+   *
+   * It is not, however, wrong for the resourcing: those bursts are hours somebody has to
+   * find, and leaving them out would make the team look emptier than it is. So a workstream
+   * is out of the portfolio, the timeline, the financial totals and the review pack, and in
+   * every reading of who is booked and how full they are.
+   */
+  workstream?: boolean;
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
   /** Work that is not running at the moment — on hold, awaiting a decision, between

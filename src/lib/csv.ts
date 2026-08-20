@@ -77,6 +77,7 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
   return toCsv(
     [
       'Project',
+      'Kind',
       'Project number',
       'Skills needed',
       'Client or function',
@@ -108,6 +109,10 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
     ],
     p.projects.map((x) => [
       x.name,
+      /* Which kind of record this row is. A workstream has no dates in it and none of the
+         date columns filled in, so the sheet says what it is rather than leaving somebody to
+         work it out from the blanks. */
+      x.workstream ? 'Workstream' : 'Project',
       x.number ?? '',
       (x.skills ?? []).map((id) => p.skills.find((s) => s.id === id)?.label ?? id).join('; '),
       x.client,
@@ -353,6 +358,11 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
       const pm = portfolio.people.find((x) => x.name.toLowerCase() === pmName.toLowerCase());
       const existing = projects.findIndex((x) => x.name.toLowerCase() === name.toLowerCase());
       const base = existing >= 0 ? projects[existing] : null;
+      /* A file without the column leaves the stored answer alone, the same as every other
+         switch here — an old sheet re-imported must not turn a workstream into a project. */
+      const workstream = headers.some((h) => h.trim().toLowerCase() === 'kind')
+        ? col(r, 'Kind').trim().toLowerCase() === 'workstream'
+        : Boolean(base?.workstream);
       const merged = {
         id: base?.id ?? `project-${name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).slice(2, 6)}`,
         name,
@@ -405,11 +415,15 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
            with line breaks in it and a list of risks besides, which is a spreadsheet's worst
            shape; JSON is the export that carries it. What matters here is that importing a
            figures file does not silently rub out what somebody wrote for the review. */
+        workstream,
         productDescription: base?.productDescription,
         accomplishments: base?.accomplishments,
         risks: base?.risks ?? [],
       };
-      if (!merged.startDate || !merged.endDate) {
+      /* Dates are what a project is judged by, so a project without them is not usable and
+         is reported rather than half-imported. A workstream has none by definition, and
+         insisting on them would throw away every row of standing work in the file. */
+      if (!workstream && (!merged.startDate || !merged.endDate)) {
         skipped.push(`${name}: missing start or end date`);
         return;
       }

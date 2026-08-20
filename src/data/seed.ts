@@ -104,6 +104,61 @@ const NARRATIVE_SEED: Record<
   },
 };
 
+/* The standing work. Three of them, because a real portfolio has a handful and they are all
+   the same handful: something that keeps the last generation of product alive, something a
+   customer pays a retainer for, and something the site owes itself. Each carries the hours a
+   month it typically takes and the months it actually lands in — bursts rather than a flat
+   line, which is the whole character of work that comes and goes. The months are given as
+   offsets from the start of the resourcing window, so the sample always has something to
+   show whenever it is opened. */
+const WORKSTREAM_SEED: [
+  name: string,
+  client: string,
+  type: ProjectType,
+  facing: Facing,
+  pm: string,
+  budget: number,
+  actual: number,
+  /** Who does it, and how many hours of theirs it takes in a month it is running. */
+  crew: [person: string, hours: number][],
+  /** Which months of the window it lands in. */
+  months: number[],
+][] = [
+  [
+    'Sustaining engineering',
+    'Engineering',
+    'CS',
+    'I',
+    'Priya',
+    260,
+    140,
+    [['Elena', 26], ['Yusuf', 14]],
+    [0, 1, 2, 3, 4, 5],
+  ],
+  [
+    'Aveltis standing support',
+    'Aveltis Bio',
+    'CDMO',
+    'C',
+    'Saranan',
+    180,
+    95,
+    [['Rachel', 18], ['Saranan', 10]],
+    [0, 2, 3, 5],
+  ],
+  [
+    'Lab equipment upkeep',
+    'Operations',
+    'CDMO',
+    'I',
+    'Marcus',
+    120,
+    64,
+    [['Yusuf', 20]],
+    [1, 4],
+  ],
+];
+
 /** Monthly loads are the mockup's tuned figures; they become allocations spread over each
     person's projects, so the resourcing screens still read the same. */
 const PEOPLE_SEED: PersonSeed[] = [
@@ -297,6 +352,38 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
     };
   });
 
+  /* The workstreams, as projects with no dates on them. Everything else about the record is
+     the same, which is the point: they are booked, planned, budgeted and archived by the
+     same code, and only the screens built on dates leave them out. */
+  const workstreams: Project[] = WORKSTREAM_SEED.map(([name, client, type, facing, pm, budget, actual]) => ({
+    id: `project-${name.toLowerCase().replace(/\s+/g, '-')}`,
+    name,
+    client,
+    type,
+    facing,
+    workstream: true,
+    phase: 0,
+    pct: 0,
+    rag: 'G' as const,
+    pmId: people.find((x) => x.name === pm)?.id ?? people[0].id,
+    budget,
+    actual,
+    value: 0,
+    billed: 0,
+    load: 0,
+    startDate: '',
+    endDate: '',
+    milestone: '',
+    milestoneDate: '',
+    currency: 'GBP' as const,
+    priority: 4,
+    phaseDates: [],
+    invoiceDates: [],
+    skills: [],
+    risks: [],
+  }));
+  projects.push(...workstreams);
+
   const byName = new Map(projects.map((p) => [p.name, p]));
   const months = planningMonths(today);
   const allocations: Allocations = {};
@@ -311,6 +398,21 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
           allocations[`${project.id}|${personId}|${month}`] =
             Math.round((shares[pi] / 100) * HOURS_PER_FULL_MONTH * 2) / 2;
         }
+      });
+    });
+  });
+
+  /* What the standing work actually takes, month by month. Only the months it runs in get a
+     booking at all: a workstream with something in every cell would be a project in all but
+     name, and the gaps are the reading. */
+  WORKSTREAM_SEED.forEach(([name, , , , , , , crew, activeMonths]) => {
+    const stream = byName.get(name);
+    if (!stream) return;
+    crew.forEach(([person, hours]) => {
+      const personId = `person-${person.toLowerCase()}`;
+      activeMonths.forEach((mi) => {
+        const month = months[mi];
+        if (month) allocations[`${stream.id}|${personId}|${month}`] = hours;
       });
     });
   });

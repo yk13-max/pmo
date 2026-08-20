@@ -106,9 +106,12 @@ export function ProjectDetail({
                  screen is a project's own record and a paused project still has one — and
                  leaving it out would mean opening it by name showed somebody else's. It
                  says what it is, and sorts after the running work of its own kind. */
+              /* Workstreams are not projects and do not belong in a picker of them: they
+                 have no phases to step through and no dates to read, which is most of what
+                 this screen is. They are read on their own screen. */
               const mine = [
                 ...view.projects.filter((p) => p.family === family.id),
-                ...view.inactiveProjects.filter((p) => p.family === family.id),
+                ...view.inactiveProjects.filter((p) => p.family === family.id && !p.workstream),
               ];
               return mine.length ? (
                 <optgroup key={family.id} label={family.label}>

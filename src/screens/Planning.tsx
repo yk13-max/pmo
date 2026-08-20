@@ -89,6 +89,10 @@ export function Planning({
      lands on the running list. */
   const project =
     view.projects.find((p) => p.id === chosen) ??
+    /* A workstream is planned exactly the way a project is — the picker on this screen does
+       not offer them, because they have a screen of their own, but the plan opened from
+       there arrives here by id and has to be found. */
+    view.workstreams.find((p) => p.id === chosen) ??
     view.inactiveProjects.find((p) => p.id === chosen) ??
     view.projects[0] ??
     null;
@@ -177,8 +181,12 @@ export function Planning({
   /* The chart opens on the plan, so adding a task shows it rather than leaving the bars
      off to the right of a project that started months earlier. With nothing planned yet
      it falls back to the project's own start, which is where the first task will land. */
-  const first = plan.start ?? project.startDate;
-  const last = [plan.end, project.endDate].filter(Boolean).sort().reverse()[0] as string;
+  /* Work with no dates of its own — a workstream — has nothing to fall back to until it has
+     a task, so the ruler starts at today. Every chart needs two ends whether or not there is
+     anything drawn between them. */
+  const todayISO = toISO(view.today);
+  const first = plan.start || project.startDate || todayISO;
+  const last = ([plan.end, project.endDate].filter(Boolean).sort().reverse()[0] as string | undefined) ?? first;
   // Only ever look forward from the plan's own start, never back to an earlier project date.
   const chartFrom = plan.end && plan.end > (plan.start ?? '') ? plan.end : last;
   const chartStart = addDays(first, -7);
@@ -492,12 +500,23 @@ export function Planning({
         >
           {/* The panel lines up with everything else on the page; the sentence inside it keeps
               a measure that can be read across a wide window. */}
-          <span>
-            This project is not planned here. It runs {shortDateYear(project.startDate)} →{' '}
-            {shortDateYear(project.endDate)} from the dates entered on the project itself, and that is what the
-            timeline and every other screen shows. Anything built below is kept but not used until you tick{' '}
-            <strong>Plan this project here</strong>.
-          </span>
+          {/* Standing work has no dates to fall back on, so the sentence cannot be the same
+              one: there is nothing being shown instead of the plan, which makes the plan the
+              only account of when any of this happens. */}
+          {project.workstream ? (
+            <span>
+              This workstream is not planned here. It has no start and no end — nothing else in the tracker says when
+              its work happens, so a plan built below is the only thing that would. Anything built there is kept but
+              not used until you tick <strong>Plan this project here</strong>.
+            </span>
+          ) : (
+            <span>
+              This project is not planned here. It runs {shortDateYear(project.startDate)} →{' '}
+              {shortDateYear(project.endDate)} from the dates entered on the project itself, and that is what the
+              timeline and every other screen shows. Anything built below is kept but not used until you tick{' '}
+              <strong>Plan this project here</strong>.
+            </span>
+          )}
         </p>
       )}
 
@@ -933,18 +952,26 @@ function PlanSummary({
     <>
       <div className="stat-row one-line" style={{ marginBottom: 'var(--space-4)' }}>
         <Fig value={String(tasks.length)} label="Tasks" sub={`Across ${project.phases.length} phases`} />
-        <Fig value={plan.start ? shortDateYear(plan.start) : '—'} label="Plan starts" sub={`Project opens ${shortDateYear(project.startDate)}`} />
+        {/* Standing work opens on no date at all, so the line under the figure says that
+            rather than formatting an empty string into 01 Jan '00. */}
+        <Fig
+          value={plan.start ? shortDateYear(plan.start) : '—'}
+          label="Plan starts"
+          sub={project.startDate ? `Project opens ${shortDateYear(project.startDate)}` : 'No start date — a workstream'}
+        />
         <Fig
           value={plan.end ? shortDateYear(plan.end) : '—'}
           label="Plan finishes"
           sub={
-            plan.end
-              ? plan.end > project.endDate
-                ? `Past the project's own end of ${shortDateYear(project.endDate)}`
-                : `Inside the project's end of ${shortDateYear(project.endDate)}`
-              : 'Nothing planned yet'
+            !plan.end
+              ? 'Nothing planned yet'
+              : !project.endDate
+                ? 'No end date to be measured against'
+                : plan.end > project.endDate
+                  ? `Past the project's own end of ${shortDateYear(project.endDate)}`
+                  : `Inside the project's end of ${shortDateYear(project.endDate)}`
           }
-          color={plan.end && plan.end > project.endDate ? 'var(--color-accent-2-700)' : undefined}
+          color={plan.end && project.endDate && plan.end > project.endDate ? 'var(--color-accent-2-700)' : undefined}
         />
         <Fig
           value={String(trim(scheduledDays))}

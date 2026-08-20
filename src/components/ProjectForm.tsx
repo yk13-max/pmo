@@ -31,7 +31,7 @@ type Draft = Omit<Project, 'phase' | 'pct' | 'budget' | 'actual' | 'value' | 'bi
   load: string;
 };
 
-function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
+function emptyProject(pmId: string, type: ProjectTypeDef | undefined, workstream = false): Project {
   const today = new Date();
   return {
     id: `project-${crypto.randomUUID().slice(0, 8)}`,
@@ -48,10 +48,14 @@ function emptyProject(pmId: string, type: ProjectTypeDef | undefined): Project {
     value: 0,
     billed: 0,
     load: 0,
-    startDate: toISO(today),
-    endDate: toISO(addMonths(today, 9)),
-    milestone: type?.milestones[0] ?? '',
-    milestoneDate: toISO(addMonths(today, 1)),
+    /* A workstream has no dates. Not today's date, not a nominal end nine months out —
+       nothing, because there is nothing to put there: it started when somebody started
+       doing it and it finishes when the business stops needing it. */
+    startDate: workstream ? '' : toISO(today),
+    endDate: workstream ? '' : toISO(addMonths(today, 9)),
+    milestone: workstream ? '' : type?.milestones[0] ?? '',
+    milestoneDate: workstream ? '' : toISO(addMonths(today, 1)),
+    workstream,
     priority: 3,
     currency: 'GBP',
     sterile: false,
@@ -116,6 +120,7 @@ export function ProjectForm({
   onSave,
   onCancel,
   onDelete,
+  newWorkstream = false,
 }: {
   project: Project | null;
   /* Only for the plan at the foot of a full page, which is the Planning screen itself. */
@@ -133,10 +138,12 @@ export function ProjectForm({
   onSave: (project: Project, allocations?: Record<string, number>) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
+  /** Adding a workstream rather than a project. Only read when there is nothing to edit. */
+  newWorkstream?: boolean;
 }) {
   const managers = useMemo(() => people.filter((p) => p.role === 'Project manager'), [people]);
   const [draft, setDraft] = useState<Draft>(() =>
-    toDraft(project ?? emptyProject((managers[0] ?? people[0])?.id ?? '', projectTypes[0])),
+    toDraft(project ?? emptyProject((managers[0] ?? people[0])?.id ?? '', projectTypes[0], newWorkstream)),
   );
   const [alloc, setAlloc] = useState<Record<string, number>>(allocations);
   const [touched, setTouched] = useState(false);
@@ -204,6 +211,12 @@ export function ProjectForm({
     (p) => ineligible.has(p.id) && months.some((m) => (alloc[`${p.id}|${m}`] ?? 0) > 0),
   );
   const internal = draft.facing === 'I';
+  /* Standing work. Everything on this form that asks when — the dates, the phase it has
+     reached, the next thing due, the gates and the invoice stages — has no answer for it,
+     so those blocks are not drawn rather than drawn empty and left to be argued with. What
+     stays is what a workstream does have: whose it is, who runs it, what it costs, what it
+     needs somebody to be able to do, and who is booked on it. */
+  const stream = Boolean(draft.workstream);
 
   const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
   /* The plan is read live so the gates and the milestone list always show what the Gantt
@@ -238,7 +251,7 @@ export function ProjectForm({
     errors.client = internal ? 'Name the function that owns the work.' : 'Name the customer.';
   if (!draft.pmId) errors.pmId = 'Pick a project manager.';
   if (cash(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
-  if (effectiveEnd <= draft.startDate)
+  if (!stream && effectiveEnd <= draft.startDate)
     errors.endDate = lastGate
       ? 'The last phase completes on or before the start date.'
       : 'The end date must come after the start date.';
@@ -261,7 +274,7 @@ export function ProjectForm({
   const planTasksAll = portfolio.tasks.filter((t) => t.projectId === draft.id);
 
   const invoiceDates = INVOICE_STAGES.map((_, i) => draft.invoiceDates[i] ?? '');
-  if (!internal && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
+  if (!internal && !stream && invoiceDates.some((d) => !d)) errors.invoiceDates = 'Each invoice stage needs a date.';
   if (!internal && invoiceDates.some((d) => d && effectiveEnd && d > effectiveEnd))
     errors.invoiceDates = 'An invoice is dated after the project ends.';
 
@@ -289,18 +302,24 @@ export function ProjectForm({
             assistance: r.assistance?.trim() || undefined,
           }))
           .filter((r) => r.risk || r.mitigation || r.assistance),
-        milestone: draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
         // Owned by the plan below, and already saved by it. See `live` above.
         usesPlan,
         plansResource,
-        pct: Math.min(100, num(draft.pct)),
+        /* Whatever a workstream was opened with, it is saved without dates: a record that
+           says it has none should not be quietly holding some. */
+        startDate: stream ? '' : draft.startDate,
+        endDate: stream ? '' : draft.endDate,
+        milestone: stream ? '' : draft.milestone.trim() || typeDef?.milestones[draft.phase] || '',
+        milestoneDate: stream ? '' : draft.milestoneDate,
+        pct: stream ? 0 : Math.min(100, num(draft.pct)),
+        phase: stream ? 0 : draft.phase,
         budget: cash(draft.budget),
         actual: cash(draft.actual),
         value: internal ? 0 : cash(draft.value),
         billed: internal ? 0 : cash(draft.billed),
         load: derivedLoad,
-        phaseDates,
-        invoiceDates: internal ? [] : invoiceDates,
+        phaseDates: stream ? [] : phaseDates,
+        invoiceDates: internal || stream ? [] : invoiceDates,
       },
       /* A plan-booked project's hours come from its tasks, so there is nothing here to
          save. Sending the grid back would overwrite what was typed by hand with a copy of
@@ -624,129 +643,134 @@ export function ProjectForm({
         )}
       </fieldset>
 
-      <fieldset className="fieldset">
-        <legend>Where it has got to</legend>
-        <div className="form-grid">
-          <div className="field">
-            <label htmlFor="pf-phase">Current phase</label>
-            <select
-              id="pf-phase"
-              className="input"
-              value={draft.phase}
-              onChange={(e) => {
-                const phase = Number(e.target.value);
-                setDraft((d) => ({ ...d, phase, milestone: typeDef?.milestones[phase] ?? d.milestone }));
-              }}
-            >
-              {phases.map((p: string, i: number) => (
-                <option key={p} value={i}>
-                  {i + 1}. {p}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="pf-pct">% through current phase</label>
-            <input
-              id="pf-pct"
-              className="input"
-              type="number"
-              min={0}
-              max={100}
-              value={draft.pct}
-              onChange={(e) => set('pct', e.target.value)}
-            />
-            <div className="field-hint">Progress through the current phase</div>
-          </div>
-          <div className="field">
-            <label htmlFor="pf-start">Started</label>
-            <input id="pf-start" className="input" type="date" max={MAX_DATE} value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="pf-end">Finishes</label>
-            <input
-              id="pf-end"
-              className="input"
-              type="date"
-              max={MAX_DATE}
-              /* A date on the last phase is the project finishing, so it takes this field
-                 over rather than sitting beside it disagreeing. */
-              disabled={Boolean(lastGate)}
-              value={effectiveEnd}
-              aria-invalid={invalid('endDate')}
-              onChange={(e) => set('endDate', e.target.value)}
-            />
-            {err('endDate')}
-            {lastGate && (
-              <div className="field-hint">
-                From the last phase date below. What was typed here is kept, and comes back if that is cleared.
-              </div>
-            )}
-          </div>
-          <div className="field">
-            <label htmlFor="pf-ms">Next thing due</label>
-            {/* A planned project can point at a task rather than retyping its name and
-                date. Custom comes first, because anything not in the plan is still a
-                perfectly good answer — a board date, an audit, a customer visit. */}
-            {canMirror && (
+      {/* Phase, progress, dates and the next thing due — every one of them a question
+          about a piece of work that ends. A workstream is asked none of it. */}
+      {!stream && (
+        <fieldset className="fieldset">
+          <legend>Where it has got to</legend>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor="pf-phase">Current phase</label>
               <select
-                id="pf-ms-pick"
+                id="pf-phase"
                 className="input"
-                aria-label="Take the next thing due from the plan"
-                style={{ marginBottom: 6 }}
-                value={planTasks.find((x) => x.task.name === draft.milestone)?.task.id ?? ''}
+                value={draft.phase}
                 onChange={(e) => {
-                  const picked = planTasks.find((x) => x.task.id === e.target.value);
-                  if (!picked) return;
-                  // Taking the task takes its date too, which is the point of picking one.
-                  setDraft((d) => ({
-                    ...d,
-                    milestone: picked.task.name,
-                    milestoneDate: (picked.at as Scheduled).endDate,
-                  }));
+                  const phase = Number(e.target.value);
+                  setDraft((d) => ({ ...d, phase, milestone: typeDef?.milestones[phase] ?? d.milestone }));
                 }}
               >
-                <option value="">Custom — type it below</option>
-                {planTasks.map(({ task, at }) => (
-                  <option key={task.id} value={task.id}>
-                    {task.name} · {shortDateYear((at as Scheduled).endDate)}
+                {phases.map((p: string, i: number) => (
+                  <option key={p} value={i}>
+                    {i + 1}. {p}
                   </option>
                 ))}
               </select>
-            )}
-            <input
-              id="pf-ms"
-              className="input"
-              value={draft.milestone}
-              placeholder={typeDef?.milestones[draft.phase] ?? ''}
-              onChange={(e) => set('milestone', e.target.value)}
-            />
+            </div>
+            <div className="field">
+              <label htmlFor="pf-pct">% through current phase</label>
+              <input
+                id="pf-pct"
+                className="input"
+                type="number"
+                min={0}
+                max={100}
+                value={draft.pct}
+                onChange={(e) => set('pct', e.target.value)}
+              />
+              <div className="field-hint">Progress through the current phase</div>
+            </div>
+            <div className="field">
+              <label htmlFor="pf-start">Started</label>
+              <input id="pf-start" className="input" type="date" max={MAX_DATE} value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="pf-end">Finishes</label>
+              <input
+                id="pf-end"
+                className="input"
+                type="date"
+                max={MAX_DATE}
+                /* A date on the last phase is the project finishing, so it takes this field
+                   over rather than sitting beside it disagreeing. */
+                disabled={Boolean(lastGate)}
+                value={effectiveEnd}
+                aria-invalid={invalid('endDate')}
+                onChange={(e) => set('endDate', e.target.value)}
+              />
+              {err('endDate')}
+              {lastGate && (
+                <div className="field-hint">
+                  From the last phase date below. What was typed here is kept, and comes back if that is cleared.
+                </div>
+              )}
+            </div>
+            <div className="field">
+              <label htmlFor="pf-ms">Next thing due</label>
+              {/* A planned project can point at a task rather than retyping its name and
+                  date. Custom comes first, because anything not in the plan is still a
+                  perfectly good answer — a board date, an audit, a customer visit. */}
+              {canMirror && (
+                <select
+                  id="pf-ms-pick"
+                  className="input"
+                  aria-label="Take the next thing due from the plan"
+                  style={{ marginBottom: 6 }}
+                  value={planTasks.find((x) => x.task.name === draft.milestone)?.task.id ?? ''}
+                  onChange={(e) => {
+                    const picked = planTasks.find((x) => x.task.id === e.target.value);
+                    if (!picked) return;
+                    // Taking the task takes its date too, which is the point of picking one.
+                    setDraft((d) => ({
+                      ...d,
+                      milestone: picked.task.name,
+                      milestoneDate: (picked.at as Scheduled).endDate,
+                    }));
+                  }}
+                >
+                  <option value="">Custom — type it below</option>
+                  {planTasks.map(({ task, at }) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name} · {shortDateYear((at as Scheduled).endDate)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <input
+                id="pf-ms"
+                className="input"
+                value={draft.milestone}
+                placeholder={typeDef?.milestones[draft.phase] ?? ''}
+                onChange={(e) => set('milestone', e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="pf-msdate">Due on</label>
+              <input
+                id="pf-msdate"
+                className="input"
+                type="date"
+                max={effectiveEnd || MAX_DATE}
+                value={draft.milestoneDate}
+                aria-invalid={invalid('milestoneDate')}
+                onChange={(e) => set('milestoneDate', e.target.value)}
+              />
+              {err('milestoneDate')}
+              {touched && errors.milestoneDate && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ paddingInline: 0 }}
+                  onClick={() => set('milestoneDate', effectiveEnd)}
+                >
+                  Set it to the end date
+                </button>
+              )}
+            </div>
           </div>
-          <div className="field">
-            <label htmlFor="pf-msdate">Due on</label>
-            <input
-              id="pf-msdate"
-              className="input"
-              type="date"
-              max={effectiveEnd || MAX_DATE}
-              value={draft.milestoneDate}
-              aria-invalid={invalid('milestoneDate')}
-              onChange={(e) => set('milestoneDate', e.target.value)}
-            />
-            {err('milestoneDate')}
-            {touched && errors.milestoneDate && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ paddingInline: 0 }}
-                onClick={() => set('milestoneDate', effectiveEnd)}
-              >
-                Set it to the end date
-              </button>
-            )}
-          </div>
-        </div>
-      </fieldset>
+        </fieldset>
+
+      )}
 
       {/* The invoices this project expects to raise, one line each. They are their own
           record rather than four fixed stages: work is invoiced in as many pieces as it was
@@ -1013,66 +1037,70 @@ export function ProjectForm({
         </div>
       </fieldset>
 
-      <fieldset className="fieldset">
-        <legend>Phase dates</legend>
-        {/* Only a project that is planned in the Gantt has anything to mirror, so the tick
-            is offered but not usable until it is. */}
-        <label
-          title={
-            canMirror
-              ? 'Each gate becomes the last day of work in that phase of the plan.'
-              : 'Tick “Plan this project here” on the Planning screen, and add some tasks, before these can be mirrored.'
-          }
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 13,
-            marginBottom: 'var(--space-3)',
-            cursor: canMirror ? 'pointer' : 'not-allowed',
-            color: canMirror ? 'var(--color-text)' : 'var(--color-neutral-500)',
-          }}
-        >
-          <input
-            type="checkbox"
-            disabled={!canMirror}
-            checked={mirroring}
-            onChange={(e) => set('mirrorPhases', e.target.checked)}
-            style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
-          />
-          Mirror the Gantt chart phase dates
-        </label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-          {phases.map((phase: string, i: number) => (
-            <div className="field" key={phase} style={{ width: 180 }}>
-              <label htmlFor={`pf-phase-${i}`}>
-                {i + 1}. {phase}
-              </label>
-              <input
-                id={`pf-phase-${i}`}
-                className="input"
-                type="date"
-                max={MAX_DATE}
-                disabled={mirroring}
-                value={gates[i]}
-                onChange={(e) =>
-                  setDraft((d) => {
-                    const next = phases.map((_: string, j: number) => d.phaseDates[j] ?? '');
-                    next[i] = e.target.value;
-                    return { ...d, phaseDates: next };
-                  })
-                }
-              />
-            </div>
-          ))}
-        </div>
-        <p className="field-hint">
-          {mirroring
-            ? 'Taken from the plan: each gate is the last day of work in that phase. What was typed here is kept, and comes back if this is unticked.'
-            : 'When each phase is planned to complete. Shown on the project detail stepper.'}{' '}
-          A date on the last phase is when the project finishes, and stands in for the end date above.
-        </p>
-      </fieldset>
+      {/* The gates, which are dates, and a workstream has none. */}
+      {!stream && (
+        <fieldset className="fieldset">
+          <legend>Phase dates</legend>
+          {/* Only a project that is planned in the Gantt has anything to mirror, so the tick
+              is offered but not usable until it is. */}
+          <label
+            title={
+              canMirror
+                ? 'Each gate becomes the last day of work in that phase of the plan.'
+                : 'Tick “Plan this project here” on the Planning screen, and add some tasks, before these can be mirrored.'
+            }
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              marginBottom: 'var(--space-3)',
+              cursor: canMirror ? 'pointer' : 'not-allowed',
+              color: canMirror ? 'var(--color-text)' : 'var(--color-neutral-500)',
+            }}
+          >
+            <input
+              type="checkbox"
+              disabled={!canMirror}
+              checked={mirroring}
+              onChange={(e) => set('mirrorPhases', e.target.checked)}
+              style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
+            />
+            Mirror the Gantt chart phase dates
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+            {phases.map((phase: string, i: number) => (
+              <div className="field" key={phase} style={{ width: 180 }}>
+                <label htmlFor={`pf-phase-${i}`}>
+                  {i + 1}. {phase}
+                </label>
+                <input
+                  id={`pf-phase-${i}`}
+                  className="input"
+                  type="date"
+                  max={MAX_DATE}
+                  disabled={mirroring}
+                  value={gates[i]}
+                  onChange={(e) =>
+                    setDraft((d) => {
+                      const next = phases.map((_: string, j: number) => d.phaseDates[j] ?? '');
+                      next[i] = e.target.value;
+                      return { ...d, phaseDates: next };
+                    })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <p className="field-hint">
+            {mirroring
+              ? 'Taken from the plan: each gate is the last day of work in that phase. What was typed here is kept, and comes back if this is unticked.'
+              : 'When each phase is planned to complete. Shown on the project detail stepper.'}{' '}
+            A date on the last phase is when the project finishes, and stands in for the end date above.
+          </p>
+        </fieldset>
+
+      )}
 
       {/* The three things a review asks for that the tracker cannot work out for itself.
 
@@ -1210,7 +1238,7 @@ export function ProjectForm({
         </div>
       </fieldset>
 
-      {!internal && (
+      {!internal && !stream && (
         <fieldset className="fieldset">
           <legend>Invoice dates</legend>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
@@ -1355,7 +1383,7 @@ export function ProjectForm({
           Cancel
         </button>
         <button type="button" className="btn btn-primary" onClick={submit}>
-          {project ? 'Save changes' : 'Add project'}
+          {project ? 'Save changes' : stream ? 'Add workstream' : 'Add project'}
         </button>
       </div>
     </div>

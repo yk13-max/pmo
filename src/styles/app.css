@@ -571,6 +571,37 @@ a:hover { color: var(--color-accent-600); }
   .drawer.is-full .risk-fields { grid-template-columns: 1fr; }
 }
 
+/* The workstream lanes. One grid for the lot of them — the heading row and every lane share
+   the same column template, which is what keeps a month in one lane over the same month in
+   the one below it however long the names are. A lane is a button because clicking it picks
+   the workstream, and a button is the thing a keyboard already knows how to reach. */
+.swimlanes { display: flex; flex-direction: column; border: 1px solid var(--color-divider); border-radius: var(--radius-lg); overflow: hidden; }
+.swimlane-head,
+.swimlane { display: grid; grid-template-columns: minmax(180px, 240px) repeat(var(--lane-months), minmax(28px, 1fr)) 62px; align-items: stretch; }
+.swimlane-head { background: var(--color-neutral-100); border-bottom: 1px solid var(--color-divider); }
+.swimlane-month, .swimlane-total { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-neutral-700); padding: 6px 4px; text-align: center; align-self: center; }
+.swimlane-head .swimlane-total { text-align: right; padding-right: var(--space-3); }
+.swimlane { appearance: none; background: none; border: 0; border-top: 1px solid var(--color-divider); padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.swimlane:first-of-type { border-top: 0; }
+.swimlane:hover { background: color-mix(in srgb, var(--color-accent) 6%, transparent); }
+.swimlane.is-on { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.swimlane:focus-visible { outline: 2px solid var(--color-brand-teal); outline-offset: -2px; }
+.swimlane-name { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: var(--space-3); min-width: 0; border-right: 1px solid var(--color-divider); }
+.swimlane-title { font-family: var(--font-heading); font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swimlane-sub { font-size: 12px; color: var(--color-neutral-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A month is a cell the bar grows up from, so an empty month is empty rather than flat-lined
+   — standing work stopping for a while is the reading, not a gap in the data. */
+.swimlane-cell { display: flex; align-items: flex-end; justify-content: center; min-height: 46px; padding: 4px 3px; border-right: 1px solid color-mix(in srgb, var(--color-text) 6%, transparent); }
+.swimlane-bar { display: block; width: 100%; max-width: 22px; border-radius: 2px 2px 0 0; background: var(--color-accent); }
+.swimlane .swimlane-total { display: flex; align-items: center; justify-content: flex-end; padding-right: var(--space-3); font-size: 13px; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; color: var(--color-text); }
+
+@media (max-width: 860px) {
+  /* No room for a month a column: the lanes become their own scrolling strip rather than
+     squeezing twelve months into a phone's width. */
+  .swimlanes { overflow-x: auto; }
+  .swimlane-head, .swimlane { grid-template-columns: minmax(150px, 180px) repeat(var(--lane-months), 34px) 56px; min-width: max-content; }
+}
+
 .alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .alloc-table th { text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2) 6px; border-bottom: 1px solid var(--color-divider); }
 .alloc-table td { padding: 6px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }

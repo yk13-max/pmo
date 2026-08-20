@@ -92,7 +92,12 @@ in millions. **Invoices are the exception** — whole currency units, `moneyExac
 **Time**: booked in hours, reported in days, and expressed as a percentage of a full-time month
 only where the question is "how full is this person". `HOURS_PER_FULL_MONTH = 21 × 8`.
 
-**Skills** (newest feature): tags on `Portfolio.skills`, held by people (`Person.skills`) and
+**Workstreams**: a `Project` with `workstream: true` and blank `startDate`/`endDate`. The
+derived view splits the running work in two — `view.projects` (dated work, what every
+date-shaped screen reads) and `view.workstreams` — while everything counting hours reads
+both. That split is the whole feature; there is no second collection and no second form.
+
+**Skills**: tags on `Portfolio.skills`, held by people (`Person.skills`) and
 asked for by work (`Project.skills`). Both sides point at the same tag, which is what lets
 Resourcing answer "does the work have anybody behind it".
 
@@ -186,11 +191,16 @@ Hard-won gotchas, all of which have cost time at least once:
 - **Project detail** — phases with baseline and actuals, budget burn, **When the client pays**
   (the invoice list folds to its total; each line says what it waits on and whether that work
   is done), the team grid, what to watch.
+- **Workstreams** — standing work with no start and no end (`Project.workstream`). One
+  swimlane each across the resourcing window, the plan for whichever is picked, and who is on
+  it. Out of the portfolio chart, timeline, financial totals, alerts and the review pack; in
+  every resourcing reading. Added and edited by the same project form, which drops every
+  dated block for them.
 - **Planning** — MS-Project-shaped grid plus Gantt: constraints, four link types, lag, critical
   path, per-task baseline and actuals, multiple people per task each at their own share of a
   day, draggable columns, print to PDF, XLSX out and back.
 - **Alerts** — everything the tracker thinks is worth a look.
-- **Data** — projects (filter, sort, Project No.), people, project types (collapsible families
+- **Data** — projects (filter, sort, Project No.), workstreams, people, project types (collapsible families
   and categories), job titles, **Skills** (the matrix), settings (guarded reset and clear),
   JSON and CSV import/export.
 - **About** — hidden; double-click the mark. Credit and build number appear on hover.
