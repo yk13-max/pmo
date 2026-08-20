@@ -31,7 +31,13 @@ export function PersonDetail({
         <div>
           <div className="stat-value" style={{ fontSize: 34, color: ink(row.peak) }}>{row.peak}%</div>
           <div className="stat-label">Peak commitment</div>
-          <div className="stat-sub">{view.monthLabels[row.peakMonthIndex] ?? '—'}, work plus leave</div>
+          {/* Said in their own month as well, where that is not a full one — the figure
+              above is a share of a full-time month, and for a part-timer the two differ. */}
+          <div className="stat-sub">
+            {view.monthLabels[row.peakMonthIndex] ?? '—'}, work plus leave
+            {row.person.capacity !== 100 &&
+              ` · ${Math.round((row.peak / (row.person.capacity || 100)) * 100)}% of their month`}
+          </div>
         </div>
         <div>
           <div className="stat-value" style={{ fontSize: 34 }}>{spread.length}</div>

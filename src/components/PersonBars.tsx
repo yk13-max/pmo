@@ -270,7 +270,15 @@ export function PersonBars({
           {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
         </span>
         <span className="chart-note" style={{ flex: 'none' }}>
-          top of chart = {top}%{full !== 100 && ` · full month for them = ${full}%`}
+          {/* Both guide lines are drawn against this person's own month, while every figure
+              on the card is a share of a full-time one — which for a part-timer is two
+              different scales on one chart. So the note says where the lines actually are in
+              the units the numbers use: somebody at 81% of a full month is flagged from 65%,
+              not from 80%, and a 74% bar standing above the dotted line is the chart being
+              right rather than the arithmetic being wrong. */}
+          top of chart = {top}%
+          {full !== 100 &&
+            ` · full month for them = ${full}% · flagged above ${Math.round((full * threshold) / 100)}%`}
         </span>
       </div>
     </div>

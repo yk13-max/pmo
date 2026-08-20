@@ -251,6 +251,11 @@ export function Resourcing({
                   </div>
                   <div className="eyebrow">
                     peak commitment · {view.monthLabels[p.peakMonthIndex] ?? '—'}
+                    {/* The figure above is a share of a full-time month; a part-timer's own
+                        month is shorter, so it is also said in their terms — which is the
+                        reading the colour and the threshold line both go by. */}
+                    {p.person.capacity !== 100 &&
+                      ` · ${Math.round((p.peak / (p.person.capacity || 100)) * 100)}% of their month`}
                     {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
                   </div>
                 </div>
