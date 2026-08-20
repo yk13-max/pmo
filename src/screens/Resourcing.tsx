@@ -824,6 +824,12 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
   const avail = view.capacityByMonth[index];
   const need = view.demand[index];
   const gap = need - avail;
+  /* How much of that demand is standing work. Part of the need rather than taken off the
+     capacity: a workstream asks for hours exactly as a project does, and the only reason to
+     say it separately is that it is the part nobody is looking at while the projects are
+     being discussed. */
+  const streamNeed = view.peopleViews.reduce((n, p) => n + (p.streamLoads[index] ?? 0), 0) / 100;
+  const anyStreams = view.workstreams.length > 0;
   const people = (v: number) => `${v.toFixed(2)} people`;
   const asDays = (pctOfMonth: number) => `${((pctOfMonth / 100) * WORKING_DAYS_PER_MONTH).toFixed(1)}d`;
 
@@ -849,19 +855,33 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
           sub={`${((need / (avail || 1)) * 100).toFixed(0)}% of what is left`}
           color={gap > 0 ? 'var(--color-accent-2-700)' : undefined}
         />
+        {anyStreams && (
+          <Figure
+            label="Of that, workstreams"
+            value={people(streamNeed)}
+            sub={need ? `${((streamNeed / need) * 100).toFixed(0)}% of the month's demand` : 'Nothing booked'}
+          />
+        )}
       </div>
 
-      <table className="table">
+      {/* The eighth column costs the names their line, so the table keeps its own measure
+          and scrolls inside the dialog rather than folding every job title into three. */}
+      <div style={{ overflowX: 'auto' }}>
+      <table className="table" style={{ minWidth: 720 }}>
         <thead>
           <tr>
             <th>Person</th>
             {/* Trimmed so the names keep a line to themselves in the centred dialog. */}
-            <th style={{ textAlign: 'right', width: 88 }}>Their month</th>
-            <th style={{ textAlign: 'right', width: 82 }}>Days off</th>
-            <th style={{ textAlign: 'right', width: 86 }}>Other work</th>
-            <th style={{ textAlign: 'right', width: 96 }}>Project work</th>
-            <th style={{ textAlign: 'right', width: 96 }}>Committed</th>
-            <th style={{ width: 112 }}>Left to book</th>
+            <th style={{ textAlign: 'right', width: 78 }}>Their month</th>
+            <th style={{ textAlign: 'right', width: 72 }}>Days off</th>
+            <th style={{ textAlign: 'right', width: 78 }}>Other work</th>
+            {/* Standing work in its own column, and the project column now saying projects
+                alone — the two together are what the person is booked for, and a row that
+                counted the workstream hours twice would not add up to the total beside it. */}
+            {anyStreams && <th style={{ textAlign: 'right', width: 92 }}>Workstreams</th>}
+            <th style={{ textAlign: 'right', width: 88 }}>Project work</th>
+            <th style={{ textAlign: 'right', width: 88 }}>Committed</th>
+            <th style={{ width: 104 }}>Left to book</th>
           </tr>
         </thead>
         <tbody>
@@ -869,7 +889,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
             const free = p.person.capacity - p.committed[index];
             return (
               <tr key={p.person.id}>
-                <td>
+                <td style={{ whiteSpace: 'nowrap' }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</span>
                   <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.person.role}</span>
                 </td>
@@ -881,8 +901,15 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
                   {/* What actually fits this month, so the row adds up to what is committed. */}
                   {p.overheadLoads[index] ? asDays(p.overheadLoads[index]) : '—'}
                 </td>
+                {anyStreams && (
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-workstream)' }}>
+                    {p.streamLoads[index] ? asDays(p.streamLoads[index]) : '—'}
+                  </td>
+                )}
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {p.loads[index] ? asDays(p.loads[index]) : '—'}
+                  {p.loads[index] - (p.streamLoads[index] ?? 0)
+                    ? asDays(p.loads[index] - (p.streamLoads[index] ?? 0))
+                    : '—'}
                 </td>
                 <td
                   style={{
@@ -896,7 +923,8 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
                 >
                   {asDays(p.committed[index])}
                 </td>
-                <td style={{ fontSize: 13, color: free < 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
+                {/* "13.7d over" is two words and one fact, so it keeps one line. */}
+                <td style={{ fontSize: 13, whiteSpace: 'nowrap', color: free < 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
                   {free < 0 ? `${asDays(-free)} over` : `${asDays(free)} free`}
                 </td>
               </tr>
@@ -904,6 +932,7 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
