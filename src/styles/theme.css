@@ -99,6 +99,13 @@
      the two, 2.1:1 against the pale band and 2.2:1 against the navy. */
   --color-offwork: #5c7f9e;
 
+  /* Standing work — the workstream band, between the non-project time and the project work
+     in every resourcing bar. It has to be told apart from three neighbours at once: the deep
+     navy of days off, the slate of other work and the pale grey-blue of project work. A teal
+     is the one direction none of those occupy, and it is the brand's own second colour
+     darkened to sit against a white page. */
+  --color-workstream: #14808c;
+
   /* Quiet text on the chrome — the eyebrow under the name and the footer beneath the menu.
      It is its own role rather than a step of the accent ramp, because that ramp is turned
      upside down by the dark theme and this text needs to stay pale on both. */
@@ -194,6 +201,8 @@
        anyway. 2.3:1 against project work, 3.4:1 against days off, and it still reads
        against the page. */
     --color-offwork: #2f5470;
+    /* Brighter on a dark ground, where the darkened teal would fall into the page. */
+    --color-workstream: #2dbbcb;
     --color-process-yellow: #f0c53a;
 
     /* Ink rather than navy: on a dark ground a tinted shadow does not read as depth. */

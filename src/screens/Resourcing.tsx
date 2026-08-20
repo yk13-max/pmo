@@ -129,6 +129,14 @@ export function Resourcing({
               <span style={{ width: 14, height: 12, background: 'var(--color-neutral-400)', display: 'block' }} />
               Project work
             </span>
+            {/* Only where there is any: a portfolio with no standing work should not be
+                told about a colour it will never see. */}
+            {view.workstreams.length > 0 && (
+              <span>
+                <span style={{ width: 14, height: 12, background: 'var(--color-workstream)', display: 'block' }} />
+                Workstreams
+              </span>
+            )}
             <span>
               <span style={{ width: 14, height: 12, background: 'var(--color-accent)', display: 'block' }} />
               Days off, at the base of each bar
@@ -793,6 +801,12 @@ function DemandChart({
           <span style={{ width: 14, height: 12, background: 'var(--color-offwork)', display: 'block' }} />
           Other work
         </span>
+        {view.workstreams.length > 0 && (
+          <span>
+            <span style={{ width: 14, height: 12, background: 'var(--color-workstream)', display: 'block' }} />
+            Workstreams
+          </span>
+        )}
         <span>
           <span style={{ width: 16, height: 0, borderTop: '1px dashed var(--color-text)', display: 'block' }} />
           Everyone, fully booked

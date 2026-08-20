@@ -136,12 +136,20 @@ export function PersonBars({
         <line x1={0} y1={BASELINE} x2={VB_W} y2={BASELINE} stroke="var(--color-neutral-400)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
         {/* The month starts with the time already gone — days off at the base, then meetings
-            and admin — and project work stacks on whatever is left. */}
+            and admin — then the standing work, and project work on whatever is left. The
+            workstreams sit under the projects rather than over them so the top of the bar
+            keeps saying how full the month is, which is the colour the eye goes to. */}
         {person.loads.map((_, i) => {
           const total = person.committed[i];
           const hTotal = h(total);
           const hLeave = Math.min(h(person.leaveLoads[i]), hTotal);
           const hGone = Math.min(h(person.leaveLoads[i] + person.overheadLoads[i]), hTotal);
+          /* Standing work, drawn on top of what is already gone. Bounded by the total so a
+             rounding of a per-cent never draws a band past the top of its own bar. */
+          const hStream = Math.min(
+            h(person.leaveLoads[i] + person.overheadLoads[i] + (person.streamLoads[i] ?? 0)),
+            hTotal,
+          );
           return (
             <g key={i}>
               {hLeave > 0 && (
@@ -156,12 +164,21 @@ export function PersonBars({
                   fill="var(--color-offwork)"
                 />
               )}
-              {hTotal > hGone && (
+              {hStream > hGone && (
+                <rect
+                  x={x(i)}
+                  y={BASELINE - hStream}
+                  width={width}
+                  height={hStream - hGone}
+                  fill="var(--color-workstream)"
+                />
+              )}
+              {hTotal > hStream && (
                 <rect
                   x={x(i)}
                   y={BASELINE - hTotal}
                   width={width}
-                  height={hTotal - hGone}
+                  height={hTotal - hStream}
                   fill={
                     total > full
                       ? 'var(--color-accent-2)'
@@ -262,7 +279,12 @@ export function PersonBars({
 
 /** What one month is made of, in words — the caption under the chart. */
 function monthDetail(person: PersonView, i: number, label: string): string {
-  const parts = [`${person.loads[i]}% project work`];
+  /* The booked band, said as its two halves where both are there. `loads` is everything
+     booked, so the project figure is what is left once the standing work is taken off it. */
+  const stream = person.streamLoads?.[i] ?? 0;
+  const parts = stream
+    ? [`${person.loads[i] - stream}% project work`, `${stream}% workstreams`]
+    : [`${person.loads[i]}% project work`];
   if (person.leaveDays[i]) parts.push(`${person.leaveDays[i]}d off`);
   if (person.overheadLoads[i]) parts.push(`${person.overheadLoads[i]}% other work`);
   /* Said plainly when the month has squeezed the other work, rather than leaving the reader

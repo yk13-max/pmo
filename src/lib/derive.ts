@@ -282,8 +282,10 @@ export function leavePct(days: number): number {
 
 export interface PersonView {
   person: Person;
-  /** Project work booked, % of a full-time month. */
+  /** Everything booked — projects and workstreams — as a % of a full-time month. */
   loads: number[];
+  /** The workstream half of that, so a bar can show what standing work is taking. */
+  streamLoads: number[];
   /** The same work as booked — hours per month. */
   bookedHours: number[];
   /** Every day off — their own leave plus the public holidays everybody takes. */
@@ -516,9 +518,14 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const projectById = new Map(portfolio.projects.map((p) => [p.id, p]));
     const loadIndex = new Map<string, number[]>();
+    /* The same hours again, counting only the standing work. Kept apart here rather than
+       worked out per screen: how much of somebody's month goes to work that never finishes
+       is a question about them, not about a chart. */
+    const streamIndex = new Map<string, number[]>();
     const bookedOn = new Map<string, Set<string>>();
     people.forEach((person) => {
       loadIndex.set(person.id, months.map(() => 0));
+      streamIndex.set(person.id, months.map(() => 0));
       bookedOn.set(person.id, new Set());
     });
     Object.entries(allocations).forEach(([key, hours]) => {
@@ -532,6 +539,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
          on the person they were made against — which is the whole reason for the switch. */
       if (onHold.has(projectId)) return;
       booked[monthIndex] += hours;
+      if (project.workstream) {
+        const stream = streamIndex.get(personId);
+        if (stream) stream[monthIndex] += hours;
+      }
       bookedOn.get(personId)?.add(project.name);
     });
 
@@ -544,6 +555,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
          threshold downstream still reads in whole percentages. */
       const bookedHours = loadIndex.get(person.id) ?? months.map(() => 0);
       const loads = bookedHours.map((h) => Math.round(hoursToPct(h)));
+      /* Never more than the whole booked band, whatever rounding does to the two figures
+         separately: the workstream part is drawn inside that band, not beside it. */
+      const streamLoads = (streamIndex.get(person.id) ?? months.map(() => 0)).map((h, i) =>
+        Math.min(loads[i], Math.round(hoursToPct(h))),
+      );
       const ownLeaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
       const leaveDays = ownLeaveDays.map((d, i) =>
         Math.min(person.workingDays, d + publicHolidays[i]),
@@ -566,6 +582,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       return {
         person,
         loads,
+        streamLoads,
         bookedHours,
         leaveDays,
         ownLeaveDays,

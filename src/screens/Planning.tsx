@@ -89,9 +89,9 @@ export function Planning({
      lands on the running list. */
   const project =
     view.projects.find((p) => p.id === chosen) ??
-    /* A workstream is planned exactly the way a project is — the picker on this screen does
-       not offer them, because they have a screen of their own, but the plan opened from
-       there arrives here by id and has to be found. */
+    /* Standing work is planned here too, under its own heading in the picker: the plan is
+       the same plan, and sending somebody to a different screen to build it would be two
+       Gantts to keep in step. */
     view.workstreams.find((p) => p.id === chosen) ??
     view.inactiveProjects.find((p) => p.id === chosen) ??
     view.projects[0] ??
@@ -283,11 +283,26 @@ export function Planning({
                 setDepDraft(null);
               }}
             >
-              {view.projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.typeLabel} · {p.client}
-                </option>
-              ))}
+              {/* Projects first, then the standing work, each under a heading — the two are
+                  planned in exactly the same way and there is no reason to send somebody to
+                  another screen to do it, but they are different kinds of thing and a flat
+                  list of both would hide that. */}
+              <optgroup label="Projects">
+                {view.projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {p.typeLabel} · {p.client}
+                  </option>
+                ))}
+              </optgroup>
+              {view.workstreams.length > 0 && (
+                <optgroup label="Workstreams">
+                  {view.workstreams.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} · {p.typeLabel} · {p.client}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </label>
         )}

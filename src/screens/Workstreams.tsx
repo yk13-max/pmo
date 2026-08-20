@@ -2,8 +2,7 @@ import { useState } from 'react';
 import type { PortfolioView, ProjectView } from '../lib/derive';
 import { hoursToDays } from '../lib/derive';
 import type { Project } from '../types';
-import { Planning } from './Planning';
-import { Tabs } from '../components/Tabs';
+
 
 /* Workstreams: the work that does not finish.
 
@@ -20,16 +19,20 @@ import { Tabs } from '../components/Tabs';
    leaves alone, and whose time it is quietly taking while the projects are being talked
    about. A lane per workstream, a cell per month, and the gaps meaning exactly what they
    look like — nothing booked. Underneath is the one that has been picked, planned the same
-   way a project is planned. */
+   way a project is planned — on the Planning screen, in the same picker as the projects,
+   because two Gantts to keep in step would be one too many. */
 
 export function Workstreams({
   view,
   onNew,
   onEdit,
+  onPlan,
 }: {
   view: PortfolioView;
   onNew: () => void;
   onEdit: (project: Project) => void;
+  /** Open this one on the Planning screen, which is where every plan is built. */
+  onPlan: (id: string) => void;
 }) {
   const streams = view.workstreams;
   const [chosenId, setChosenId] = useState<string | null>(null);
@@ -135,23 +138,25 @@ export function Workstreams({
         })}
       </div>
 
-      {chosen && <ChosenStream view={view} stream={chosen} onEdit={onEdit} />}
+      {chosen && <ChosenStream view={view} stream={chosen} onEdit={onEdit} onPlan={onPlan} />}
     </>
   );
 }
 
 /* The workstream that has been picked out of the lanes: how it is driven, who is on it, and
-   its plan. The plan is the Planning screen itself, embedded — a workstream is planned with
-   the same tasks, links and critical path a project is, and there is nothing about having no
-   end date that changes any of it. */
+   the way through to its plan. The plan itself is on the Planning screen — a workstream is
+   planned with the same tasks, links and critical path a project is, so it is built where
+   every other plan is built rather than in a second Gantt over here. */
 function ChosenStream({
   view,
   stream,
   onEdit,
+  onPlan,
 }: {
   view: PortfolioView;
   stream: ProjectView;
   onEdit: (project: Project) => void;
+  onPlan: (id: string) => void;
 }) {
   const rows = view.allocationsFor(stream.id, view.months);
   const planBooked = Boolean(stream.usesPlan && stream.plansResource);
@@ -178,65 +183,58 @@ function ChosenStream({
             {hoursToDays(drawn).toFixed(1)} days booked across the window
           </p>
         </div>
-        <button type="button" className="btn btn-secondary" style={{ flex: 'none' }} onClick={() => onEdit(stream)}>
-          Edit this workstream
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => onPlan(stream.id)}>
+            {stream.usesPlan ? 'Open its plan' : 'Plan it'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => onEdit(stream)}>
+            Edit this workstream
+          </button>
+        </div>
       </div>
 
-      <Tabs
-        storageKey="workstream"
-        tabs={[
-          {
-            id: 'plan',
-            label: 'Plan',
-            render: () => <Planning view={view} projectId={stream.id} onSelectProject={() => {}} embedded />,
-          },
-          {
-            id: 'people',
-            label: 'Who is on it',
-            count: rows.length,
-            render: () =>
-              rows.length === 0 ? (
-                <p className="empty">
-                  Nobody booked. Open the workstream and book the hours it needs each month, or plan it and let the plan
-                  book them.
-                </p>
-              ) : (
-                <table className="table" style={{ maxWidth: 1100 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 220 }}>Person</th>
-                      {view.monthLabels.map((m, i) => (
-                        <th key={view.months[i]} style={{ textAlign: 'right' }}>
-                          {m}
-                        </th>
-                      ))}
-                      <th style={{ textAlign: 'right', width: 90 }}>Days</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.person.id}>
-                        <td>
-                          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{r.person.name}</span>
-                          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}> · {r.person.role}</span>
-                        </td>
-                        {r.hours.map((h, i) => (
-                          <td key={view.months[i]} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: h ? undefined : 'var(--color-neutral-500)' }}>
-                            {h ? hoursToDays(h).toFixed(1) : '—'}
-                          </td>
-                        ))}
-                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                          {hoursToDays(r.totalHours).toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ),
-          },
-        ]}
-      />
+      <h4 style={{ margin: '0 0 var(--space-2)' }}>Who is on it</h4>
+      {rows.length === 0 ? (
+        <p className="empty">
+          Nobody booked. Open the workstream and book the hours it needs each month, or plan it and let the plan book
+          them.
+        </p>
+      ) : (
+        <table className="table" style={{ maxWidth: 1100 }}>
+          <thead>
+            <tr>
+              <th style={{ width: 220 }}>Person</th>
+              {view.monthLabels.map((m, i) => (
+                <th key={view.months[i]} style={{ textAlign: 'right' }}>
+                  {m}
+                </th>
+              ))}
+              <th style={{ textAlign: 'right', width: 90 }}>Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.person.id}>
+                <td>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{r.person.name}</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}> · {r.person.role}</span>
+                </td>
+                {r.hours.map((h, i) => (
+                  <td
+                    key={view.months[i]}
+                    style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: h ? undefined : 'var(--color-neutral-500)' }}
+                  >
+                    {h ? hoursToDays(h).toFixed(1) : '—'}
+                  </td>
+                ))}
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                  {hoursToDays(r.totalHours).toFixed(1)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

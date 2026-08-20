@@ -124,11 +124,18 @@ export function App() {
 
   const selected =
     view.projects.find((p) => p.id === (projectId ?? lastProjectId)) ??
+    /* Planning offers workstreams alongside projects, so the one under the pencil may be
+       either — which is why they are looked for here rather than only on their own screen. */
+    view.workstreams.find((p) => p.id === (projectId ?? lastProjectId)) ??
     /* A project on hold has left the portfolio, but asking for it by name should still open
        it rather than quietly showing a different one. */
     view.inactiveProjects.find((p) => p.id === (projectId ?? lastProjectId)) ??
     view.projects[0] ??
     null;
+  /* The detail screen is built on phases, gates and dates, so it only ever shows a project.
+     Leaving Planning on a workstream and clicking Project detail lands on the first project
+     rather than on a screen of dashes. */
+  const detailProject = selected && !selected.workstream ? selected : view.projects[0] ?? null;
 
   /* Where the mark was double-clicked from, so double-clicking it again on the credit page
      puts you back in the area you left rather than at the front. */
@@ -181,7 +188,7 @@ export function App() {
     ['resources', 'Resourcing', `${view.people.length} people`],
     ['financials', 'Financials', money(view.totals.value)],
     ['timeline', 'Timeline', 'Two years'],
-    ['detail', 'Project detail', selected?.name ?? '—'],
+    ['detail', 'Project detail', detailProject?.name ?? '—'],
     ['planning', 'Planning', selected?.name ?? '—'],
     ['workstreams', 'Workstreams', view.workstreams.length],
     ['alerts', 'Alerts', view.totals.atRisk],
@@ -265,7 +272,7 @@ export function App() {
                 className="btn btn-secondary"
                 onClick={() => setEditing({ kind: 'project', project: selected })}
               >
-                Edit project detail
+                {selected.workstream ? 'Edit workstream detail' : 'Edit project detail'}
               </button>
             )}
             {PRINTABLE.has(screen) && (
@@ -296,7 +303,7 @@ export function App() {
         {screen === 'detail' && (
           <ProjectDetail
             view={view}
-            project={selected}
+            project={detailProject}
             onSelect={(id) => go({ projectId: id })}
             onEdit={(project) => setEditing({ kind: 'project', project })}
             onSetWindow={store.setWindow}
@@ -310,6 +317,12 @@ export function App() {
             view={view}
             onNew={() => setEditing({ kind: 'project', project: null, workstream: true })}
             onEdit={(project) => setEditing({ kind: 'project', project })}
+            /* Planning is one screen for every kind of work, so this hands the workstream
+               over to it rather than opening a second Gantt here. */
+            onPlan={(id) => {
+              setLastProjectId(id);
+              go({ screen: 'planning' });
+            }}
           />
         )}
                 {screen === 'alerts' && <Alerts view={view} onOpenProject={openProject} />}
