@@ -115,6 +115,8 @@ const WORKSTREAM_SEED: [
   name: string,
   client: string,
   type: ProjectType,
+  /** What kind of standing work it is, in the words the business would use for it. */
+  kind: string,
   facing: Facing,
   pm: string,
   budget: number,
@@ -128,6 +130,7 @@ const WORKSTREAM_SEED: [
     'Sustaining engineering',
     'Engineering',
     'CS',
+    'Engineering',
     'I',
     'Priya',
     260,
@@ -139,6 +142,7 @@ const WORKSTREAM_SEED: [
     'Aveltis standing support',
     'Aveltis Bio',
     'CDMO',
+    'Customer support',
     'C',
     'Saranan',
     180,
@@ -150,6 +154,7 @@ const WORKSTREAM_SEED: [
     'Lab equipment upkeep',
     'Operations',
     'CDMO',
+    'Facilities',
     'I',
     'Marcus',
     120,
@@ -355,13 +360,14 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
   /* The workstreams, as projects with no dates on them. Everything else about the record is
      the same, which is the point: they are booked, planned, budgeted and archived by the
      same code, and only the screens built on dates leave them out. */
-  const workstreams: Project[] = WORKSTREAM_SEED.map(([name, client, type, facing, pm, budget, actual]) => ({
+  const workstreams: Project[] = WORKSTREAM_SEED.map(([name, client, type, kind, facing, pm, budget, actual]) => ({
     id: `project-${name.toLowerCase().replace(/\s+/g, '-')}`,
     name,
     client,
     type,
     facing,
     workstream: true,
+    workstreamType: kind,
     phase: 0,
     pct: 0,
     rag: 'G' as const,
@@ -405,7 +411,7 @@ export function buildSeedPortfolio(today = new Date()): Portfolio {
   /* What the standing work actually takes, month by month. Only the months it runs in get a
      booking at all: a workstream with something in every cell would be a project in all but
      name, and the gaps are the reading. */
-  WORKSTREAM_SEED.forEach(([name, , , , , , , crew, activeMonths]) => {
+  WORKSTREAM_SEED.forEach(([name, , , , , , , , crew, activeMonths]) => {
     const stream = byName.get(name);
     if (!stream) return;
     crew.forEach(([person, hours]) => {

@@ -263,7 +263,8 @@ export function Planning({
         <p style={{ margin: '4px 0 0', fontSize: 13 }}>
           {plan.start ? `Plan runs ${shortDateYear(plan.start)} → ${shortDateYear(plan.end as string)}` : 'Nothing planned yet'}
           {' · '}
-          {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across {project.phases.length} phases
+          {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across {project.phases.length}{' '}
+          {project.phases.length === 1 ? 'phase' : 'phases'}
           {' · '}
           Printed {shortDateYear(toISO(view.today))}
         </p>
@@ -954,7 +955,7 @@ function PlanSummary({
   return (
     <>
       <div className="stat-row one-line" style={{ marginBottom: 'var(--space-4)' }}>
-        <Fig value={String(tasks.length)} label="Tasks" sub={`Across ${project.phases.length} phases`} />
+        <Fig value={String(tasks.length)} label="Tasks" sub={`Across ${project.phases.length} ${project.phases.length === 1 ? 'phase' : 'phases'}`} />
         {/* Standing work opens on no date at all, so the line under the figure says that
             rather than formatting an empty string into 01 Jan '00. */}
         <Fig

@@ -168,7 +168,12 @@ export function viewProject(
   const sharePct = draw.portfolioHours ? (draw.hours / draw.portfolioHours) * 100 : 0;
   const typeDef = types.find((t) => t.id === project.type) ?? types[0];
   const family = families.find((f) => f.id === typeDef?.family) ?? families[0];
-  const phases = typeDef?.phases ?? [];
+  /* A workstream has no phases: phases are the stations a project passes through on the way
+     to finishing, and it is not going to finish. Its plan still needs somewhere to hang tasks,
+     though, so it has exactly one bucket, named after what kind of work it is. */
+  const phases = project.workstream
+    ? [project.workstreamType?.trim() || 'Work']
+    : typeDef?.phases ?? [];
   const cust = project.facing === 'C';
   const burn = project.budget ? Math.round((project.actual / project.budget) * 100) : 0;
   const pm = people.find((p) => p.id === project.pmId);
@@ -202,13 +207,16 @@ export function viewProject(
     })),
     cust,
     family: family?.id ?? typeDef?.family ?? '',
-    typeShort: family?.label ?? project.type,
-    categoryLabel: typeDef?.label ?? '',
+    /* What kind of work it is. A project answers with its family and the way it is run; a
+       workstream answers with the words somebody typed, and has no second half to say. */
+    typeShort: project.workstream ? project.workstreamType?.trim() || '—' : family?.label ?? project.type,
+    categoryLabel: project.workstream ? '' : typeDef?.label ?? '',
     /* Both, in the order they are read: the kind of work, then the way it is being run. A
        family with one way of running it says only its own name — there is nothing to tell
        apart, and "CDMO · Full" would be saying it twice. */
-    typeLabel:
-      typeDef && families.length && types.filter((t) => t.family === typeDef.family).length > 1
+    typeLabel: project.workstream
+      ? project.workstreamType?.trim() || '—'
+      : typeDef && families.length && types.filter((t) => t.family === typeDef.family).length > 1
         ? `${family?.label ?? ''} · ${typeDef.label}`
         : family?.label ?? project.type,
     facingLabel: cust ? 'Customer' : 'Internal',

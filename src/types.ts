@@ -130,6 +130,11 @@ export interface Project {
    * every reading of who is booked and how full they are.
    */
   workstream?: boolean;
+  /** What kind of standing work this is, in the business's own words — "QA", "Facilities",
+   *  "Customer support". Free text on purpose: a delivery type is a way of running a project,
+   *  with phases and gates and people qualified for it, and none of that applies to work that
+   *  simply carries on. Nothing is derived from it; it is how the lanes are recognised. */
+  workstreamType?: string;
   /** Archived projects keep all their data but drop out of every screen. */
   archived?: boolean;
   /** Work that is not running at the moment — on hold, awaiting a decision, between

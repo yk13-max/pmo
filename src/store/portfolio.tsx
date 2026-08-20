@@ -181,6 +181,16 @@ export function normalise(p: Portfolio): Portfolio {
          absent flag means. A workstream keeps its dates blank rather than nought: blank is
          "there is no such date", and the screens that would have shown one say so. */
       workstream: project.workstream ?? false,
+      /* Workstreams written before they had a type of their own keep reading as what they
+         read as: the family they were filed under. Better than an empty field where a word
+         used to be. */
+      workstreamType: project.workstream
+        ? project.workstreamType ??
+          (p.families ?? []).find(
+            (f) => f.id === (p.projectTypes ?? []).find((t) => t.id === project.type)?.family,
+          )?.label ??
+          ''
+        : project.workstreamType,
       // Projects that predate planning keep their own dates until they are opted in.
       usesPlan: project.usesPlan ?? false,
       mirrorPhases: project.mirrorPhases ?? false,

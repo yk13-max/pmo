@@ -195,6 +195,13 @@ export function ProjectForm({
   );
   const derivedLoad = Math.round(hoursToPct(peakHours));
 
+  /* Standing work. Everything on this form that asks when — the dates, the phase it has
+     reached, the next thing due, the gates and the invoice stages — has no answer for it,
+     so those blocks are not drawn rather than drawn empty and left to be argued with. What
+     stays is what a workstream does have: whose it is, who runs it, what it costs, what it
+     needs somebody to be able to do, and who is booked on it. */
+  const stream = Boolean(draft.workstream);
+
   const typeDef = projectTypes.find((t) => t.id === draft.type) ?? projectTypes[0];
   const phases = typeDef?.phases ?? [];
   /* A person with no types listed is treated as available to everything; anyone with an
@@ -204,19 +211,15 @@ export function ProjectForm({
   const draftFamily = projectTypes.find((t) => t.id === draft.type)?.family ?? '';
   /** The ways this kind of work is run — what the delivery type is chosen from. */
   const ofFamily = projectTypes.filter((t) => t.family === draftFamily);
+  /* Who may not be booked here. A person's families say which kinds of project they work
+     on; standing work is not one of those kinds, so nobody is barred from it. */
   const ineligible = new Set(
-    people.filter((p) => p.types.length > 0 && !p.types.includes(draftFamily)).map((p) => p.id),
+    stream ? [] : people.filter((p) => p.types.length > 0 && !p.types.includes(draftFamily)).map((p) => p.id),
   );
   const strandedBookings = people.filter(
     (p) => ineligible.has(p.id) && months.some((m) => (alloc[`${p.id}|${m}`] ?? 0) > 0),
   );
   const internal = draft.facing === 'I';
-  /* Standing work. Everything on this form that asks when — the dates, the phase it has
-     reached, the next thing due, the gates and the invoice stages — has no answer for it,
-     so those blocks are not drawn rather than drawn empty and left to be argued with. What
-     stays is what a workstream does have: whose it is, who runs it, what it costs, what it
-     needs somebody to be able to do, and who is booked on it. */
-  const stream = Boolean(draft.workstream);
 
   const phaseDates = phases.map((_, i) => draft.phaseDates[i] ?? '');
   /* The plan is read live so the gates and the milestone list always show what the Gantt
@@ -287,6 +290,7 @@ export function ProjectForm({
         name: draft.name.trim(),
         client: draft.client.trim(),
         number: draft.number?.trim() || undefined,
+        workstreamType: stream ? draft.workstreamType?.trim() || undefined : undefined,
         salesLead: draft.salesLead?.trim() || undefined,
         /* The review narrative, tidied on the way out. An empty box is not an answer of ""
            but no answer at all, so it is dropped rather than saved as blank — and a risk row
@@ -384,66 +388,88 @@ export function ProjectForm({
             />
             {err('client')}
           </div>
-          {/* The two levels, in the order they are decided: what kind of work this is, then
-              which way it is being run. Both are one field each rather than one field of
-              grouped options, because the first decides who can be booked and how the
-              portfolio reads it, and the second decides the phases — different questions,
-              and the second is not worth reading past until the first is answered. */}
-          <div className="field">
-            <label htmlFor="pf-family">{stream ? 'Workstream type' : 'Project type'}</label>
-            <select
-              id="pf-family"
-              className="input"
-              value={draftFamily}
-              onChange={(e) => {
-                /* The categories belong to one family, so changing family takes the first
-                   way that one is run — and the phase and milestone come with it, since
-                   the new category has phases of its own. */
-                const next = projectTypes.find((t) => t.family === e.target.value);
-                if (!next) return;
-                setDraft((d) => {
-                  const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
-                  return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
-                });
-              }}
-            >
-              {families.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-            <div className="field-hint">The kind of work. Sets who can be booked on it.</div>
-          </div>
-          <div className="field">
-            <label htmlFor="pf-type">{stream ? 'Way it is run' : 'Delivery type'}</label>
-            <select
-              id="pf-type"
-              className="input"
-              value={draft.type}
-              onChange={(e) => {
-                const next = projectTypes.find((t) => t.id === e.target.value);
-                if (!next) return;
-                setDraft((d) => {
-                  const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
-                  return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
-                });
-              }}
-            >
-              {projectTypes
-                .filter((t) => t.family === draftFamily)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
+          {/* A workstream is asked one question about what it is, and the answer is a word
+              rather than a choice. A delivery type is a way of running a project — phases,
+              gates, and the people qualified for that kind of work — and none of it applies
+              to work that simply carries on. So standing work says what it is in the
+              business's own words: QA, Facilities, Customer support. Nothing is derived from
+              it; it names the lane and the one bucket its plan hangs tasks under. */}
+          {stream ? (
+            <div className="field">
+              <label htmlFor="pf-wstype">Workstream type</label>
+              <input
+                id="pf-wstype"
+                className="input"
+                value={draft.workstreamType ?? ''}
+                placeholder="QA"
+                onChange={(e) => set('workstreamType', e.target.value)}
+              />
+              <div className="field-hint">Whatever this kind of standing work is called here.</div>
+            </div>
+          ) : (
+            <>
+            {/* The two levels, in the order they are decided: what kind of work this is, then
+                which way it is being run. Both are one field each rather than one field of
+                grouped options, because the first decides who can be booked and how the
+                portfolio reads it, and the second decides the phases — different questions,
+                and the second is not worth reading past until the first is answered. */}
+            <div className="field">
+              <label htmlFor="pf-family">{stream ? 'Workstream type' : 'Project type'}</label>
+              <select
+                id="pf-family"
+                className="input"
+                value={draftFamily}
+                onChange={(e) => {
+                  /* The categories belong to one family, so changing family takes the first
+                     way that one is run — and the phase and milestone come with it, since
+                     the new category has phases of its own. */
+                  const next = projectTypes.find((t) => t.family === e.target.value);
+                  if (!next) return;
+                  setDraft((d) => {
+                    const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
+                    return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
+                  });
+                }}
+              >
+                {families.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
                   </option>
                 ))}
-            </select>
-            <div className="field-hint">
-              {ofFamily.length > 1
-                ? 'The way it is run, and the phases it follows.'
-                : `The only way ${families.find((f) => f.id === draftFamily)?.label ?? 'this'} work is run. Add another on the Data screen.`}
+              </select>
+              <div className="field-hint">The kind of work. Sets who can be booked on it.</div>
             </div>
-          </div>
+            <div className="field">
+              <label htmlFor="pf-type">{stream ? 'Way it is run' : 'Delivery type'}</label>
+              <select
+                id="pf-type"
+                className="input"
+                value={draft.type}
+                onChange={(e) => {
+                  const next = projectTypes.find((t) => t.id === e.target.value);
+                  if (!next) return;
+                  setDraft((d) => {
+                    const phase = Math.min(d.phase, Math.max(0, next.phases.length - 1));
+                    return { ...d, type: next.id, phase, milestone: next.milestones[phase] ?? d.milestone };
+                  });
+                }}
+              >
+                {projectTypes
+                  .filter((t) => t.family === draftFamily)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+              </select>
+              <div className="field-hint">
+                {ofFamily.length > 1
+                  ? 'The way it is run, and the phases it follows.'
+                  : `The only way ${families.find((f) => f.id === draftFamily)?.label ?? 'this'} work is run. Add another on the Data screen.`}
+              </div>
+            </div>
+            </>
+          )}
           <div className="field">
             <label htmlFor="pf-facing">Who it is for</label>
             <select
@@ -1342,7 +1368,7 @@ export function ProjectForm({
           threshold={threshold}
           otherLoads={shownLoads}
           ineligible={ineligible}
-          typeLabel={families.find((f) => f.id === draftFamily)?.label ?? draft.type}
+          typeLabel={stream ? draft.workstreamType?.trim() || 'this workstream' : families.find((f) => f.id === draftFamily)?.label ?? draft.type}
           onChange={(personId, month, pct) =>
             setAlloc((prev) => {
               const next = { ...prev };

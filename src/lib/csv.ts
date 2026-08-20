@@ -116,8 +116,11 @@ export function projectsCsv(p: Portfolio, months: string[]): string {
       x.number ?? '',
       (x.skills ?? []).map((id) => p.skills.find((s) => s.id === id)?.label ?? id).join('; '),
       x.client,
-      familyOf(p, x.type)?.label ?? x.type,
-      p.projectTypes.find((t) => t.id === x.type)?.label ?? '',
+      /* Standing work has no delivery type — it says what kind of work it is in its own
+         words, and that is what goes in the column a project puts its family in. The way it
+         is run has no meaning for it, so that column stays empty. */
+      x.workstream ? x.workstreamType ?? '' : familyOf(p, x.type)?.label ?? x.type,
+      x.workstream ? '' : p.projectTypes.find((t) => t.id === x.type)?.label ?? '',
       x.facing === 'C' ? 'Customer' : 'Internal',
       // Only Client Solutions work is asked the question, so the rest stay blank.
       familyOf(p, x.type)?.id === STERILE_FAMILY ? (x.sterile ? 'Yes' : 'No') : '',
@@ -416,6 +419,7 @@ export function applyCsv(portfolio: Portfolio, text: string, months: string[]): 
            shape; JSON is the export that carries it. What matters here is that importing a
            figures file does not silently rub out what somebody wrote for the review. */
         workstream,
+        workstreamType: workstream ? col(r, 'Delivery type').trim() || base?.workstreamType : undefined,
         productDescription: base?.productDescription,
         accomplishments: base?.accomplishments,
         risks: base?.risks ?? [],

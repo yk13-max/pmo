@@ -372,7 +372,7 @@ export function DataManager({
                       <thead>
                         <tr>
                           <th>Workstream</th>
-                          <th>Delivery type</th>
+                          <th>Type</th>
                           <th>For</th>
                           <th>Run by</th>
                           <th>Driven by</th>
