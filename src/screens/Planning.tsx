@@ -214,7 +214,10 @@ export function Planning({
     const after = tasks.filter((t) => t.phase === phase).map((t) => plan.byId.get(t.id)?.endDate).filter(Boolean).sort();
     const start = after.length
       ? toISO(nextWorkingDay(fromISO(addDays(after[after.length - 1] as string, 1))))
-      : toISO(nextWorkingDay(fromISO(project.phaseDates[phase] || project.startDate)));
+      /* A new task starts where the phase does, or where the work does. Standing work has
+         neither, so the first task lands on the next working day from today — which is when
+         somebody adding a task to a workstream means, there being nothing else to mean. */
+      : toISO(nextWorkingDay(fromISO(project.phaseDates[phase] || project.startDate || toISO(view.today))));
     saveTask({
       id: `task-${crypto.randomUUID().slice(0, 8)}`,
       projectId: project.id,
@@ -369,7 +372,7 @@ export function Planning({
               onChange={(e) => saveProject({ ...(project as unknown as Project), usesPlan: e.target.checked })}
               style={{ accentColor: 'var(--color-accent)', width: 15, height: 15 }}
             />
-            Plan this project here
+            {project.workstream ? 'Plan this workstream here' : 'Plan this project here'}
           </label>
           {/* Only offered once the project is planned here: without a plan there is
               nothing to book anyone from. */}
@@ -382,7 +385,7 @@ export function Planning({
             title={
               project.usesPlan
                 ? 'Book each task to its owner: its days times eight hours, at the weight below.'
-                : 'Tick “Plan this project here” first.'
+                : `Tick “Plan this ${project.workstream ? 'workstream' : 'project'} here” first.`
             }
           >
             <input

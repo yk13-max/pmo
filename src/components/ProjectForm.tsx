@@ -246,10 +246,10 @@ export function ProjectForm({
   const effectiveEnd = lastGate || draft.endDate;
 
   const errors: Record<string, string> = {};
-  if (!draft.name.trim()) errors.name = 'Give the project a name.';
+  if (!draft.name.trim()) errors.name = stream ? 'Give the workstream a name.' : 'Give the project a name.';
   if (!draft.client.trim())
     errors.client = internal ? 'Name the function that owns the work.' : 'Name the customer.';
-  if (!draft.pmId) errors.pmId = 'Pick a project manager.';
+  if (!draft.pmId) errors.pmId = stream ? 'Pick who leads it.' : 'Pick a project manager.';
   if (cash(draft.budget) <= 0) errors.budget = 'A budget above zero is needed to track spend.';
   if (!stream && effectiveEnd <= draft.startDate)
     errors.endDate = lastGate
@@ -345,13 +345,13 @@ export function ProjectForm({
         <legend>What it is</legend>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="pf-name">Project name</label>
+            <label htmlFor="pf-name">{stream ? 'Workstream name' : 'Project name'}</label>
             <input
               id="pf-name"
               className="input"
               value={draft.name}
               aria-invalid={invalid('name')}
-              placeholder="Rolex"
+              placeholder={stream ? 'Sustaining engineering' : 'Rolex'}
               onChange={(e) => set('name', e.target.value)}
             />
             {err('name')}
@@ -359,7 +359,7 @@ export function ProjectForm({
           {/* Whatever it is called in the systems the tracker does not know about. Optional:
               plenty of work is only ever known by its name. */}
           <div className="field">
-            <label htmlFor="pf-number">Project number</label>
+            <label htmlFor="pf-number">{stream ? 'Workstream number' : 'Project number'}</label>
             <input
               id="pf-number"
               className="input"
@@ -390,7 +390,7 @@ export function ProjectForm({
               portfolio reads it, and the second decides the phases — different questions,
               and the second is not worth reading past until the first is answered. */}
           <div className="field">
-            <label htmlFor="pf-family">Project type</label>
+            <label htmlFor="pf-family">{stream ? 'Workstream type' : 'Project type'}</label>
             <select
               id="pf-family"
               className="input"
@@ -416,7 +416,7 @@ export function ProjectForm({
             <div className="field-hint">The kind of work. Sets who can be booked on it.</div>
           </div>
           <div className="field">
-            <label htmlFor="pf-type">Delivery type</label>
+            <label htmlFor="pf-type">{stream ? 'Way it is run' : 'Delivery type'}</label>
             <select
               id="pf-type"
               className="input"
@@ -458,7 +458,7 @@ export function ProjectForm({
             <div className="field-hint">Internal work draws on a budget pool and carries no invoice side.</div>
           </div>
           <div className="field">
-            <label htmlFor="pf-pm">Project manager</label>
+            <label htmlFor="pf-pm">{stream ? 'Workstream lead' : 'Project manager'}</label>
             <select
               id="pf-pm"
               className="input"
@@ -477,7 +477,9 @@ export function ProjectForm({
           </div>
           {/* Whoever sold it, where somebody did. Free text and not a person on the team: the
               sales lead is often not somebody the tracker books time for, and asking for one
-              of the seven names on the resourcing screen would be asking the wrong question. */}
+              of the seven names on the resourcing screen would be asking the wrong question.
+              Nobody sells standing work, so a workstream is not asked. */}
+          {!stream && (
           <div className="field">
             <label htmlFor="pf-sales">Sales lead</label>
             <input
@@ -489,6 +491,7 @@ export function ProjectForm({
             />
             <div className="field-hint">Who brought the work in, if anyone is named for it.</div>
           </div>
+          )}
           <div className="field">
             <label htmlFor="pf-priority">Priority</label>
             <select

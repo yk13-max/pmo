@@ -69,7 +69,7 @@ const HEADS: Record<Exclude<ScreenId, 'about'>, [kicker: string, title: string, 
     'Build one project\u2019s plan: nest tasks under its phases, link what waits on what, and see which of them the finish date actually turns on.',
   ],
   workstreams: [
-    'Work that does not finish',
+    'Ongoing non-project work',
     'Workstreams',
     'Standing work with no start and no end — one lane each, month by month, and the plan behind whichever one you pick. Out of the portfolio, in the resourcing.',
   ],
