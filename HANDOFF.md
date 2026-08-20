@@ -89,8 +89,12 @@ it usually belongs in `derive.ts`.
 **Money**: everything on a project is in **thousands** (`money()`), because a portfolio is read
 in millions. **Invoices are the exception** — whole currency units, `moneyExact()`.
 
-**Time**: booked in hours, reported in days, and expressed as a percentage of a full-time month
-only where the question is "how full is this person". `HOURS_PER_FULL_MONTH = 21 × 8`.
+**Time**: booked in hours, reported in days, and expressed as a percentage only where the
+question is "how full is this person" — and that percentage is a share of **that person's own
+month**, so 100% is all the time they have whether they work five days a week or three. Every
+figure counted across the team is summed in hours and turned into people at the end, because
+half of two different months is not one person. `HOURS_PER_FULL_MONTH = 21 × 8`; a person's own
+month is `capacity/100 × that`.
 
 **Workstreams**: a `Project` with `workstream: true` and blank `startDate`/`endDate`. The
 derived view splits the running work in two — `view.projects` (dated work, what every

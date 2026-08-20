@@ -282,19 +282,30 @@ export function leavePct(days: number): number {
 
 export interface PersonView {
   person: Person;
-  /** Everything booked — projects and workstreams — as a % of a full-time month. */
+  /** Everything booked, as a % of *this person's* month. 100 is all the time they have. */
   loads: number[];
   /** The workstream half of that, so a bar can show what standing work is taking. */
   streamLoads: number[];
   /** The same work as booked — hours per month. */
   bookedHours: number[];
+  /** The standing-work half of those hours. */
+  streamHours: number[];
+  /** Their whole month in hours: what 100% means for them. */
+  monthHours: number;
+  /** Days off, in hours, month by month. */
+  leaveHours: number[];
+  /** What their non-project work costs in hours, in a month with room for it. */
+  overheadHours: number;
+  /** What is left of their month once days off and non-project work are taken, in hours.
+      Summed across the team, this is what the projects can actually draw on. */
+  spareHours: number[];
   /** Every day off — their own leave plus the public holidays everybody takes. */
   leaveDays: number[];
   /** Just the days they booked themselves, which is what the leave table edits. */
   ownLeaveDays: number[];
-  /** That leave as a share of the month. */
+  /** That leave as a share of their own month. */
   leaveLoads: number[];
-  /** Meetings, admin and the rest, as a share of a full-time month. The same every month —
+  /** Meetings, admin and the rest, as a share of their own month. The same every month —
       what this person does in a month with room for it. */
   overheadLoad: number;
   /** What is left for that non-project work once the projects and the days off have taken
@@ -550,24 +561,38 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
        to each person's own leave rather than tracked separately downstream. */
     const publicHolidays = months.map((m) => portfolio.publicHolidays[m] ?? 0);
 
+    /* Every percentage about a person is a share of that person's own month.
+       
+       It used to be a share of a full-time one, which put two scales on the same card: a
+       four-day-week engineer booked to the hilt read 81%, their bar stood above a threshold
+       line drawn at 80% of *their* month, and nothing on the screen reconciled the two.
+       Hundred per cent now means the same thing for everybody — all of the time this person
+       actually has — so the threshold is one line at one number, full is full, and a figure
+       past 100 is somebody promising time they do not own.
+       
+       Hours stay the currency underneath. Anything counted across the team is summed in
+       hours and turned into people at the end, because half of two different months is not
+       one person. */
     const peopleViews: PersonView[] = people.map((person) => {
-      /* Booked hours become a share of a full-time month here, once, so every graph and
-         threshold downstream still reads in whole percentages. */
       const bookedHours = loadIndex.get(person.id) ?? months.map(() => 0);
-      const loads = bookedHours.map((h) => Math.round(hoursToPct(h)));
+      const streamHours = streamIndex.get(person.id) ?? months.map(() => 0);
+      /** Their whole month, in hours. Never nought, so nothing downstream divides by it. */
+      const monthHours = Math.max(1, (person.capacity / 100) * HOURS_PER_FULL_MONTH);
+      const share = (hours: number) => Math.round((hours / monthHours) * 100);
+      const loads = bookedHours.map(share);
       /* Never more than the whole booked band, whatever rounding does to the two figures
          separately: the workstream part is drawn inside that band, not beside it. */
-      const streamLoads = (streamIndex.get(person.id) ?? months.map(() => 0)).map((h, i) =>
-        Math.min(loads[i], Math.round(hoursToPct(h))),
-      );
+      const streamLoads = streamHours.map((h, i) => Math.min(loads[i], share(h)));
       const ownLeaveDays = months.map((m) => portfolio.leave[`${person.id}|${m}`] ?? 0);
       const leaveDays = ownLeaveDays.map((d, i) =>
         Math.min(person.workingDays, d + publicHolidays[i]),
       );
-      const leaveLoads = leaveDays.map(leavePct);
-      /* Non-project work is a share of this person's own time, so a part-timer's 20% is
-         20% of their shorter month. Held as a share of a full month like everything else. */
-      const overheadLoad = Math.round((person.capacity * (person.overheadPct ?? 0)) / 100);
+      // Days off against the days they work, which for a part-timer is fewer than 21.
+      const workingDays = Math.max(1, person.workingDays);
+      const leaveLoads = leaveDays.map((d) => Math.round((d / workingDays) * 100));
+      /* Non-project work is already a share of this person's own time, which is now the
+         scale everything else is on too — so it is simply the figure on their record. */
+      const overheadLoad = Math.max(0, Math.min(100, person.overheadPct ?? 0));
       /* Meetings and admin are the elastic part of a month: they are what a person drops
          when the projects and their days off have taken the rest of it. So the standing
          figure above is what they would do in a quiet month, and this is what is actually
@@ -575,15 +600,24 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
          over-committed when the only thing spilling over is work that would simply not
          happen. A month past full here means the projects and the leave alone are past it. */
       const overheadLoads = loads.map((v, i) =>
-        Math.max(0, Math.min(overheadLoad, person.capacity - v - leaveLoads[i])),
+        Math.max(0, Math.min(overheadLoad, 100 - v - leaveLoads[i])),
       );
       const committed = loads.map((v, i) => v + leaveLoads[i] + overheadLoads[i]);
       const peak = committed.length ? Math.max(...committed) : 0;
+      /* The same month in hours, for the sums that cross people. */
+      const leaveHours = leaveDays.map((d) => d * WORKING_HOURS_PER_DAY);
+      const overheadHours = (overheadLoad / 100) * monthHours;
+      const spareHours = months.map((_, i) => Math.max(0, monthHours - leaveHours[i] - overheadHours));
       return {
         person,
         loads,
         streamLoads,
         bookedHours,
+        streamHours,
+        monthHours,
+        leaveHours,
+        overheadHours,
+        spareHours,
         leaveDays,
         ownLeaveDays,
         leaveLoads,
@@ -596,12 +630,15 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       };
     });
 
-    const demand = months.map((_, i) => peopleViews.reduce((n, p) => n + p.loads[i], 0) / 100);
+    /* Everything below counts across the team, so it counts hours: a percentage belongs to
+       one person's month and two of those do not add up to anything. */
+    const demand = months.map(
+      (_, i) => peopleViews.reduce((n, p) => n + p.bookedHours[i], 0) / HOURS_PER_FULL_MONTH,
+    );
     const capacity = people.reduce((n, p) => n + p.capacity, 0) / 100;
     // Leave and non-project work both come straight off what is available to book.
     const capacityByMonth = months.map(
-      (_, i) =>
-        peopleViews.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad), 0) / 100,
+      (_, i) => peopleViews.reduce((n, p) => n + p.spareHours[i], 0) / HOURS_PER_FULL_MONTH,
     );
     // What the whole team loses to meetings and admin, in people. Constant across the window.
     const overhead = peopleViews.reduce((n, p) => n + p.overheadLoad, 0) / 100;
@@ -625,10 +662,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const skillViews: SkillView[] = skills.map((skill) => {
       const holders = peopleViews.filter((pv) => pv.person.skills?.includes(skill.id));
       const asking = wantedBy.get(skill.id) ?? [];
-      const booked = months.map((_, i) => holders.reduce((n, p) => n + p.loads[i], 0) / 100);
+      const booked = months.map(
+        (_, i) => holders.reduce((n, p) => n + p.bookedHours[i], 0) / HOURS_PER_FULL_MONTH,
+      );
       const available = months.map(
-        (_, i) =>
-          holders.reduce((n, p) => n + Math.max(0, p.person.capacity - p.leaveLoads[i] - p.overheadLoad), 0) / 100,
+        (_, i) => holders.reduce((n, p) => n + p.spareHours[i], 0) / HOURS_PER_FULL_MONTH,
       );
       const spare = available.map((a, i) => Math.round((a - booked[i]) * 100) / 100);
       /* Somebody is "free" when a tenth of their month is going spare, which is about two
@@ -638,7 +676,11 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
       let freeAt: SkillView['freeAt'] = null;
       months.some((_, i) => {
         const best = holders
-          .map((p) => ({ name: p.person.name, room: (p.person.capacity - p.committed[i]) / 100 }))
+          .map((p) => ({
+            name: p.person.name,
+            // What is left of their own month, said in people so it can be compared.
+            room: ((100 - p.committed[i]) / 100) * (p.monthHours / HOURS_PER_FULL_MONTH),
+          }))
           .sort((a, b) => b.room - a.room)[0];
         if (best && best.room >= 0.1) {
           freeAt = { month: i, person: best.name };
@@ -712,12 +754,17 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
     const value = customer.reduce((n, p) => n + p.valueBase, 0);
     const billed = customer.reduce((n, p) => n + p.billedBase, 0);
 
-    /** One booking row: the hours as entered, and the same time as a share of the month. */
-    const row = (hours: number[]) => ({
+    /** One booking row: the hours as entered, and the same time as a share of the month —
+        that person's month, so a part-timer's row reads against the time they have. */
+    const row = (hours: number[], monthHours = HOURS_PER_FULL_MONTH) => ({
       hours,
-      loads: hours.map((h) => Math.round(hoursToPct(h))),
+      loads: hours.map((h) => Math.round((h / Math.max(1, monthHours)) * 100)),
       totalHours: hours.reduce((n, v) => n + v, 0),
     });
+    const monthHoursOf = (personId: string) => {
+      const person = people.find((x) => x.id === personId);
+      return Math.max(1, ((person?.capacity ?? 100) / 100) * HOURS_PER_FULL_MONTH);
+    };
 
     /* Every month a project could have a booking in: its own life, the resourcing window,
        and anything already booked outside both — a project whose dates were pulled in after
@@ -749,7 +796,13 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const allocationsFor = (projectId: string, over: string[] = months) =>
       people
-        .map((person) => ({ person, ...row(over.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0)) }))
+        .map((person) => ({
+          person,
+          ...row(
+            over.map((m) => allocations[`${projectId}|${person.id}|${m}`] ?? 0),
+            (person.capacity / 100) * HOURS_PER_FULL_MONTH,
+          ),
+        }))
         .filter((r) => r.totalHours > 0);
 
     const allocationsOf = (projectId: string, over: string[] = months) => {
@@ -765,7 +818,10 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
 
     const spreadFor = (personId: string) =>
       [...projects, ...workstreams]
-        .map((project) => ({ project, ...row(months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0)) }))
+        .map((project) => ({
+          project,
+          ...row(months.map((m) => allocations[`${project.id}|${personId}|${m}`] ?? 0), monthHoursOf(personId)),
+        }))
         .filter((r) => r.totalHours > 0)
         .sort((a, b) => b.totalHours - a.totalHours);
 
@@ -829,8 +885,7 @@ export function usePortfolioView(portfolio: Portfolio): PortfolioView {
         overbooked: projects.filter((project) =>
           peopleViews.some((pv) =>
             pv.committed.some(
-              (v, i) =>
-                v > pv.person.capacity && (allocations[`${project.id}|${pv.person.id}|${months[i]}`] ?? 0) > 0,
+              (v, i) => v > 100 && (allocations[`${project.id}|${pv.person.id}|${months[i]}`] ?? 0) > 0,
             ),
           ),
         ).length,

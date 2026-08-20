@@ -74,7 +74,10 @@ export function PersonBars({
   const width = slot * 0.62;
   const x = (i: number) => i * slot + (slot - width) / 2;
 
-  const full = person.person.capacity;
+  /* A hundred per cent is this person's whole month, whether that month is five days a week
+     or three — so the full line is at 100 for everybody and the threshold is one number
+     rather than a different one per person. */
+  const full = 100;
   const top = scaleFor(person.peak, full);
   const h = (pct: number) => (Math.min(pct, top) / top) * (BASELINE - PLOT_TOP);
   const y = (pct: number) => BASELINE - h(pct);
@@ -115,9 +118,9 @@ export function PersonBars({
         {/* Guides sit behind the bars, at a light weight. */}
         <line
           x1={0}
-          y1={y((full * threshold) / 100)}
+          y1={y(threshold)}
           x2={VB_W}
-          y2={y((full * threshold) / 100)}
+          y2={y(threshold)}
           stroke="var(--color-warning)"
           strokeWidth={1.3}
           strokeDasharray="3 3"
@@ -180,9 +183,9 @@ export function PersonBars({
                   width={width}
                   height={hTotal - hStream}
                   fill={
-                    total > full
+                    total > 100
                       ? 'var(--color-accent-2)'
-                      : total > (full * threshold) / 100
+                      : total > threshold
                         ? 'var(--color-warning)'
                         : 'var(--color-neutral-400)'
                   }
@@ -217,7 +220,7 @@ export function PersonBars({
         const total = person.committed[i];
         // Just inside the top of the bar, clear of the guide lines running above it.
         const insideTop = ((BASELINE - h(total)) / VB_H) * height + 3;
-        const onRed = total > full;
+        const onRed = total > 100;
         return (
           <span
             key={`pct-${i}`}
@@ -270,15 +273,12 @@ export function PersonBars({
           {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
         </span>
         <span className="chart-note" style={{ flex: 'none' }}>
-          {/* Both guide lines are drawn against this person's own month, while every figure
-              on the card is a share of a full-time one — which for a part-timer is two
-              different scales on one chart. So the note says where the lines actually are in
-              the units the numbers use: somebody at 81% of a full month is flagged from 65%,
-              not from 80%, and a 74% bar standing above the dotted line is the chart being
-              right rather than the arithmetic being wrong. */}
+          {/* Everything on this chart is a share of their own month, so the note says how
+              long that month actually is for anybody not working a full one — which is what
+              turns a percentage back into days. */}
           top of chart = {top}%
-          {full !== 100 &&
-            ` · full month for them = ${full}% · flagged above ${Math.round((full * threshold) / 100)}%`}
+          {person.person.capacity !== 100 &&
+            ` · their month = ${person.person.workingDays}d (${person.person.capacity}% of a full one)`}
         </span>
       </div>
     </div>
@@ -299,5 +299,5 @@ function monthDetail(person: PersonView, i: number, label: string): string {
      to work out why the sum is short of their usual figure. */
   const squeezed = person.overheadLoad - person.overheadLoads[i];
   const note = squeezed > 0 ? ` · ${squeezed}% of their other work will not fit` : '';
-  return `${label}: ${person.committed[i]}% committed — ${parts.join(' + ')}${note}`;
+  return `${label}: ${person.committed[i]}% of their month — ${parts.join(' + ')}${note}`;
 }

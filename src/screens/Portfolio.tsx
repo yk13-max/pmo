@@ -266,7 +266,7 @@ function ShortfallDetail({
   const stretched = view.peopleViews
     .map((pv) => ({
       pv,
-      months: pv.committed.map((v, i) => (v > pv.person.capacity ? i : -1)).filter((i) => i >= 0),
+      months: pv.committed.map((v, i) => (v > 100 ? i : -1)).filter((i) => i >= 0),
     }))
     .filter((r) => r.months.length);
 

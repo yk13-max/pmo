@@ -1,6 +1,6 @@
 import type { Portfolio } from '../types';
 import type { PortfolioView, ProjectView } from './derive';
-import { moneyOrZero } from './derive';
+import { hoursToPct, moneyOrZero } from './derive';
 import { fileStamp, fromISO, shortDateYear } from './dates';
 import { schedule } from './schedule';
 import { assigneesOf } from './planLoad';
@@ -224,7 +224,9 @@ function forwardResources(view: PortfolioView, project: ProjectView) {
     const last = months[months.length - 1] ?? 0;
     return {
       name: row.person.name,
-      fte: `${Math.round(Math.max(...row.loads))}%`,
+      /* A share of a full-time month, which is what FTE means — the tracker's own bars are
+         a share of that person's month, and a part-timer's two figures differ. */
+      fte: `${Math.round(hoursToPct(Math.max(...row.hours)))}%`,
       duration:
         months.length === 0
           ? '—'
@@ -527,14 +529,14 @@ function resourceSlide(pptx: any, view: PortfolioView, period: string) {
     })),
   ];
   view.peopleViews.forEach((p) => {
-    const over = p.committed.filter((v) => v > p.person.capacity).length;
+    const over = p.committed.filter((v) => v > 100).length;
     rows.push([
       { text: p.person.name, options: { fontSize: 10, color: INK } },
       { text: p.person.role, options: { fontSize: 10, color: QUIET } },
       { text: view.monthLabels[p.peakMonthIndex] ?? '—', options: { fontSize: 10, color: INK } },
       {
         text: `${p.peak}%`,
-        options: { fontSize: 10, align: 'right', color: p.peak > p.person.capacity ? RED : INK },
+        options: { fontSize: 10, align: 'right', color: p.peak > 100 ? RED : INK },
       },
       { text: over ? String(over) : '—', options: { fontSize: 10, align: 'right', color: over ? RED : QUIET } },
     ]);
@@ -629,7 +631,10 @@ function personChartSlides(pptx: any, view: PortfolioView, period: string) {
 }
 
 function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView['peopleViews'][number], x: number, y: number, months: number) {
-  const full = p.person.capacity;
+  /* A hundred per cent is this person's own month — a four-day week is full at 100 the same
+     as a five-day one — so the full line and the threshold are the same two numbers on every
+     card in the pack. */
+  const full = 100;
   /* The chart reaches the taller of a full month and the fullest month they have, so nobody's
      overspill is drawn off the top of their own card. */
   const top = Math.max(full, ...p.committed.slice(0, months), 100);
@@ -644,7 +649,7 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
   });
   slide.addText(`${p.peak}%`, {
     x: x + CARD_W - 0.5, y, w: 0.5, h: 0.22, fontFace: FONT, fontSize: 11, bold: true, margin: 0,
-    align: 'right', valign: 'middle', color: p.peak > full ? RED : INK,
+    align: 'right', valign: 'middle', color: p.peak > 100 ? RED : INK,
   });
   slide.addText(p.person.role, {
     x, y: y + 0.2, w: CARD_W, h: 0.18, fontFace: FONT, fontSize: 8, color: QUIET, margin: 0, valign: 'middle',
@@ -671,11 +676,10 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
     });
   }
 
-  /* Their own full month, the line the tracker flags a month at before it gets there, and the
-     baseline the bars stand on. The threshold is a share of their month rather than of a
-     full-time one, so a part-timer is flagged against their own hours. */
+  /* Their full month, the line the tracker flags a month at before it gets there, and the
+     baseline the bars stand on. */
   slide.addShape(pptx.ShapeType.line, {
-    x, y: plotY + plotH - height((full * view.threshold) / 100), w: CARD_W, h: 0,
+    x, y: plotY + plotH - height(view.threshold), w: CARD_W, h: 0,
     line: { color: AMBER, width: 0.75, dashType: 'sysDot' },
   });
   slide.addShape(pptx.ShapeType.line, {
@@ -692,7 +696,7 @@ function personCard(pptx: any, slide: any, view: PortfolioView, p: PortfolioView
      overspill tab gives, in the one line a card has room for. */
   const overMonths = p.committed
     .slice(0, months)
-    .map((v, i) => (v > full ? i : -1))
+    .map((v, i) => (v > 100 ? i : -1))
     .filter((i) => i >= 0);
   if (overMonths.length) {
     const drivers = view

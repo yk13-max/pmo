@@ -9,11 +9,14 @@ import { SkillGraphs } from '../components/SkillBars';
 import { WindowControls } from '../components/WindowControls';
 import { Drawer } from '../components/Drawer';
 import { monthKeyLabel } from '../lib/dates';
-import { MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
+import { HOURS_PER_FULL_MONTH, MAX_YEAR, WORKING_DAYS_PER_MONTH } from '../types';
 
 
 /** A share of a full-time month expressed in working days, to one decimal. */
-const daysOver = (pct: number) => ((pct / 100) * WORKING_DAYS_PER_MONTH).toFixed(1);
+/* A percentage is a share of somebody's own month, so turning one back into days needs that
+   person's month: a fifth of a three-day week is not a fifth of a five-day one. */
+const daysOver = (pct: number, workingDays = WORKING_DAYS_PER_MONTH) =>
+  ((pct / 100) * workingDays).toFixed(1);
 
 export function Resourcing({
   view,
@@ -46,11 +49,11 @@ export function Resourcing({
   const overMonths = view.peopleViews
     .flatMap((p) =>
       p.committed.map((v, i) =>
-        v > p.person.capacity
+        v > 100
           ? {
               person: p.person,
               month: view.monthLabels[i],
-              over: v - p.person.capacity,
+              over: v - 100,
               leaveDays: p.leaveDays[i],
               projects: p.projectNames,
             }
@@ -240,9 +243,9 @@ export function Resourcing({
                       fontSize: 26,
                       marginTop: 10,
                       color:
-                        p.peak > p.person.capacity
+                        p.peak > 100
                           ? 'var(--color-accent-2-700)'
-                          : p.peak > (p.person.capacity * view.threshold) / 100
+                          : p.peak > view.threshold
                             ? 'var(--color-accent-700)'
                             : 'var(--color-text)',
                     }}
@@ -251,11 +254,6 @@ export function Resourcing({
                   </div>
                   <div className="eyebrow">
                     peak commitment · {view.monthLabels[p.peakMonthIndex] ?? '—'}
-                    {/* The figure above is a share of a full-time month; a part-timer's own
-                        month is shorter, so it is also said in their terms — which is the
-                        reading the colour and the threshold line both go by. */}
-                    {p.person.capacity !== 100 &&
-                      ` · ${Math.round((p.peak / (p.person.capacity || 100)) * 100)}% of their month`}
                     {p.leaveDays.some((d) => d > 0) ? ` · ${p.leaveDays.reduce((n, d) => n + d, 0)}d leave` : ''}
                   </div>
                 </div>
@@ -348,11 +346,11 @@ export function Resourcing({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', marginTop: 'var(--space-4)', maxWidth: 1040 }}>
           {view.peopleViews
-            .filter((p) => p.committed.some((v, i) => v > p.person.capacity && view.months[i]))
+            .filter((p) => p.committed.some((v, i) => v > 100 && view.months[i]))
             .map((p) => {
               const spread = view.spreadFor(p.person.id);
               const rows = p.committed
-                .map((v, i) => ({ i, over: v - p.person.capacity }))
+                .map((v, i) => ({ i, over: v - 100 }))
                 .filter((r) => r.over > 0);
               const worst = Math.max(...rows.map((r) => r.over));
               return (
@@ -368,7 +366,8 @@ export function Resourcing({
                     </button>
                     <span style={{ fontSize: 13, color: 'var(--color-neutral-600)' }}>{p.person.role}</span>
                     <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-accent-2-700)' }}>
-                      {rows.length} month{rows.length === 1 ? '' : 's'} over · worst +{daysOver(worst)} days
+                      {rows.length} month{rows.length === 1 ? '' : 's'} over · worst +
+                      {daysOver(worst, p.person.workingDays)} days
                     </span>
                   </div>
                   <table className="table">
@@ -392,10 +391,10 @@ export function Resourcing({
                               +{over}%
                             </td>
                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-2-700)' }}>
-                              {daysOver(over)} days
+                              {daysOver(over, p.person.workingDays)} days
                             </td>
                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-neutral-700)' }}>
-                              {(over / 100).toFixed(2)}
+                              {((over / 100) * (p.person.capacity / 100)).toFixed(2)}
                             </td>
                             <td
                               style={{ position: 'relative', color: 'var(--color-neutral-700)', cursor: 'help' }}
@@ -459,9 +458,9 @@ export function Resourcing({
                                       borderTop: '1px solid var(--color-divider)',
                                     }}
                                   >
-                                    <span>Committed vs their {p.person.capacity}%</span>
+                                    <span>Committed against their whole month</span>
                                     <span style={{ color: 'var(--color-accent-2-700)', fontVariantNumeric: 'tabular-nums' }}>
-                                      {p.committed[i]}% · +{daysOver(over)}d
+                                      {p.committed[i]}% · +{daysOver(over, p.person.workingDays)}d
                                     </span>
                                   </div>
                                 </div>
@@ -825,7 +824,9 @@ function DemandChart({
    the promised work asks for, and who carries it. */
 function MonthBreakdown({ view, index }: { view: PortfolioView; index: number }) {
   const cap = view.capacity;
-  const leave = view.peopleViews.reduce((n, p) => n + p.leaveLoads[index], 0) / 100;
+  /* People, so counted in hours and turned into people at the end — a percentage belongs to
+     one person's month, and two of those do not add up to anything. */
+  const leave = view.peopleViews.reduce((n, p) => n + p.leaveHours[index], 0) / HOURS_PER_FULL_MONTH;
   const avail = view.capacityByMonth[index];
   const need = view.demand[index];
   const gap = need - avail;
@@ -833,10 +834,13 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
      capacity: a workstream asks for hours exactly as a project does, and the only reason to
      say it separately is that it is the part nobody is looking at while the projects are
      being discussed. */
-  const streamNeed = view.peopleViews.reduce((n, p) => n + (p.streamLoads[index] ?? 0), 0) / 100;
+  const streamNeed = view.peopleViews.reduce((n, p) => n + (p.streamHours[index] ?? 0), 0) / HOURS_PER_FULL_MONTH;
   const anyStreams = view.workstreams.length > 0;
   const people = (v: number) => `${v.toFixed(2)} people`;
-  const asDays = (pctOfMonth: number) => `${((pctOfMonth / 100) * WORKING_DAYS_PER_MONTH).toFixed(1)}d`;
+  /* Percentages here are shares of one person's own month, so the days they come to depend
+     on whose month it is. */
+  const asDays = (pctOfMonth: number, workingDays: number) =>
+    `${((pctOfMonth / 100) * workingDays).toFixed(1)}d`;
 
   return (
     <div>
@@ -891,46 +895,50 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
         </thead>
         <tbody>
           {view.peopleViews.map((p) => {
-            const free = p.person.capacity - p.committed[index];
+            const free = 100 - p.committed[index];
             return (
               <tr key={p.person.id}>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{p.person.name}</span>
                   <span style={{ color: 'var(--color-neutral-600)', fontSize: 13 }}> · {p.person.role}</span>
                 </td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{asDays(p.person.capacity)}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.person.workingDays.toFixed(1)}d
+                </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent)' }}>
                   {p.leaveDays[index] ? `${p.leaveDays[index]}d` : '—'}
                 </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-accent-600)' }}>
                   {/* What actually fits this month, so the row adds up to what is committed. */}
-                  {p.overheadLoads[index] ? asDays(p.overheadLoads[index]) : '—'}
+                  {p.overheadLoads[index] ? asDays(p.overheadLoads[index], p.person.workingDays) : '—'}
                 </td>
                 {anyStreams && (
                   <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-workstream)' }}>
-                    {p.streamLoads[index] ? asDays(p.streamLoads[index]) : '—'}
+                    {p.streamLoads[index] ? asDays(p.streamLoads[index], p.person.workingDays) : '—'}
                   </td>
                 )}
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {p.loads[index] - (p.streamLoads[index] ?? 0)
-                    ? asDays(p.loads[index] - (p.streamLoads[index] ?? 0))
+                    ? asDays(p.loads[index] - (p.streamLoads[index] ?? 0), p.person.workingDays)
                     : '—'}
                 </td>
                 <td
                   style={{
                     textAlign: 'right',
                     fontVariantNumeric: 'tabular-nums',
-                    color: p.committed[index] > p.person.capacity ? 'var(--color-accent-2-700)' : 'var(--color-text)',
+                    color: p.committed[index] > 100 ? 'var(--color-accent-2-700)' : 'var(--color-text)',
                   }}
                   /* Days throughout, so a part-timer's total reads against their own month
                      rather than against a full-time one. */
-                  title={`${p.committed[index]}% of a full-time month`}
+                  title={`${p.committed[index]}% of their own month`}
                 >
-                  {asDays(p.committed[index])}
+                  {asDays(p.committed[index], p.person.workingDays)}
                 </td>
                 {/* "13.7d over" is two words and one fact, so it keeps one line. */}
                 <td style={{ fontSize: 13, whiteSpace: 'nowrap', color: free < 0 ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)' }}>
-                  {free < 0 ? `${asDays(-free)} over` : `${asDays(free)} free`}
+                  {free < 0
+                    ? `${asDays(-free, p.person.workingDays)} over`
+                    : `${asDays(free, p.person.workingDays)} free`}
                 </td>
               </tr>
             );

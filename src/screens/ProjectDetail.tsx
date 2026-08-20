@@ -82,7 +82,7 @@ export function ProjectDetail({
   const notes: string[] = [];
   if (project.rag === 'R') notes.push('The project manager has flagged this at risk. It needs a decision this week.');
   if (project.burn > 95) notes.push(`Nearly all of the budget is spent — ${project.burnLabel} of it. More work means a new approval.`);
-  if (team.some((t) => Math.max(...t.loads) > 0 && view.peopleViews.find((pv) => pv.person.id === t.person.id)?.committed.some((v, i) => v > t.person.capacity && t.loads[i] > 0)))
+  if (team.some((t) => Math.max(...t.loads) > 0 && view.peopleViews.find((pv) => pv.person.id === t.person.id)?.committed.some((v, i) => v > 100 && t.loads[i] > 0)))
     notes.push('Someone booked on this project is over their available time in a month it needs them. Something has to give.');
   if (!team.length) notes.push('Nobody is booked on this project yet. Add allocations so it shows up in resourcing.');
   if (!notes.length) notes.push('Nothing outstanding. On plan, inside budget, and fully staffed.');
@@ -595,8 +595,9 @@ function TeamGrid({
     const pv = view.peopleViews.find((p) => p.person.id === personId);
     if (!pv) return 'clear';
     const total = pv.committed[i] ?? 0;
-    if (total > pv.person.capacity) return 'over';
-    return total >= (pv.person.capacity * view.threshold) / 100 ? 'watch' : 'clear';
+    /* A hundred per cent is the whole of this person's month, whatever length it is. */
+    if (total > 100) return 'over';
+    return total >= view.threshold ? 'watch' : 'clear';
   };
   const anyFlagged = team.some((r) => span.months.some((_, i) => state(r.person.id, i) !== 'clear'));
 

@@ -8,7 +8,7 @@ import { PhaseBar } from '../components/PhaseBar';
 
 export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenProject: (id: string) => void }) {
   const atRisk = view.projects.filter((p) => p.rag === 'R');
-  const overbooked = view.peopleViews.filter((p) => p.committed.some((v) => v > p.person.capacity));
+  const overbooked = view.peopleViews.filter((p) => p.committed.some((v) => v > 100));
   const nearlySpent = view.projects.filter((p) => p.burn > 95);
   const unbilled = view.projects
     .filter((p) => p.cust && p.value > p.billed)
@@ -82,7 +82,7 @@ export function Alerts({ view, onOpenProject }: { view: PortfolioView; onOpenPro
       ) : (
         <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(420px,1fr))', gap: 'var(--space-6) 64px', marginBottom: 'var(--space-8)' }}>
           {overbooked.map((p) => {
-            const months = p.committed.map((v, i) => (v > p.person.capacity ? view.monthLabels[i] : null)).filter(Boolean);
+            const months = p.committed.map((v, i) => (v > 100 ? view.monthLabels[i] : null)).filter(Boolean);
             return (
               <div key={p.person.id} className="alert-card" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-6)', position: 'relative', paddingLeft: 'var(--space-4)' }}>
                 <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 3, background: 'var(--color-accent-2)', display: 'block' }} />

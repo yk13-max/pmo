@@ -21,9 +21,10 @@ export function PersonDetail({
   if (!row) return <p className="empty">This person is no longer in the portfolio.</p>;
 
   const cols = `minmax(160px, 1fr) repeat(${view.months.length}, 56px) 64px`;
-  const full = person.capacity;
+  /* A hundred is this person's whole month, however long that month is, so the two lines
+     everything is judged against are the same for everybody. */
   const ink = (v: number) =>
-    v > full ? 'var(--color-accent-2-700)' : v > (full * view.threshold) / 100 ? 'var(--color-accent-700)' : 'var(--color-text)';
+    v > 100 ? 'var(--color-accent-2-700)' : v > view.threshold ? 'var(--color-accent-700)' : 'var(--color-text)';
 
   return (
     <div>
@@ -31,12 +32,10 @@ export function PersonDetail({
         <div>
           <div className="stat-value" style={{ fontSize: 34, color: ink(row.peak) }}>{row.peak}%</div>
           <div className="stat-label">Peak commitment</div>
-          {/* Said in their own month as well, where that is not a full one — the figure
-              above is a share of a full-time month, and for a part-timer the two differ. */}
           <div className="stat-sub">
             {view.monthLabels[row.peakMonthIndex] ?? '—'}, work plus leave
-            {row.person.capacity !== 100 &&
-              ` · ${Math.round((row.peak / (row.person.capacity || 100)) * 100)}% of their month`}
+            {/* What their month is, for anybody not working a whole one. */}
+            {row.person.capacity !== 100 && ` · of a ${row.person.workingDays}-day month`}
           </div>
         </div>
         <div>
@@ -53,7 +52,7 @@ export function PersonDetail({
           <div className="stat-value" style={{ fontSize: 34 }}>{row.person.overheadPct ?? 0}%</div>
           <div className="stat-label">Other work</div>
           <div className="stat-sub">
-            Meetings and admin · {row.overheadLoad}% of a full month
+            Meetings and admin · {row.overheadLoad}% of their month
           </div>
         </div>
       </div>
@@ -110,7 +109,7 @@ export function PersonDetail({
             {row.leaveDays.map((d, i) => (
               <span
                 key={i}
-                title={d ? `${d} days ≈ ${row.leaveLoads[i]}% of the month` : undefined}
+                title={d ? `${d} days ≈ ${row.leaveLoads[i]}% of their month` : undefined}
                 style={{
                   textAlign: 'right',
                   fontVariantNumeric: 'tabular-nums',
@@ -163,8 +162,10 @@ export function PersonDetail({
       )}
 
       <p className="field-hint" style={{ marginTop: 'var(--space-4)' }}>
-        Percentages are of a full-time working month. &ldquo;Committed&rdquo; adds annual leave to project work; a full
-        month for {person.name} is {full}%, so anything above that is more than the month holds.
+        Percentages are of {person.name}&rsquo;s own month — {person.workingDays} working days
+        {person.capacity !== 100 ? `, which is ${person.capacity}% of a full-time one` : ''}. &ldquo;Committed&rdquo;
+        adds annual leave and non-project work to what the projects have booked, so anything above 100% is more than
+        the month holds.
       </p>
 
       <div className="drawer-actions">
