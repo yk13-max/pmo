@@ -24,6 +24,7 @@ export function Drawer({
   kicker,
   onClose,
   expandable = false,
+  wide = false,
   children,
 }: {
   title: string;
@@ -31,6 +32,11 @@ export function Drawer({
   onClose: () => void;
   /** Offer the full-page toggle. For panes long enough that the extra width earns its keep. */
   expandable?: boolean;
+  /** A pane holding a wide table rather than a column of fields. The usual 880px measure is
+      cut for prose and forms; a table of eight columns either scrolls inside it or squeezes
+      its own words, and both are worse than simply giving the pane the width the table
+      needs. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const [full, setFull] = useState(() => expandable && readFull());
@@ -57,7 +63,12 @@ export function Drawer({
       className={full ? 'drawer-backdrop is-full' : 'drawer-backdrop'}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className={full ? 'drawer is-full' : 'drawer'} role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={full ? 'drawer is-full' : wide ? 'drawer is-wide' : 'drawer'}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="drawer-head">
           <div>
             {kicker && <div className="kicker">{kicker}</div>}

@@ -780,6 +780,9 @@ function DemandChart({
           title={monthKeyLabel(view.months[picked])}
           kicker="What this month is made of"
           onClose={() => setPicked(null)}
+          /* Eight columns of table, which the usual pane cannot hold without either
+             scrolling inside itself or folding every job title into three lines. */
+          wide
         >
           <MonthBreakdown view={view} index={picked} />
         </Drawer>
@@ -873,10 +876,10 @@ function MonthBreakdown({ view, index }: { view: PortfolioView; index: number })
         )}
       </div>
 
-      {/* The eighth column costs the names their line, so the table keeps its own measure
-          and scrolls inside the dialog rather than folding every job title into three. */}
+      {/* The pane is given the width for all eight columns; the scroller stays as the last
+          resort on a window too narrow for them. */}
       <div style={{ overflowX: 'auto' }}>
-      <table className="table" style={{ minWidth: 720 }}>
+      <table className="table" style={{ minWidth: 720, width: '100%' }}>
         <thead>
           <tr>
             <th>Person</th>
