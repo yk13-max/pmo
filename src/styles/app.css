@@ -508,6 +508,12 @@ a:hover { color: var(--color-accent-600); }
 /* Centred in the viewport rather than pinned to an edge — the edit pane is a modal. */
 .drawer-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-neutral-900) 40%, transparent); display: flex; align-items: center; justify-content: center; padding: var(--space-6); z-index: 20; }
 .drawer { width: min(880px, 100%); max-height: min(90vh, 100%); overflow-y: auto; background: var(--color-bg); box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); padding: var(--space-8); }
+/* The quiet line beside or above a chart that says what it is drawn against. Small and pale
+   on purpose: it is there for the reader who stops to ask, not for the one scanning the
+   bars. It had no rule of its own until now and simply took the size of whatever row it sat
+   in, which is how it came to be set at reading size above the resourcing charts. */
+.chart-note { font-size: 11px; line-height: 1.5; color: var(--color-neutral-500); text-align: right; }
+
 /* A pane built around a table rather than a column of fields. Wide enough for the month
    breakdown's eight columns to stand side by side, and still bounded by the window. */
 .drawer.is-wide { width: min(1180px, 100%); }

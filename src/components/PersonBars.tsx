@@ -90,14 +90,16 @@ export function PersonBars({
 
   return (
     <div>
-      {/* What the chart is drawn against, above it rather than under it: it belongs with the
-          reading of the bars, not with the sentence about one month, and putting it here
-          leaves the whole width below for that sentence. */}
-      <div className="chart-note" style={{ textAlign: 'right', marginBottom: 3 }}>
-        top of chart = {top}%
-        {person.person.capacity !== 100 &&
-          ` · their month = ${person.person.workingDays}d (${person.person.capacity}% of a full one)`}
-      </div>
+      {/* A note only where there is something to say. A hundred per cent is somebody's whole
+          month whoever they are, so a full-timer's chart needs no explaining; the person who
+          works three days a week does, because their 100% is a shorter month than everybody
+          else's. Set quietly and above the bars, where it annotates the chart rather than
+          competing with the sentence under it. */}
+      {person.person.capacity !== 100 && (
+        <div className="chart-note">
+          their month is {person.person.workingDays} days · {person.person.capacity}% of a full one
+        </div>
+      )}
     <div
       ref={strip}
       style={{
