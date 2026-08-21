@@ -90,6 +90,14 @@ export function PersonBars({
 
   return (
     <div>
+      {/* What the chart is drawn against, above it rather than under it: it belongs with the
+          reading of the bars, not with the sentence about one month, and putting it here
+          leaves the whole width below for that sentence. */}
+      <div className="chart-note" style={{ textAlign: 'right', marginBottom: 3 }}>
+        top of chart = {top}%
+        {person.person.capacity !== 100 &&
+          ` · their month = ${person.person.workingDays}d (${person.person.capacity}% of a full one)`}
+      </div>
     <div
       ref={strip}
       style={{
@@ -254,32 +262,22 @@ export function PersonBars({
       </div>
     </div>
     </div>
-      {/* Both notes sit outside the scroller: they hold still while the months move under
-          them, and no column can push them off the edge. The caption keeps its height when
-          empty so nothing below it jumps as the pointer crosses the chart. */}
+      {/* What the hovered month is made of, outside the scroller so it holds still while the
+          months move under it, and across the card's whole width so a sentence of four parts
+          reads as a sentence rather than as a column of two words a line. Its height is kept
+          when it is empty, so nothing below it jumps as the pointer crosses the chart. */}
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          gap: 'var(--space-3)',
+          display: 'block',
+          width: '100%',
           marginTop: 3,
           minHeight: 18,
           fontSize: 12,
-          color: 'var(--color-neutral-600)',
+          color: 'var(--color-text)',
+          textWrap: 'pretty',
         }}
       >
-        <span style={{ color: 'var(--color-text)', fontSize: 12, textWrap: 'pretty' }}>
-          {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
-        </span>
-        <span className="chart-note" style={{ flex: 'none' }}>
-          {/* Everything on this chart is a share of their own month, so the note says how
-              long that month actually is for anybody not working a full one — which is what
-              turns a percentage back into days. */}
-          top of chart = {top}%
-          {person.person.capacity !== 100 &&
-            ` · their month = ${person.person.workingDays}d (${person.person.capacity}% of a full one)`}
-        </span>
+        {hover !== null ? monthDetail(person, hover, monthLabels[hover]) : ''}
       </div>
     </div>
   );
